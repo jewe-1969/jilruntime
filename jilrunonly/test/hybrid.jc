@@ -1,0 +1,70 @@
+/*
+ *  hybrid.jc
+ *
+ *  This script demonstrates how to create "hybrid" classes using the hybrid keyword.
+ *  Hybrid classes are classes that can contain references to member functions defined in another class.
+ *  We can create a script class that contains member functions from a native type this way.
+ *
+ *  This example shows a script class "Hybrid" that contains all methods from the native "file" class.
+ *
+ *  Compare this against example "delegate2.jc".
+ */
+
+import stdlib;
+import file;
+
+/*
+ *  class Hybrid
+ */
+
+class Hybrid hybrid file
+{
+    // delegate types and variables automatically created
+
+    // default constructor
+    method Hybrid() hybrid (new file())
+    {
+        // delegate variables automatically initialized
+    }
+
+    // constructor from file instance
+    method Hybrid(file f) hybrid (f)
+    {
+        // delegate variables automatically initialized
+    }
+
+    // constructor with filename and mode
+    method Hybrid(const string name, const int mode) hybrid (new file(name, mode))
+    {
+        // delegate variables automatically initialized
+    }
+
+    // more script methods can follow here...
+    method writeHeader()
+    {
+        stdlib::print("Writing header...\n");
+        writeText("Hello world!\n");
+    }
+}
+
+/*
+ *  function main
+ *
+ *  This is the main entry-point function of the script
+ */
+
+function string main(const string[] args)
+{
+    // create a hybrid script object that can be used like a native 'file' object and extended in script code.
+    Hybrid obj = new Hybrid("test.txt", file::kWrite);
+
+    if( obj.open() == 0 )
+    {
+        obj.writeHeader();
+        obj.writeText("This is a test!\n");
+        obj.close();
+    }
+    stdlib::print("Done.\n");
+
+    return "";
+}

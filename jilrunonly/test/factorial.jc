@@ -1,0 +1,34 @@
+/*
+ *  factorial.jc
+ *
+ *  Simple test script that computes the factorial from a command line argument.
+ */
+
+import stdlib;
+using stdlib;   // get rid of stdlib namespace
+
+// function main()
+
+function string main( const string[] args )
+{
+    if( args.length != 2 )
+    {
+        print("Usage: jilrun factorial.jc n\n");
+        print("Where 0 < n < 171\n");
+    }
+    else
+    {
+        print(factorial((int) args[1]));
+    }
+    return null;
+}
+
+// function factorial()
+
+function float factorial( int n )
+{
+    float f = 1, g = 1;
+    for( int m = 1; m < n; m++ )
+        f *= ++g;
+    return f;
+}

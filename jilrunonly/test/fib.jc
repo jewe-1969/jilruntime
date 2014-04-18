@@ -1,0 +1,30 @@
+
+// fib.jc
+// Calculate Fibonacci sequence for benchmarking purposes.
+
+// imports
+import stdlib;
+import time;
+
+using stdlib, time;
+
+// function main
+function string main(const string[] args)
+{
+    time t;
+
+    print("*** FIB ***\n");
+    t.tickDiff();
+    print( fib(32) );
+    printf( "\ntime = %g\n", t.tickDiff() / 1000.0 );
+
+    return "";
+}
+
+// function fib
+function int fib(int n)
+{
+    if (n < 2)
+        return n;
+    return fib (n-1) + fib (n-2);
+}

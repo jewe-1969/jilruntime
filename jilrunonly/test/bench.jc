@@ -1,0 +1,103 @@
+/*
+ *  bench.jc
+ *
+ *  Perform simple benchmarks with and without code optimization
+ */
+
+option "stack-size=12000";  // needed for ackerman
+option "optimize=0, stack-locals=no";
+
+import runtime;
+import stdlib;
+import time;
+import benchopt;
+
+using runtime, stdlib, time;
+
+/*** main ***/
+
+function string main(const string[] args)
+{
+    time t, u;
+
+    u.tickDiff();
+    float ictr1 = instructionCounter();
+
+    print("*** ACKERMAN ***\n");
+    t.tickDiff();
+    printf("Ack(3,8) = %d\n", Ack(3,8));
+    printf("Normal: %g s\n", t.tickDiff() / 1000.0);
+    printf("Ack(3,8) = %d\n", Ack_o(3,8));
+    printf("Optimized: %g s\n", t.tickDiff() / 1000.0);
+
+    print("\n*** FIB ***\n");
+    t.tickDiff();
+    printf("fib(32) = %d\n", fib(32));
+    printf("Normal: %g s\n", t.tickDiff() / 1000.0);
+    printf("fib(32) = %d\n", fib_o(32));
+    printf("Optimized: %g s\n", t.tickDiff() / 1000.0);
+
+    print("\n*** 6 TIMES NESTED FOR TEST (18 iterations each) ***\n");
+    t.tickDiff();
+    printf("bench() = %d\n", bench());
+    printf("Normal: %g s\n", t.tickDiff() / 1000.0);
+    printf("bench() = %d\n", bench_o());
+    printf("Optimized: %g s\n", t.tickDiff() / 1000.0);
+
+    float ictr2 = instructionCounter();
+    float dur = u.tickDiff();
+    float vmips = (ictr2 - ictr1) * (1000.0 / dur) / 1000000.0;
+    printf("\nVM speed on this machine is approximately %.2f bogoMIPS\n", vmips);
+
+    return "";
+}
+
+/*** Ack ***/
+
+function int Ack(int M, int N)
+{
+    if (!M)
+        return ++N;
+
+    if (!N)
+        return Ack(--M, 1);
+
+    return Ack(M-1, Ack(M, --N));
+}
+
+/*** fib ***/
+
+function int fib(int n)
+{
+    if (n < 2)
+        return n;
+    return fib(n-1) + fib(n-2);
+}
+
+/*** bench ***/
+
+function int bench()
+{
+    int n=18;
+    int x=0;
+    for (int a=0;a<n;a++)
+    {
+        for (int b=0;b<n;b++)
+        {
+            for (int c=0;c<n;c++)
+            {
+                for (int d=0;d<n;d++)
+                {
+                    for (int e=0;e<n;e++)
+                    {
+                        for (int f=0;f<n;f++)
+                        {
+                            x++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return x;
+}

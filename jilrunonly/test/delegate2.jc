@@ -1,0 +1,93 @@
+/*
+ *  delegate2.jc
+ *
+ *  This script shows how using delegates allows you to create "hybrid" classes.
+ *  Hybrid classes are classes that can contain references to member functions defined in another class.
+ *  We can create a script class that contains member functions from a native type this way.
+ *
+ *  This example shows a script class "Hybrid" that contains methods from the native "file" class.
+ *
+ *  While we set up the delegates for our hybrid class manually in this example, JewelScript can do
+ *  this for us automatically. For an example, see file "hybrid.jc".
+ */
+
+import stdlib;
+import file;
+
+file File = null;
+
+/*
+ *  class Hybrid
+ */
+
+class Hybrid
+{
+    // define some delegate types
+    delegate int open_t();
+    delegate int close_t();
+    delegate int writeText_t(const string);
+
+    // define some delegate variables
+    open_t      open;
+    close_t     close;
+    writeText_t writeText;
+
+    // default constructor
+    method Hybrid()
+    {
+        // create a file instance
+        file f = new file();
+        // assign methods
+        open = f.open;
+        close = f.close;
+        writeText = f.writeText;
+    }
+
+    // constructor from file instance
+    method Hybrid( file f )
+    {
+        // assign methods
+        open = f.open;
+        close = f.close;
+        writeText = f.writeText;
+    }
+
+    // constructor with filename and mode
+    method Hybrid(const string name, const int mode)
+    {
+        file f = new file(name, mode);
+        // assign methods
+        open = f.open;
+        close = f.close;
+        writeText = f.writeText;
+    }
+
+    // more script methods can follow here...
+    method writeHeader()
+    {
+        stdlib::print("Writing header...\n");
+        writeText("Hello world!\n");
+    }
+}
+
+/*
+ *  function main
+ *
+ *  This is the main entry-point function of the script
+ */
+
+function string main(const string[] args)
+{
+    // create a hybrid script object that can be used like a native 'file' object and extended in script code.
+    Hybrid obj = new Hybrid("test.txt", file::kWrite);
+
+    if( obj.open() == 0 )
+    {
+        obj.writeHeader();
+        obj.writeText("This is a test!\n");
+        obj.close();
+    }
+    stdlib::print("Done.\n");
+
+    return "";
+}
