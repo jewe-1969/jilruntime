@@ -1,0 +1,95 @@
+/*
+ * urlfilter.jc
+ *
+ * A demonstration script for the JewelScript language.
+ * Filters all link locations from all input html files and
+ * writes them into output html files.
+ *
+ * usage: jilrun urlfilter.jc <file1.html> <file2.html> ...
+ *
+ * There should be a file "test.html" in the same folder than
+ * this script that you can use to test this script.
+ */
+
+import stdlib;
+import file;
+import trex;
+
+/* map global functions from class stdlib into global namespace */
+using stdlib;
+
+/* main */
+function string main(const string[] args)
+{
+    print({ "urlfilter: ", args.length - 1, " file(s) specified\n" });
+    for( int i = 1; i < args.length; i++ )
+    {
+        // create input file object
+        file srcFile = new file( args[i], file::kRead );
+        // create output file object from input filespec
+        file dstFile = new file();
+        dstFile.path = srcFile.path;
+        dstFile.name = srcFile.name + "_filtered";
+        dstFile.type = "html";
+        dstFile.mode = file::kWrite;
+        // process the file
+        if( Process(srcFile, dstFile) )
+            break;
+    }
+    return "Done.";
+}
+
+/* Process */
+function int Process(file srcFile, file dstFile)
+{
+    // check source file is html
+    if( srcFile.type != "htm" && srcFile.type != "html" )
+    {
+        print("Error: " + srcFile.fileSpec + " is not a html file.\n");
+        return -1;
+    }
+    // check source file exists
+    if( !srcFile.exists() )
+    {
+        print("Error: " + srcFile.fileSpec + " could not be found.\n");
+        return -1;
+    }
+
+    // load source html file
+    print({ "urlfilter: Loading file ", srcFile.fileSpec, "\n" });
+    string srcText = "";
+    if( srcFile.open() )
+    {
+        print("Error: " + srcFile.fileSpec + " could not be opened for reading.\n");
+    }
+    else
+    {
+        srcText = srcFile.readText();
+        srcFile.close();
+    }
+
+    // get a list of urls from source file; we use a regular expression for this
+    print( "urlfilter: Getting a list of urls from source file...\n" );
+    trex regex = /"(HREF|href)=['"]?(HTTP|http)://([a-zA-Z0-9/=_\?\-\.]+)"/;
+    string[] urlList = regex.search( srcText, /"<A HREF="http://$3">$3</A><BR>"/ "\n" );
+
+    // create destination file from URL list
+    print( "urlfilter: Creating destination file contents...\n" );
+    string dstText = "<HTML>\n<HEAD>\n</HEAD>\n<BODY>\n";
+    for( int i = 0; i < urlList.length; i++ )
+        dstText += urlList[i];
+    dstText += "</BODY>\n</HTML>\n";
+
+    // save destination html file
+    print({ "urlfilter: Writing file ", dstFile.fileSpec, "\n" });
+    if( dstFile.open() )
+    {
+        print("Error: " + dstFile.fileSpec + " could not be opened for writing.\n");
+    }
+    else
+    {
+        dstFile.writeText( dstText );
+        dstFile.close();
+    }
+    return 0;
+}

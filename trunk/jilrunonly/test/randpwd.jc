@@ -1,0 +1,33 @@
+/*
+ *  randpwd.jc
+ *
+ *  A random password generator implemented using a delegate
+ */
+
+import stdlib;
+using stdlib;   // get rid of stdlib namespace
+
+const int DesiredLength = 12;
+
+function string main(const string[] args)
+{
+    // initialize random generator
+    randInit();
+
+    // create a string of desired length, then process it using a delegate
+    string password = string::fill(' ', DesiredLength).process(
+        function
+        {
+            int c = rand(0, 61);
+            if( c < 26 )
+                c += 65;
+            else if( c < 52 )
+                c += 97 - 26;
+            else
+                c += 48 - 52;
+            return c;
+        }, null);
+
+    print("Random Password = " + password + "\n");
+    return "Done.";
+}
