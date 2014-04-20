@@ -622,7 +622,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-30. Compiler defaults to type 'array' on accesses to array members	[FIXED]
+30. Compiler defaults to type 'array' on accesses to array members  [FIXED]
 
     Example code:
     stdlib::Print( m_array[i].length );
@@ -671,7 +671,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-32. "up cast" works only with type "var"	[IMPLEMENTED]
+32. "up cast" works only with type "var"    [IMPLEMENTED]
 
     Example code:
 
@@ -686,7 +686,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-33. Assignment operators +=, &=, etc do not work with accessor methods		[FIXED]
+33. Assignment operators +=, &=, etc do not work with accessor methods      [FIXED]
 
     Example code:
     object.mode |= kWantDraw;         // doesn't work if 'mode' is an accessor
@@ -728,7 +728,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-35b. Statements following unconditional return statement not handled correctly	[FIXED]
+35b. Statements following unconditional return statement not handled correctly  [FIXED]
 
     If there is an unconditional return in the middle of a function, the compiler should warn (or error) if there is
     further code following the return, because this code is not reachable. Example:
@@ -786,7 +786,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-37. Assignment to reference returned by function call not working	[FIXED]
+37. Assignment to reference returned by function call not working   [FIXED]
 
     Assignment operators currently only work on variables, be it stack, member, or array variables.
     However, it should also be possible to assign new values to references, if they are returned by
@@ -867,7 +867,7 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
-41. Bitwise logical operators "&" and "|" not performing auto-convert	[FIXED]
+41. Bitwise logical operators "&" and "|" not performing auto-convert   [FIXED]
 
     If an expression contains float values, the compiler produces an "incompatible type and no convertor found" error.
     Ideally, the bitwise logical operators would behave like all other operators and perform auto-conversion.
@@ -878,7 +878,7 @@ JEWELSCRIPT COMPILER ISSUES
 
     Note that the assignment operators "&=" and "|=" DO behave correctly.
 
-	[This issue has been fixed and verified for all operators in JILRuntime 0.9.2.6]
+    [This issue has been fixed and verified for all operators in JILRuntime 0.9.2.6]
 
 
 
@@ -936,8 +936,8 @@ JEWELSCRIPT COMPILER ISSUES
 44. operator ++ / -- after function call or accessor method does not work   [CLOSED]
 
 
-    myFoo.GetValue()++;	// where GetValue is declared as: method int& GetValue()
-    myFoo.value++;	// where value is declared as: accessor int& value()
+    myFoo.GetValue()++; // where GetValue is declared as: method int& GetValue()
+    myFoo.value++;  // where value is declared as: accessor int& value()
 
     [This issue has been closed as of version 1.0, because the C++ style reference handling has been removed and
     assigments to references returned by functions are no longer possible. (There is no SET anymore.)]
@@ -951,7 +951,7 @@ JEWELSCRIPT COMPILER ISSUES
     with any 'regular' variables / values / objects:
 
     int a = 5;
-    int b = (a = 3);	// will assign 3 to a and then a to b, resulting in b = a = 3
+    int b = (a = 3);    // will assign 3 to a and then a to b, resulting in b = a = 3
 
     However, when using objects and set accessor methods, the compiler does not know how to handle the case where an
     expression wants to take the return value of a set accessor, since set accessor methods don't return a value.
@@ -963,8 +963,8 @@ JEWELSCRIPT COMPILER ISSUES
     }
 
     A object;
-    object.aa = 5;		// calls set accessor aa with argument '5', this works
-    int b = (object.aa = 3);	// causes FATAL ERROR since result of 'object.aa' is undefined
+    object.aa = 5;      // calls set accessor aa with argument '5', this works
+    int b = (object.aa = 3);    // causes FATAL ERROR since result of 'object.aa' is undefined
 
     Explanation:
     
@@ -989,15 +989,15 @@ JEWELSCRIPT COMPILER ISSUES
 ------------------------------------------------------------------------------------------------------------------------
 46. Co-functions not fully protected by class namespace
 
-	When you define a co-function inside a class that has the same name AND the same signature as a global co-function,
-	or a co-function defined in another class, you will receive an "ambiguous function call" error that cannot be resolved.
+    When you define a co-function inside a class that has the same name AND the same signature as a global co-function,
+    or a co-function defined in another class, you will receive an "ambiguous function call" error that cannot be resolved.
 
-	This is because all co-functions with the same signature are compiled into the same co-function class, to allow
-	co-functions of the same signature to share the same type-ID. This is done to allow, for example, to assign
-	co-function "FooA" to a variable of type co-function "FooB", if they share the same signature.
+    This is because all co-functions with the same signature are compiled into the same co-function class, to allow
+    co-functions of the same signature to share the same type-ID. This is done to allow, for example, to assign
+    co-function "FooA" to a variable of type co-function "FooB", if they share the same signature.
 
-	To solve this, the function name would have to be "mangled" by prefixing the class name where the co-function was
-	orignally defined.
+    To solve this, the function name would have to be "mangled" by prefixing the class name where the co-function was
+    orignally defined.
 
 
 
@@ -1021,52 +1021,58 @@ JEWELSCRIPT COMPILER ISSUES
     for the matching delegate type by the function's signature, so there MUST NOT be more than a single type that matches
     any given function signature.
 
-    SOVLED: This is not an issue anymore since v1.0.3.13, because you can optionally specify argument names:
+    [SOLVED: This is not an issue anymore since v1.0.3.13, because you can optionally specify argument names.]
         Subtractor fn = function(s, d) { return d - s; };
 
-------------------------------------------------------------------------------------------------------------------------
-48.	Set-Accessors can be called when the object reference is const
-
-	When declaring a reference to an object const, you can still assign values to it, if the "variable" is an accessor:
-	
-	class Foo
-	{
-		int m_Value;
-		accessor Value(int);
-	}
-	
-	const Foo myFoo = new Foo();
-	myFoo.Value = 27;		// will work
-	myFoo.m_Value = 27;		// will fail
-	
-	Set-Accessors cannot be const methods, as their purpose is to modify the object, so the compiler can simply assume
-	that calling a Set-Accessor on a constant L-Value is an illegal operation, even if true "const methods" aren't really
-	supported in JewelScript (yet).
-
 
 
 ------------------------------------------------------------------------------------------------------------------------
-49.	Operator ++ / -- doesn't work on Accessors
+48. Set-Accessors can be called when the object reference is const [FIXED]
 
-	It was fixed for the group of +=, -=, *=, ... operators, but not for increment / decrement operators. The compiler
-	should generate code that performs something like this: Setter( Getter() +/- 1 );
+    When declaring a reference to an object const, you can still assign values to it, if the "variable" is an accessor:
+    
+    class Foo
+    {
+        int m_Value;
+        accessor Value(int);
+    }
+    
+    const Foo myFoo = new Foo();
+    myFoo.Value = 27;       // will work
+    myFoo.m_Value = 27;     // will fail
+    
+    Set-Accessors cannot be const methods, as their purpose is to modify the object, so the compiler can simply assume
+    that calling a Set-Accessor on a constant L-Value is an illegal operation, even if true "const methods" aren't really
+    supported in JewelScript (yet).
+
+    [This has been fixed in 1.1.3.35]
 
 
 
 ------------------------------------------------------------------------------------------------------------------------
-50. Small number of compiler objects not freed when using HTML documentation generator
+49. Operator ++ / -- don't work on Accessors
+
+    It was fixed for the group of +=, -=, *=, ... operators, but not for increment / decrement operators. The compiler
+    should generate code that performs something like this: Setter( Getter() +/- 1 );
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+50. Small number of compiler objects not freed when using HTML documentation generator [FIXED]
 
     When using the HTML documentation generator, after terminating the runtime the log output will show that the
     compiler has allocated 1-5 objects more than freed. (Probably JCLString objects.)
+
+    [This has been fixed in 1.1.3.35]
 
 
 
 ------------------------------------------------------------------------------------------------------------------------
 51. Register replacement optimization messes up stack count in switch with fall-trough
 
-	This is very specific, therefore it took me years to find this out: When using multiple case tags that lead to the
-	same case block, the register optimization algorithm can mess up the stack count of any variables defined before
-	the switch. Take this delegate for the DownloadManager class as an example:
+    This is very specific, therefore it took me years to find this out: When using multiple case tags that lead to the
+    same case block, the register optimization algorithm can mess up the stack count of any variables defined before
+    the switch. Take this delegate for the DownloadManager class as an example:
 
     method FileEvent(int event, Download dl, var args)
     {
@@ -1090,27 +1096,29 @@ JEWELSCRIPT COMPILER ISSUES
 
 ------------------------------------------------------------------------------------------------------------------------
 
-52. Compiler allows unmatching types for accessor functions
+52. Compiler allows unmatching types for accessor functions [FIXED]
 
-	At present, you can make a class property that returns a different type than what it accepts. This should be fixed.
+    At present, you can make a class property that returns a different type than what it accepts. This should be fixed.
 
-	class Test
-	{
-		method Test() {}
-		accessor int Property()
-		{
-			return 0;
-		}
-		accessor Property(string s) // THIS SHOULD NOT WORK!!!
-		{
-		}
-	}
+    class Test
+    {
+        method Test() {}
+        accessor int Property()
+        {
+            return 0;
+        }
+        accessor Property(string s) // THIS SHOULD NOT WORK!!!
+        {
+        }
+    }
+
+    [This has been fixed in 1.1.3.35]
 
 
 
 ------------------------------------------------------------------------------------------------------------------------
 
-53. Type-cast operator allows to cast away constancy of source object
+53. Type-cast operator allows to cast away constancy of source object [FIXED]
 
     function var MyArrayProcessor(const var element, var args)
     {
@@ -1122,5 +1130,8 @@ JEWELSCRIPT COMPILER ISSUES
     Casting away constancy should never be possible. But I found it to happen with this example code. The compiler will
     not implicitly copy the constant source object. This is rather severe.
     Ironically, when we remove the type-cast, the object is copied properly.
+
+    [This issue has been fixed in 1.1.3.35. The 'const' handling should be re-checked for any negative side-effects.]
+
 
 

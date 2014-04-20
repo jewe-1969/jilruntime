@@ -219,7 +219,7 @@ enum
 	JCL_WARN_Imp_Conv_Int_Float,			// 1512
 	JCL_WARN_Auto_Copy_Const,				// 1513
 	JCL_WARN_Taking_Ref_From_Wref,			// 1514
-	JCL_WARN_Post_IncDec_No_Effect,			// 1515
+	JCL_WARN_Operator_No_Effect,			// 1515
 	JCL_WARN_Null_Assign_No_Ref,			// 1516
 	JCL_WARN_Function_Auto_Complete,		// 1517
 
