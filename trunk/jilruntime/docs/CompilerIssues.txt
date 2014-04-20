@@ -1135,3 +1135,17 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 
+------------------------------------------------------------------------------------------------------------------------
+
+54. Accessor methods in operator new 'initializer block' not working
+
+	Foo foo = new Foo() { value = 20; };
+	
+	The above statement will not work if 'Foo::value' is a set accessor. A workaround until this is fixed is to use the
+	accessor like a regular method:
+
+	Foo foo = new Foo() { value(20); };
+
+
+
+------------------------------------------------------------------------------------------------------------------------

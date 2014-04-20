@@ -261,6 +261,7 @@ static JILBool		IsArithmeticAssign	(JILLong);
 static JILError		CheckTypeConflict	(const JCLVar*, const JCLVar*);
 static JILBool		IsVarClassType		(JCLState*, const JCLVar*);
 static JILBool		IsClassType			(JCLState*, JILLong);
+static JILBool		IsInterfaceType		(JCLState*, JILLong);
 static JILBool		IsValueType			(JCLState*, JILLong);
 static JILBool		IsTypeCopyable		(JCLState*, JILLong);
 static JILBool		IsGlobalScope		(JCLState*, JILLong);
@@ -3078,6 +3079,21 @@ static JILBool IsClassType(JCLState* _this, JILLong type)
 	{
 		JILLong tf = GetClass(_this, type)->miFamily;
 		return (tf == tf_class || tf == tf_interface);
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// IsInterfaceType
+//------------------------------------------------------------------------------
+// Checks if a given typeID belongs to an interface.
+
+static JILBool IsInterfaceType(JCLState* _this, JILLong type)
+{
+	if( ClassDefined(_this, type) )
+	{
+		JILLong tf = GetClass(_this, type)->miFamily;
+		return (tf == tf_interface);
 	}
 	return JILFalse;
 }
@@ -8211,7 +8227,7 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 		{
 			err = cg_change_context(_this, pObj);
 			ERROR_IF(err, err, pName, goto exit);
-			if( pFunc->miCtor && pObj->miType == type_array && TypeFamily(_this, pObj->miElemType) == tf_interface )
+			if( pFunc->miCtor && pObj->miType == type_array && IsInterfaceType(_this, pObj->miElemType) )
 			{
 				// factory construction
 				cg_call_factory(_this, pObj->miElemType, pFunc->miFuncIdx);
@@ -8828,6 +8844,8 @@ static JILError p_new_init_block(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 
 	// only class types allowed
 	ERROR_IF(!IsClassType(_this, pObject->miType), JCL_ERR_Unexpected_Token, NULL, goto exit);
+	// special case for interface array returned by factorization
+	ERROR_IF(pObject->miType == type_array && IsInterfaceType(_this, pObject->miElemType), JCL_ERR_Unexpected_Token, NULL, goto exit);
 	pClass = GetClass(_this, pObject->miType);
 
 	// set compile context to any constructor in the class we can find (doesn't matter which)
@@ -13560,7 +13578,7 @@ static JILError cg_alloci_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 	if( err )
 		goto exit;
 	// check type
-	if( TypeFamily(_this, src->miType) != tf_interface || dst->miType != type_array || dst->miElemType != src->miType )
+	if( !IsInterfaceType(_this, src->miType) || dst->miType != type_array || dst->miElemType != src->miType )
 	{
 		err = JCL_ERR_Incompatible_Type;
 		goto exit;
