@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: JCLState.c                                         (c) 2004 jewe.org
+// File: JCLState.c                                            (c) 2004 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -30,22 +30,20 @@
 #include "jilprogramming.h"
 #include "jiltypelist.h"
 #include "jilcallntl.h"
-#include "jilcodelist.h"	// only for GetInstructionSize()
 
 /*
 --------------------------------------------------------------------------------
 COMPILER TODO:
 --------------------------------------------------------------------------------
-	* Add warning for direct assignment to function result (no effect on source): GetInt() += 2;
+	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
 	* Remove all the "special checks" for type_string and type_array and let them be handled generically by the type-info!
-	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 
 	Missing features:
 	* enum
-	* continue
 	* ternary operator <exp1> ? <exp2> : <exp3>
 
 	Feature ideas:
+	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 	* Indexer function: object[index] is compiled as call to method <type> indexer (int i);
 	* Compiler option "defaultfloat": (interpret all numeric literals as float by default, useful for calculators)
 	* Lambda expressions: (arg1, arg2) => <expr> (compiles <expr> into a function with a single return statement)
@@ -181,9 +179,11 @@ enum
 // externals
 //------------------------------------------------------------------------------
 
-JILEXTERN const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes];
-JILEXTERN JILError JILHandleRuntimeOptions(JILState*, const JILChar*, const JILChar*);
-JILEXTERN JILLong GetFuncInfoFlags(JCLFunc* func);
+JILEXTERN const JCLErrorInfo	JCLErrorStrings			[JCL_Num_Compiler_Codes];
+
+JILEXTERN JILLong				JILGetInstructionSize	(JILLong opcode);
+JILEXTERN JILError				JILHandleRuntimeOptions	(JILState*, const JILChar*, const JILChar*);
+JILEXTERN JILLong				GetFuncInfoFlags		(JCLFunc* func);
 
 //------------------------------------------------------------------------------
 // various helper functions
@@ -228,6 +228,7 @@ static JCLVar*		FindAnyVar			(JCLState*, const JCLString*);
 static JILError		FindFuncRef			(JCLState*, JCLString*, JILLong, JILLong, JCLVar*, JCLFunc**);
 static JILError		FindAnyFuncRef		(JCLState*, JCLString*, JCLVar*, JCLFunc**);
 static JILBool		IsTempVar			(const JCLVar*);
+static JILBool		IsResultVar			(const JCLVar*);
 static JILBool		IsArrayAccess		(const JCLVar*);
 static void			InitMemberVars		(JCLState*, JILLong, JILBool);
 static void			BreakBranchFixup	(JCLState*, Array_JILLong*, JILLong);
@@ -2395,6 +2396,16 @@ static JILError AddMemberVar(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 static JILBool IsTempVar(const JCLVar* pVar)
 {
 	return (pVar->miUsage == kUsageTemp && pVar->miMode == kModeRegister);
+}
+
+//------------------------------------------------------------------------------
+// IsResultVar
+//------------------------------------------------------------------------------
+// Checks if a var object is the return register r1.
+
+static JILBool IsResultVar(const JCLVar* pVar)
+{
+	return (pVar->miUsage == kUsageResult && pVar->miMode == kModeRegister && pVar->miIndex == 1);
 }
 
 //------------------------------------------------------------------------------
@@ -4606,6 +4617,9 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	// validate accessor function
 	if( fnKind & kAccessor )
 	{
+		JCLFunc* pAcc;
+		JILLong fn;
+		JCLVar* pVar1, *pVar2;
 		// if function has no result, it must have only 1 argument
 		if( pFunc->mipResult->miMode == kModeUnused )
 		{
@@ -4615,6 +4629,27 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		else
 		{
 			ERROR_IF(argNum, JCL_ERR_Function_Not_An_Accessor, pFunc->mipName, goto exit);
+		}
+		// make sure the types of getter / setter match
+		for(;;) // just so we can leave without using goto
+		{
+			fn = FindAccessor(_this, pClass->miType, pFunc->mipName, 0, &pAcc);
+			while( pAcc != NULL && pFunc->mipArgs->count == pAcc->mipArgs->count )			// found setter but need getter?
+				fn = FindAccessor(_this, pClass->miType, pFunc->mipName, fn + 1, &pAcc);	// search again
+			if( pAcc == NULL )
+				break;
+			if( pFunc->mipArgs->count )
+			{
+				pVar1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
+				pVar2 = pAcc->mipResult;
+			}
+			else
+			{
+				pVar1 = pFunc->mipResult;
+				pVar2 = pAcc->mipArgs->Get(pAcc->mipArgs, 0);
+			}
+			ERROR_IF(!EqualTypes(pVar1, pVar2), JCL_ERR_Arg_Type_Conflict, pFunc->mipName, goto exit);
+			break;
 		}
 	}
 	// check for ctor, cctor
@@ -6802,27 +6837,15 @@ static JILError p_expr_primary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 	//--------------------------------------------------------------------------
 	if( IsAssignOperator(tokenID) )
 	{
-		//JILBool bReset = JILFalse;
 		if( preIncDec )
 		{
 			JCLSetString(pToken2, preIncDec == tk_plusplus ? "++" : "--");
 			ERROR(JCL_ERR_Unexpected_Token, pToken2, goto exit);
 		}
 		ERROR_IF(pVarOut->miMode == kModeUnused, JCL_ERR_Not_An_LValue, pToken, goto exit);
-		/*
-		TODO: This is old code from when there still was a SET instruction and you could actually modify a function result like this: obj.GetName() = "foo";
-		If removing this shows no ill side effects, it should be deleted permanently.
-
-		// to be able to assign to temporary results, we need to temporarily change the usage of temp vars
-		if( IsTempVar(pVarOut) )
-		{
-			pVarOut->miUsage = kUsageVar;
-			bReset = JILTrue;
-		}
-		*/
+		if( IsTempVar(pVarOut) || IsResultVar(pVarOut) )
+			EmitWarning(_this, pToken, JCL_WARN_Operator_No_Effect);
 		err = p_assignment(_this, pLocals, pVarOut, &outType);
-		//if( bReset )
-		//	pVarOut->miUsage = kUsageTemp;
 		if( err )
 			goto exit;
 	}
@@ -6868,7 +6891,7 @@ static JILError p_expr_primary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 		{
 			// Fix: Post inc/dec on return register should have no effect
 			JCLSetString(pToken2, tokenID == tk_plusplus ? "++" : "--");
-			EmitWarning(_this, pToken2, JCL_WARN_Post_IncDec_No_Effect);
+			EmitWarning(_this, pToken2, JCL_WARN_Operator_No_Effect);
 		}
 		else
 		{
@@ -12568,6 +12591,12 @@ static JILError cg_move_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 	}
 	if( err )
 		goto exit;
+	// if dest is temp var and ref and src is const, copy constancy to dest // TODO: Test if this new check has any negative results!
+	if( IsTempVar(dst) && IsDstTakingRef(dst) && IsSrcConst(src) )
+	{
+		dst->miConst = src->miConst;
+		dst->miConstP = src->miConstP;
+	}
 	// if source is temp var and unique, dest is also unique
 	if( IsTempVar(dst) && IsTempVar(newsrc) )
 		dst->miUnique = newsrc->miUnique;
@@ -15443,7 +15472,7 @@ static JILError cg_accessor_call(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 {
 	JILError err = JCL_No_Error;
 
-	if( !pFunc || !pFunc->miMethod || !pObj || !pClass )
+	if( !pFunc || !pFunc->miMethod || !pFunc->miAccessor || !pObj || !pClass )
 		FATALERROREXIT( "cg_accessor_call", "One or more function arguments are invalid");
 	// check if context change is allowed (calling member of another class)
 	if( pFunc->miMethod && !pFunc->miCtor && _this->miClass != pClass->miType && !pObj )
@@ -15454,6 +15483,9 @@ static JILError cg_accessor_call(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 	// check if calling method and object is not initialized
 	if( pFunc->miMethod && pObj && !IsSrcInited(pObj) )
 		ERROR(JCL_ERR_Var_Not_Initialized, pName, goto exit);
+	// check if calling set-accessor and object is const
+	if( pFunc->mipArgs->count && IsDstConst(pObj) )
+		ERROR(JCL_ERR_LValue_Is_Const, pName, goto exit);
 	// generate code for function call
 	if( pClass->miNative )
 	{
@@ -15470,14 +15502,14 @@ static JILError cg_accessor_call(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 		else
 			cg_call_static(_this, pFunc->miHandle);		// use cheaper call
 	}
+
+exit:
 	// pop arguments from stack
 	if( pFunc->mipArgs->count )
 	{
 		cg_pop_multi(_this, pFunc->mipArgs->count);
 		SimStackPop(_this, pFunc->mipArgs->count );
 	}
-
-exit:
 	return err;
 }
 

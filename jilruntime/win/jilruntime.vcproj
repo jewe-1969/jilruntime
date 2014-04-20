@@ -1118,10 +1118,6 @@
 			RelativePath="..\docs\CompilerIssues.txt"
 			>
 		</File>
-		<File
-			RelativePath="..\COPYING"
-			>
-		</File>
 	</Files>
 	<Globals>
 	</Globals>
