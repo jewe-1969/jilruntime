@@ -439,16 +439,15 @@ void JILArray_SetSize(JILArray* _this, JILLong newSize)
 // JILArray_FillWithType
 //------------------------------------------------------------------------------
 /// Creates and returns a new array that is filled with instances of a given
-/// type. This works only for the data types type_int, type_float and
-/// type_string. If the given type ID number does not specify one of these
-/// types, the array is filled with 'null' references.
+/// type. This works only for the data types type_int and type_float. If the
+/// given type ID number does not specify one of these types, the array is
+/// filled with 'null' references.
 
 JILArray* JILArray_FillWithType(JILState* ps, JILLong type, JILLong size)
 {
 	JILLong i;
 	JILHandle* pHandle;
 	JILArray* _this;
-	JILString* pEmptyString;
 	if( size < 0 )
 		size = 0;
 	_this = JILArrayPreAlloc(ps, size);	// create a new, uninitialized array
@@ -469,16 +468,6 @@ JILArray* JILArray_FillWithType(JILState* ps, JILLong type, JILLong size)
 				pHandle = JILGetNewHandle(ps);
 				pHandle->type = type;
 				JILGetFloatHandle(pHandle)->f = 0.0;
-				_this->ppHandles[i] = pHandle;
-			}
-			break;
-		case type_string:
-			for( i = 0; i < size; i++ )
-			{
-				pEmptyString = JILString_New(ps);
-				pHandle = JILGetNewHandle(ps);
-				pHandle->type = type;
-				JILGetStringHandle(pHandle)->str = pEmptyString;
 				_this->ppHandles[i] = pHandle;
 			}
 			break;
