@@ -24,8 +24,8 @@
             <Keywords name="Folders in comment, open"></Keywords>
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close"></Keywords>
-            <Keywords name="Keywords1">accessor cofunction convertor explicit function method alias and base break case default do else extern false for hybrid if import new not null or option return sameref switch this throw true typeof using while yield __brk class const delegate interface native strict weak clause goto continue</Keywords>
-            <Keywords name="Keywords2">string array float int var list iterator table</Keywords>
+            <Keywords name="Keywords1">__brk __selftest accessor alias and base break case class clause cofunction const continue convertor default delegate do else explicit extern false for function goto hybrid if import interface method native new not null option or return sameref strict switch this throw true typeof using weak while yield&#x000D;&#x000A;</Keywords>
+            <Keywords name="Keywords2">array float int iterator list string stringMatch table var</Keywords>
             <Keywords name="Keywords3"></Keywords>
             <Keywords name="Keywords4"></Keywords>
             <Keywords name="Keywords5"></Keywords>
