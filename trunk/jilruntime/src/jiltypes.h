@@ -41,7 +41,9 @@
 
 enum
 {
-	std_handle_null	///< index number of the one-and-only null handle
+	std_handle_null,		///< index number of the one-and-only null handle
+	kLogGarbageBrief = 1,	///< list leaked objects, but not their child objects, if they can be freed by feeing their parent
+	kLogGarbageAll = 2,		///< list all leaked objects
 };
 
 //------------------------------------------------------------------------------

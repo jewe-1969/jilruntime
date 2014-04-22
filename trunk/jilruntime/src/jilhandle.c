@@ -148,13 +148,24 @@ JILError JILDestroyHandles(JILState* pState)
 	// send shutdown events to everyone in the GC event list
 	for( pRecord = pState->vmpFirstEventRecord; pRecord; pRecord = pRecord->pNext )
 		pRecord->eventProc(pState, JIL_GCEvent_Shutdown, pRecord->pUserPtr);
-	// check for any still allocated objects
+
+	// STEP 1: List every handle that still exists at this point
+	if( pState->vmLogGarbageMode == kLogGarbageAll )
+	{
+		for( i = 0; i < pState->vmMaxHandles; i++ )
+		{
+			pHandle = pState->vmppHandles[i];
+			if( pHandle->refCount > 0 )
+				JILMessageLog(pState, "Leaked handle %d, refCount = %d, type = %s\n", i, pHandle->refCount, JILGetHandleTypeName(pState, pHandle->type));
+		}
+	}
+	// STEP 2: If there were leaks, destroy them now
 	for( i = 0; i < pState->vmMaxHandles; i++ )
 	{
 		pHandle = pState->vmppHandles[i];
 		if( pHandle->refCount > 0 )
 		{
-			if( pState->vmLogGarbage )
+			if( pState->vmLogGarbageMode == kLogGarbageBrief )
 				JILMessageLog(pState, "Collecting handle %d, refCount = %d, type = %s\n", i, pHandle->refCount, JILGetHandleTypeName(pState, pHandle->type));
 			handlesLeaked++;
 			pState->errHandlesLeaked++;
@@ -164,6 +175,7 @@ JILError JILDestroyHandles(JILState* pState)
 	}
 	if( handlesLeaked )
 	{
+		// STEP 3: Count how many leaks could not be destroyed
 		for( i = 0; i < pState->vmMaxHandles; i++ )
 		{
 			pHandle = pState->vmppHandles[i];
@@ -536,12 +548,21 @@ JILLong JILCollectGarbage(JILState* ps)
 
 	// now run through all handles and free everything that's not marked
 	num = ps->vmMaxHandles;
+	if( ps->vmLogGarbageMode == kLogGarbageAll )
+	{
+		for( i = 0; i < num; i++ )
+		{
+			h = ps->vmppHandles[i];
+			if( (h->refCount > 0) && !(h->flags & HF_MARKED) )
+				JILMessageLog(ps, "Leaked handle %d, refCount = %d, type = %s\n", i, h->refCount, JILGetHandleTypeName(ps, h->type));
+		}
+	}
 	for( i = 0; i < num; i++ )
 	{
 		h = ps->vmppHandles[i];
 		if( (h->refCount > 0) && !(h->flags & HF_MARKED) )
 		{
-			if( ps->vmLogGarbage )
+			if( ps->vmLogGarbageMode == kLogGarbageBrief )
 				JILMessageLog(ps, "Collecting handle %d, refCount = %d, type = %s\n", i, h->refCount, JILGetHandleTypeName(ps, h->type));
 			h->refCount = 1;
 			JILRelease(ps, h);
