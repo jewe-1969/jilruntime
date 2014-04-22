@@ -682,7 +682,12 @@ JILError JILHandleRuntimeOptions(JILState* pState, const JILChar* pName, const J
 	}
 	else if( strcmp(pName, "log-garbage") == 0 )
 	{
-		pState->vmLogGarbage = nValue;
+		if( strcmp(pValue, "all") == 0 )
+			pState->vmLogGarbageMode = kLogGarbageAll;
+		else if( strcmp(pValue, "brief") == 0 )
+			pState->vmLogGarbageMode = kLogGarbageBrief;
+		else
+			return JCL_WARN_Invalid_Option_Value;
 	}
 	else if( strcmp(pName, "document") == 0 )
 	{

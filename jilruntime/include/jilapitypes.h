@@ -347,7 +347,6 @@ struct JILState
 	JILBool				vmInitialized;				///< Is JILTrue when the VM is fully initialized
 	JILBool				vmRunning;					///< Is JILTrue when the VM is currently executing bytecode
 	JILBool				vmBlocked;					///< Can be set to JILTrue to block all further execution of script code
-	JILBool				vmLogGarbage;				///< Is JILTrue when the runtime option "log-garbage" has been enabled
 
 	JILLong				vmDataStackSize;			///< The (fixed) size of the data stack, given in JILInitialize()
 	JILLong				vmCallStackSize;			///< The (fixed) size of the call stack, given in JILInitialize()
@@ -358,6 +357,7 @@ struct JILState
 	JILLong				vmRunInitIncr;				///< Code address for incremental init-code execution
 	JILLong				vmRunLevel;					///< Counts the number of nested byte-code execution calls
 	JILLong				vmDocGenMode;				///< Mode value for documentation generator
+	JILLong				vmLogGarbageMode;			///< Mode for the runtime option "log-garbage"
 	JILDWord			vmInstructionCounter;		///< Incremented for each executed instruction (only if JIL_USE_INSTRUCTION_COUNTER is enabled)
 	JILFloat			vmTimeLastGC;				///< Time (ANSI clocks) when the GC was last executed
 
