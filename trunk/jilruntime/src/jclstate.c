@@ -1684,6 +1684,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 				pVar = NEW(JCLVar);
 				pVar->miType = type_var;
 				pVar->miElemType = type_var;
+				pVar->miElemRef = JILTrue;
 				pVar->miIniType = type_var;
 				pVar->miInited = JILTrue;
 				if( src )
@@ -3558,7 +3559,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 		else
 		{
 			pVar->miElemType = type_var;
-			pVar->miElemRef = JILFalse;
+			pVar->miElemRef = (type1 == type_var);
 		}
 		if( !ref1 && pVar->miWeak )
 		{
@@ -4051,6 +4052,10 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	ERROR_IF(err, err, pClassName, goto exit);
 	ERROR_IF(!IsClassToken(classToken), JCL_ERR_Unexpected_Token, pClassName, goto exit);
 
+	// peek for ';'
+	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+
 	// try to find the class
 	FindClass(_this, pClassName, &pClass);
 	// see if name is already taken
@@ -4060,7 +4065,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		if( err && pClass )
 		{
 			// if the class exists but has a body, this is an error
-			if( pClass->miFamily == tf_class && !pClass->miHasBody )
+			if( pClass->miFamily == tf_class && (tokenID == tk_semicolon || !pClass->miHasBody) )
 				err = JCL_No_Error;
 			else if( pClass->miFamily == tf_interface )
 				err = JCL_ERR_Mixing_Class_And_Interface;
@@ -4094,6 +4099,8 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	// check if inheriting from class or interface...
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
+	if( tokenID == tk_semicolon )
+		goto exit;
 	if( tokenID == tk_colon )
 	{
 		err = p_class_inherit(_this, pClass);
@@ -4110,81 +4117,75 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
 	}
-	// we expect to see a "{" or ";"
-	if( tokenID != tk_curly_open && tokenID != tk_semicolon )
+	// we expect to see a "{"
+	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-	// if we have inherited, don't allow semicolon!
-	if( tokenID == tk_semicolon && pClass->miHasBody && _this->miPass == kPassPrecompile )
-		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-	if( tokenID == tk_curly_open )
+	pClass->miHasBody = JILTrue;
+	// check for tag
+	err = p_tag(_this, CurrentClass(_this)->mipTag);
+	if( err )
+		goto exit;
+	// get next token
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+	while( tokenID != tk_curly_close )
 	{
-		pClass->miHasBody = JILTrue;
-		// check for tag
-		err = p_tag(_this, CurrentClass(_this)->mipTag);
+		switch( tokenID )
+		{
+			case tk_function:
+				err = p_function( _this, kFunction | strict, JILFalse );
+				break;
+			case tk_cofunction:
+				err = p_function( _this, kFunction | kCofunction | strict, JILFalse );
+				break;
+			case tk_method:
+				err = p_function( _this, kMethod | strict, JILFalse );
+				break;
+			case tk_accessor:
+				err = p_function( _this, kMethod | kAccessor | strict, JILFalse );
+				break;
+			case tk_explicit:
+				err = p_function( _this, kMethod | kExplicit | strict, JILFalse );
+				break;
+			case tk_delegate:
+				err = p_delegate( _this );
+				break;
+			case tk_alias:
+				err = p_alias( _this );
+				break;
+			case tk_strict:
+				err = p_strict( _this );
+				break;
+			default:
+			{
+				pFile->SetLocator(pFile, savePos);
+				// check for type declaration
+				err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
+				if( err == JCL_ERR_No_Type_Declaration )
+					err = JCL_ERR_Unexpected_Token;
+				ERROR_IF(err, err, pToken, goto exit);
+				if( _this->miPass == kPassPrecompile )
+				{
+					err = p_member_decl(_this, classIdx, pVar);
+				}
+				else if( _this->miPass == kPassCompile )
+				{
+					err = p_skip_statement(_this);
+				}
+				break;
+			}
+		}
 		if( err )
 			goto exit;
 		// get next token
 		savePos = pFile->GetLocator(pFile);
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
-		while( tokenID != tk_curly_close )
-		{
-			switch( tokenID )
-			{
-				case tk_function:
-					err = p_function( _this, kFunction | strict, JILFalse );
-					break;
-				case tk_cofunction:
-					err = p_function( _this, kFunction | kCofunction | strict, JILFalse );
-					break;
-				case tk_method:
-					err = p_function( _this, kMethod | strict, JILFalse );
-					break;
-				case tk_accessor:
-					err = p_function( _this, kMethod | kAccessor | strict, JILFalse );
-					break;
-				case tk_explicit:
-					err = p_function( _this, kMethod | kExplicit | strict, JILFalse );
-					break;
-				case tk_delegate:
-					err = p_delegate( _this );
-					break;
-				case tk_alias:
-					err = p_alias( _this );
-					break;
-				case tk_strict:
-					err = p_strict( _this );
-					break;
-				default:
-				{
-					pFile->SetLocator(pFile, savePos);
-					// check for type declaration
-					err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
-					if( err == JCL_ERR_No_Type_Declaration )
-						err = JCL_ERR_Unexpected_Token;
-					ERROR_IF(err, err, pToken, goto exit);
-					if( _this->miPass == kPassPrecompile )
-					{
-						err = p_member_decl(_this, classIdx, pVar);
-					}
-					else if( _this->miPass == kPassCompile )
-					{
-						err = p_skip_statement(_this);
-					}
-					break;
-				}
-			}
-			if( err )
-				goto exit;
-			// get next token
-			savePos = pFile->GetLocator(pFile);
-			err = pFile->GetToken(pFile, pToken, &tokenID);
-			ERROR_IF(err, err, pToken, goto exit);
-		}
-		// done with class
-		if (pClass->miHasMethod || pClass->mipVars->count > 0)
-			ERROR_IF(!pClass->miHasCtor && !IsClassNative(pClass), JCL_ERR_No_Constructor_Defined, pClass->mipName, goto exit);
 	}
+	// done with class
+	if (pClass->miHasMethod || pClass->mipVars->count > 0)
+		ERROR_IF(!pClass->miHasCtor && !IsClassNative(pClass), JCL_ERR_No_Constructor_Defined, pClass->mipName, goto exit);
 
 exit:
 	// MUST! go back to "global" class
@@ -10451,6 +10452,10 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	ERROR_IF(err, err, pClassName, goto exit);
 	ERROR_IF(classToken != tk_identifier, err = JCL_ERR_Unexpected_Token, pClassName, goto exit);
 
+	// peek for ';'
+	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+
 	// try to find class
 	FindClass(_this, pClassName, &pClass);
 	// see if name is already taken
@@ -10460,7 +10465,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 		if( err && pClass )
 		{
 			// if interface exists but has a body, this is an error
-			if( pClass->miFamily == tf_interface && !pClass->miHasBody )
+			if( pClass->miFamily == tf_interface && (tokenID == tk_semicolon || !pClass->miHasBody) )
 				err = JCL_No_Error;
 			else if( pClass->miFamily == tf_class )
 				err = JCL_ERR_Mixing_Class_And_Interface;
@@ -10495,45 +10500,43 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	// we expect to find a "{" or ";"
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( tokenID != tk_curly_open && tokenID != tk_semicolon )
+	if( tokenID == tk_semicolon )
+		goto exit;
+	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-	if( tokenID == tk_curly_open )
+	pClass->miHasBody = JILTrue;
+	// check for tag
+	err = p_tag(_this, CurrentClass(_this)->mipTag);
+	if( err )
+		goto exit;
+	// get next token
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+	while( tokenID != tk_curly_close )
 	{
-		pClass->miHasBody = JILTrue;
-		// check for tag
-		err = p_tag(_this, CurrentClass(_this)->mipTag);
+		switch( tokenID )
+		{
+			case tk_method:
+				err = p_function( _this, kMethod | strict, JILTrue );
+				break;
+			case tk_accessor:
+				err = p_function( _this, kMethod | kAccessor | strict, JILTrue );
+				break;
+			default:
+				ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
+		}
 		if( err )
 			goto exit;
 		// get next token
 		savePos = pFile->GetLocator(pFile);
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
-		while( tokenID != tk_curly_close )
-		{
-			switch( tokenID )
-			{
-				case tk_method:
-					err = p_function( _this, kMethod | strict, JILTrue );
-					break;
-				case tk_accessor:
-					err = p_function( _this, kMethod | kAccessor | strict, JILTrue );
-					break;
-				default:
-					ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-			}
-			if( err )
-				goto exit;
-			// get next token
-			savePos = pFile->GetLocator(pFile);
-			err = pFile->GetToken(pFile, pToken, &tokenID);
-			ERROR_IF(err, err, pToken, goto exit);
-		}
 	}
 
+exit:
 	// go back to "global" class
 	SetCompileContext(_this, type_global, 0);
-
-exit:
 	DELETE( pToken );
 	DELETE( pClassName );
 	return err;
