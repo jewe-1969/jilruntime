@@ -5634,14 +5634,21 @@ static JILError p_member_decl(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 	}
 	else	// if the member is declared const, make it a global variable and mangle name
 	{
+		// TODO: Currently all global variables are added to the 'Global Object' regardless from which class they are.
+		// To distinguish them, their name is prefixed with the class name. However, this creates countless problems.
+		// We should make every class have it's own global object and add class member constants there.
+		// Unfortunately this requires large parts of the compiler and runtime to be changed.
+		JILLong curArgClass = _this->miArgClass;
 		JILLong curClass = _this->miClass;
 		JILLong curFunc = _this->miFunc;
 		pPrefix = NEW(JCLString);
 		JCLSetString(pPrefix, JCLGetString(pClass->mipName));
 		JCLAppend(pPrefix, "::");
 		SetCompileContext(_this, type_global, 0);
+		_this->miArgClass = curClass; // HACK: Make sure FindAnyVar() also looks in current class
 		err = p_global_decl(_this, pVar, pPrefix);
 		SetCompileContext(_this, curClass, curFunc);
+		_this->miArgClass = curArgClass;
 	}
 
 exit:
