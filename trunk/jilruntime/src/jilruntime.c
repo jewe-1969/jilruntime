@@ -686,6 +686,8 @@ JILError JILHandleRuntimeOptions(JILState* pState, const JILChar* pName, const J
 			pState->vmLogGarbageMode = kLogGarbageAll;
 		else if( strcmp(pValue, "brief") == 0 )
 			pState->vmLogGarbageMode = kLogGarbageBrief;
+		else if( strcmp(pValue, "none") == 0 )
+			pState->vmLogGarbageMode = kLogGarbageNone;
 		else
 			return JCL_WARN_Invalid_Option_Value;
 	}
@@ -693,7 +695,7 @@ JILError JILHandleRuntimeOptions(JILState* pState, const JILChar* pName, const J
 	{
 		if( strcmp(pValue, "user") == 0 || strcmp(pValue, "default") == 0 )
 			pState->vmDocGenMode = 0;
-		else if( strcmp(pValue, "builtin") == 0 || strcmp(pValue, "built-in") == 0 )
+		else if( strcmp(pValue, "builtin") == 0 )
 			pState->vmDocGenMode = 1;
 		else if( strcmp(pValue, "all") == 0 )
 			pState->vmDocGenMode = 2;
