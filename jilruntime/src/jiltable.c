@@ -90,14 +90,14 @@ static const char* kClassDeclaration =
 	"method			table();" TAG("Constructs a new, empty hashtable.")
 	"method			table(const table);" TAG("Copy constructs a new table from the specified one. The new table will be a shallow-copy, meaning values in the table will only be copied by reference.")
 	"method			table(const array);" TAG("Constructs a new table from the specified array. The array is expected to be one-dimensional and have the following format: Every even element must be a string and is considered a key. Every odd element can be of any type and is considered a value.")
-	"method			table(const list);" TAG("Constructs a new table from the specified list. The list's keys should be strings, otherwise they will be converted to strings by this function.")
+	"method			table(const list);" TAG("Constructs a new table from the specified list. The list's items will be added to the table by their keys, so keys should be unique for every item in the list. If the keys are not strings, they will be converted to strings by this function.")
 	"method	var		get(const string key);" TAG("Retrieves a value from the table by the specified key. If no value exists in the table under the specified key, null is returned.")
 	"method			set(const string key, var value);" TAG("Stores a value in the table under the specified key. If a value already exists under this key, it is overwritten. To clear a value in the table, you can just set it to null.")
 	"method table	deepCopy();" TAG("Returns a deep-copy of this table. WARNING: All table data will be copied! This is a highly recursive operation. If the table contains script objects that have copy-constructors, this method can be very time consuming. It should only be called in cases where a shallow copy would not suffice.")
 	"method			enumerate(enumerator fn, var args);" TAG("Calls the specified enumerator delegate for every value in this table. This is a highly recursive operation that can be very time consuming with large tables.")
 	"method int		cleanup();" TAG("Frees all empty nodes in this table, releasing unneeded resources. This only affects internal infrastructure, all table data will remain intact. When storing and clearing large amounts of values in the table, calling this can improve memory footprint and performance of all other recursive table methods.")
 	"method array	toArray();" TAG("Moves all values from this table into a new array. This is a highly recursive operation that can be very time consuming with complex tables.")
-	"method list	toList();" TAG("Moves all values from this table into a new list. This is a highly recursive operation that can be very time consuming with complex tables.")
+	"method list	toList();" TAG("Moves all keys and values from this table into a new list. This is a highly recursive operation that can be very time consuming with complex tables.")
 ;
 
 //------------------------------------------------------------------------------
