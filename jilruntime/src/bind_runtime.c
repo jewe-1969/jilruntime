@@ -21,7 +21,7 @@
 //------------------------------------------------------------------------------
 
 static const char* kClassDeclaration =
-	TAG("This static class contains some function that provide information about the JewelScript runtime.")
+	TAG("Static class containing functions that provide information about the JewelScript runtime.")
 	"function int traceException ();" TAG("Returns true if the virtual machine supports the trace exception.")
 	"function int runtimeChecks ();" TAG("Returns true if the virtual machine performs extended runtime checks.")
 	"function int debugBuild ();" TAG("Returns true if this is a debug build of the runtime.")
