@@ -4297,7 +4297,6 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 			err = JILCreateFunction(pMachine, pClass->miType, i, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
 			ERROR_IF(err, err, NULL, goto exit);
 		}
-		// copy the interface's tag
 		pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
 		// class inherits interface body, so...
 		pClass->miHasBody = JILTrue;
@@ -4838,7 +4837,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		else if( err == JCL_No_Error )
 		{
 			// take over strict attribute from new prototype
-			pFunc->miStrict |= pFunc2->miStrict;
+			pFunc2->miStrict |= pFunc->miStrict;
+			// copy new tag if there is one
+			if( JCLGetLength(pFunc->mipTag) > 0 )
+				pFunc2->mipTag->Copy(pFunc2->mipTag, pFunc->mipTag);
 			// discard our prototype
 			pClass = CurrentClass(_this);
 			pClass->mipFuncs->Trunc(pClass->mipFuncs, pFunc->miFuncIdx);
