@@ -32,8 +32,8 @@ enum {
 
 static const char* kClassDeclaration =
 	TAG("When the runtime detects an error during a function call, it will generate and return an instance of this class. This object is not used when user code throws an exception, but in all cases where the error is generated internally.")
-	"method int getError ();" TAG("Returns the error code number of the exception.")
-	"method string getMessage ();" TAG("Returns a string describing the exception.")
+	"method int getError ();"
+	"method string getMessage ();"
 ;
 
 //------------------------------------------------------------------------------
