@@ -147,7 +147,7 @@ static const JILChar* kClassDeclaration =
 	"method stringMatch[]	matchArray(const string[] strings);" TAG("Treats this string as a keyword and searches the given array for occurrences of the keyword. Any matches are returned as an array of stringMatch instances. If no match is found, an array with zero length is returned.")
 	"function string	fill(const int chr, const int length);" TAG("Creates a string filled with the specified amount of the specified character.")
 	"function string	ascii(const int chr);" TAG("Returns a string containing the specified ANSI character.")
-	"function string	format(const string format, const var v);" TAG("Creates a formatted string using ANSI format specifiers. Multiple arguments may be passed to this function by directly passing an array expression: format(\\\"%s, %d, %f\\\", {x, y, z})")
+	"function string	format(const string format, const var v);" TAG("Creates a formatted string using ANSI format specifiers. Multiple arguments may be passed to this function by directly passing an array expression:<pre>string str = string::format(\\\"%s, %d, %f\\\", {x, y, z})</pre>")
 	"function int		compare(const var value1, const var value2);" TAG("Compares two strings. This function can be used as comparator delegate for the list::sort() and array::sort() methods.")
 	"function string	join(const string[] values, const string seperator);" TAG("Concatenates all elements from the given string array into one string. The elements will be seperated by the specified seperator string.")
 	"function int		charIsDigit(const int c);" TAG("Returns true if the specified character is a digit.")

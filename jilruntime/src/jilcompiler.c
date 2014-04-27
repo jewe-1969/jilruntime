@@ -61,8 +61,9 @@ static const char* kDefaultImports	= "import runtime_exception; import string; i
 static const char* kDefaultAlias	= "alias int bool; alias int char; ";
 static const char* kInterfaceException =
 	"strict interface exception {"
-	"    method int    getError   ();"
-	"    method string getMessage ();"
+	TAG("Strict interface for all classes that can be thrown as exceptions.")
+	"    method int    getError   ();" TAG("Returns the error code for this exception. This can be any non-zero value. Implementing script classes can just return <code>typeof(this)</code> here.")
+	"    method string getMessage ();" TAG("Returns the error message for this exception. Implementing classes should return an empty string rather than null when no message is available.")
 	"}"
 ;
 const JILLong kInterfaceExceptionGetError   = 0;	// method index of the getError() method

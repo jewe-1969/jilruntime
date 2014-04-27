@@ -80,7 +80,7 @@ static const char* kClassDeclaration =
 	"method				moveToLast(const var key);" TAG("Moves the specified item to the end of the list. If the specified item does not exist, the call has no effect.")
 	"method				remove(const var key);" TAG("Removes the specified item from the list. If the specified item does not exist, the call has no effect.")
 	"method				clear();" TAG("Removes all items from the list.")
-	"method				sort(const int mode, comparator fn);" TAG("Sorts the list according to the specified mode and comparator delegate. 'mode' is defined as follows: 0 = sort by key first, ascending, 1 = sort by key first, descending, 2 = sort by value first, ascending, 3 = sort by value first, descending.")
+	"method				sort(const int mode, comparator fn);" TAG("Sorts the list according to the specified mode and comparator delegate. 'mode' is defined as follows: <ol start='0'><li>sort by key first, ascending</li><li>sort by key first, descending</li><li>sort by value first, ascending</li><li>sort by value first, descending</li></ol>")
 	"method var			value(const var key);" TAG("Returns the value from the list that is associated with the specified key. If the key is not found, null is returned.")
 	"method var			valueFromIndex(const int index);" TAG("Returns the value from the list that is associated with the specified zero based index. If the index is out of range, null is returned.")
 	"method const var	keyFromIndex(const int index);" TAG("Returns the key from the list that is associated with the specified zero based index. If the index is out of range, null is returned.")
