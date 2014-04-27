@@ -51,6 +51,9 @@
 /// - Take care of destroying the object yourself (you even have to)
 /// - Create handles for objects which's life-time you don't control
 ///
+/// For an in-depth article on handling JILHandle pointers, read this post:
+/// http://blog.jewe.org/?p=745
+///
 /// To pass a handle as a weak reference to a function of your native type,
 /// simply declare the function argument using the 'weak' modifier keyword.
 /// To create a new handle for an object as a weak reference, use the
