@@ -19,518 +19,523 @@
 #include "jilopcodes.h"
 
 //------------------------------------------------------------------------------
-// Instruction size table
+// g_InstructionInfo
 //------------------------------------------------------------------------------
+// This is the instruction table, defining an instruction info record for every
+// opcode the virtual machine supports.
 
-const JILLong JILInstructionSize[JILNumOpcodes] = {
-	1,	// nop
-	3,	// alloc
-	4,	// alloca
-	3,	// allocn
-	2,	// bra
-	1,	// brk
-	3,	// callm
-	2,	// calls
-	3,	// calln
-	3,	// cvf
-	3,	// cvl
-	2,	// popm
-	3,	// popr
-	2,	// pushm
-	3,	// pushr
-	1,	// ret
-	3,	// size
-	3,	// type
-	2,	// dec_r
-	3,	// dec_d
-	3,	// dec_x
-	2,	// dec_s
-	2,	// inc_r
-	3,	// inc_d
-	3,	// inc_x
-	2,	// inc_s
-	3,	// moveh_r
-	4,	// moveh_d
-	4,	// moveh_x
-	3,	// moveh_s
-	2,	// neg_r
-	3,	// neg_d
-	3,	// neg_x
-	2,	// neg_s
-	2,	// not_r
-	3,	// not_d
-	3,	// not_x
-	2,	// not_s
-	3,	// tsteq_r
-	4,	// tsteq_d
-	4,	// tsteq_x
-	3,	// tsteq_s
-	3,	// tstne_r
-	4,	// tstne_d
-	4,	// tstne_x
-	3,	// tstne_s
-	3,	// add_rr
-	4,	// add_rd
-	4,	// add_rx
-	3,	// add_rs
-	4,	// add_dr
-	4,	// add_xr
-	3,	// add_sr
-	3,	// and_rr
-	4,	// and_rd
-	4,	// and_rx
-	3,	// and_rs
-	4,	// and_dr
-	4,	// and_xr
-	3,	// and_sr
-	3,	// asl_rr
-	4,	// asl_rd
-	4,	// asl_rx
-	3,	// asl_rs
-	4,	// asl_dr
-	4,	// asl_xr
-	3,	// asl_sr
-	3,	// asr_rr
-	4,	// asr_rd
-	4,	// asr_rx
-	3,	// asr_rs
-	4,	// asr_dr
-	4,	// asr_xr
-	3,	// asr_sr
-	3,	// div_rr
-	4,	// div_rd
-	4,	// div_rx
-	3,	// div_rs
-	4,	// div_dr
-	4,	// div_xr
-	3,	// div_sr
-	3,	// lsl_rr
-	4,	// lsl_rd
-	4,	// lsl_rx
-	3,	// lsl_rs
-	4,	// lsl_dr
-	4,	// lsl_xr
-	3,	// lsl_sr
-	3,	// lsr_rr
-	4,	// lsr_rd
-	4,	// lsr_rx
-	3,	// lsr_rs
-	4,	// lsr_dr
-	4,	// lsr_xr
-	3,	// lsr_sr
-	3,	// mod_rr
-	4,	// mod_rd
-	4,	// mod_rx
-	3,	// mod_rs
-	4,	// mod_dr
-	4,	// mod_xr
-	3,	// mod_sr
-	3,	// mul_rr
-	4,	// mul_rd
-	4,	// mul_rx
-	3,	// mul_rs
-	4,	// mul_dr
-	4,	// mul_xr
-	3,	// mul_sr
-	3,	// or_rr
-	4,	// or_rd
-	4,	// or_rx
-	3,	// or_rs
-	4,	// or_dr
-	4,	// or_xr
-	3,	// or_sr
-	3,	// sub_rr
-	4,	// sub_rd
-	4,	// sub_rx
-	3,	// sub_rs
-	4,	// sub_dr
-	4,	// sub_xr
-	3,	// sub_sr
-	3,	// xor_rr
-	4,	// xor_rd
-	4,	// xor_rx
-	3,	// xor_rs
-	4,	// xor_dr
-	4,	// xor_xr
-	3,	// xor_sr
-	3,	// move_rr
-	4,	// move_rd
-	4,	// move_rx
-	3,	// move_rs
-	4,	// move_dr
-	5,	// move_dd
-	5,	// move_dx
-	4,	// move_ds
-	4,	// move_xr
-	5,	// move_xd
-	5,	// move_xx
-	4,	// move_xs
-	3,	// move_sr
-	4,	// move_sd
-	4,	// move_sx
-	3,	// move_ss
+const JILInstrInfo g_InstructionInfo[JILNumOpcodes] =
+{
+	op_nop,			0,	ot_none,	ot_none,	ot_none,	ot_none,	"nop",
+	op_alloc,		2,	ot_type,	ot_ear,		ot_none,	ot_none,	"alloc",
+	op_alloca,		3,	ot_type,	ot_number,	ot_ear,		ot_none,	"alloca",
+	op_allocn,		2,	ot_type,	ot_ear,		ot_none,	ot_none,	"allocn",
+	op_bra,			1,	ot_label,	ot_none,	ot_none,	ot_none,	"bra",
+	op_brk,			0,	ot_none,	ot_none,	ot_none,	ot_none,	"brk",
+	op_callm,		2,	ot_type,	ot_number,	ot_none,	ot_none,	"callm",
+	op_calls,		1,	ot_number,	ot_none,	ot_none,	ot_none,	"calls",
+	op_calln,		2,	ot_type,	ot_number,	ot_none,	ot_none,	"calln",
+	op_cvf,			2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"cvf",
+	op_cvl,			2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"cvl",
+	op_popm,		1,	ot_number,	ot_none,	ot_none,	ot_none,	"popm",
+	op_popr,		1,	ot_regrng,	ot_none,	ot_none,	ot_none,	"popr",
+	op_pushm,		1,	ot_number,	ot_none,	ot_none,	ot_none,	"pushm",
+	op_pushr,		1,	ot_regrng,	ot_none,	ot_none,	ot_none,	"pushr",
+	op_ret,			0,	ot_none,	ot_none,	ot_none,	ot_none,	"ret",
+	op_size,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"size",
+	op_type,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"type",
+	op_dec_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"dec",
+	op_dec_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"dec",
+	op_dec_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"dec",
+	op_dec_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"dec",
+	op_inc_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"inc",
+	op_inc_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"inc",
+	op_inc_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"inc",
+	op_inc_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"inc",
+	op_moveh_r,		2,	ot_handle,	ot_ear,		ot_none,	ot_none,	"moveh",
+	op_moveh_d,		2,	ot_handle,	ot_ead,		ot_none,	ot_none,	"moveh",
+	op_moveh_x,		2,	ot_handle,	ot_eax,		ot_none,	ot_none,	"moveh",
+	op_moveh_s,		2,	ot_handle,	ot_eas,		ot_none,	ot_none,	"moveh",
+	op_neg_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"neg",
+	op_neg_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"neg",
+	op_neg_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"neg",
+	op_neg_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"neg",
+	op_not_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"not",
+	op_not_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"not",
+	op_not_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"not",
+	op_not_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"not",
+	op_tsteq_r,		2,	ot_ear,		ot_label,	ot_none,	ot_none,	"tsteq",
+	op_tsteq_d,		2,	ot_ead,		ot_label,	ot_none,	ot_none,	"tsteq",
+	op_tsteq_x,		2,	ot_eax,		ot_label,	ot_none,	ot_none,	"tsteq",
+	op_tsteq_s,		2,	ot_eas,		ot_label,	ot_none,	ot_none,	"tsteq",
+	op_tstne_r,		2,	ot_ear,		ot_label,	ot_none,	ot_none,	"tstne",
+	op_tstne_d,		2,	ot_ead,		ot_label,	ot_none,	ot_none,	"tstne",
+	op_tstne_x,		2,	ot_eax,		ot_label,	ot_none,	ot_none,	"tstne",
+	op_tstne_s,		2,	ot_eas,		ot_label,	ot_none,	ot_none,	"tstne",
+	op_add_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"add",
+	op_add_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"add",
+	op_add_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"add",
+	op_add_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"add",
+	op_add_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"add",
+	op_add_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"add",
+	op_add_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"add",
+	op_and_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"and",
+	op_and_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"and",
+	op_and_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"and",
+	op_and_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"and",
+	op_and_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"and",
+	op_and_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"and",
+	op_and_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"and",
+	op_asl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"asl",
+	op_asl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"asl",
+	op_asl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"asl",
+	op_asl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"asl",
+	op_asl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"asl",
+	op_asl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"asl",
+	op_asl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"asl",
+	op_asr_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"asr",
+	op_asr_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"asr",
+	op_asr_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"asr",
+	op_asr_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"asr",
+	op_asr_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"asr",
+	op_asr_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"asr",
+	op_asr_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"asr",
+	op_div_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"div",
+	op_div_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"div",
+	op_div_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"div",
+	op_div_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"div",
+	op_div_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"div",
+	op_div_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"div",
+	op_div_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"div",
+	op_lsl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"lsl",
+	op_lsl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"lsl",
+	op_lsl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"lsl",
+	op_lsl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"lsl",
+	op_lsl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"lsl",
+	op_lsl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"lsl",
+	op_lsl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"lsl",
+	op_lsr_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"lsr",
+	op_lsr_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"lsr",
+	op_lsr_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"lsr",
+	op_lsr_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"lsr",
+	op_lsr_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"lsr",
+	op_lsr_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"lsr",
+	op_lsr_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"lsr",
+	op_mod_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"mod",
+	op_mod_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"mod",
+	op_mod_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"mod",
+	op_mod_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"mod",
+	op_mod_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"mod",
+	op_mod_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"mod",
+	op_mod_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"mod",
+	op_mul_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"mul",
+	op_mul_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"mul",
+	op_mul_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"mul",
+	op_mul_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"mul",
+	op_mul_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"mul",
+	op_mul_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"mul",
+	op_mul_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"mul",
+	op_or_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"or",
+	op_or_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"or",
+	op_or_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"or",
+	op_or_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"or",
+	op_or_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"or",
+	op_or_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"or",
+	op_or_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"or",
+	op_sub_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"sub",
+	op_sub_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"sub",
+	op_sub_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"sub",
+	op_sub_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"sub",
+	op_sub_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"sub",
+	op_sub_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"sub",
+	op_sub_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"sub",
+	op_xor_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"xor",
+	op_xor_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"xor",
+	op_xor_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"xor",
+	op_xor_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"xor",
+	op_xor_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"xor",
+	op_xor_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"xor",
+	op_xor_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"xor",
+	op_move_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"move",
+	op_move_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"move",
+	op_move_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"move",
+	op_move_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"move",
+	op_move_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"move",
+	op_move_dd,		2,	ot_ead,		ot_ead,		ot_none,	ot_none,	"move",
+	op_move_dx,		2,	ot_ead,		ot_eax,		ot_none,	ot_none,	"move",
+	op_move_ds,		2,	ot_ead,		ot_eas,		ot_none,	ot_none,	"move",
+	op_move_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"move",
+	op_move_xd,		2,	ot_eax,		ot_ead,		ot_none,	ot_none,	"move",
+	op_move_xx,		2,	ot_eax,		ot_eax,		ot_none,	ot_none,	"move",
+	op_move_xs,		2,	ot_eax,		ot_eas,		ot_none,	ot_none,	"move",
+	op_move_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"move",
+	op_move_sd,		2,	ot_eas,		ot_ead,		ot_none,	ot_none,	"move",
+	op_move_sx,		2,	ot_eas,		ot_eax,		ot_none,	ot_none,	"move",
+	op_move_ss,		2,	ot_eas,		ot_eas,		ot_none,	ot_none,	"move",
 
 	// extensions 2004/10/30
-	2,	// ldz_r
+	op_ldz_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"ldz",
 
 	// extensions 2004/11/10
-	3,	// copy_rr
-	4,	// copy_rd
-	4,	// copy_rx
-	3,	// copy_rs
-	4,	// copy_dr
-	5,	// copy_dd
-	5,	// copy_dx
-	4,	// copy_ds
-	4,	// copy_xr
-	5,	// copy_xd
-	5,	// copy_xx
-	4,	// copy_xs
-	3,	// copy_sr
-	4,	// copy_sd
-	4,	// copy_sx
-	3,	// copy_ss
-	2,	// pop_r
-	3,	// pop_d
-	3,	// pop_x
-	2,	// pop_s
-	2,	// push_r
-	3,	// push_d
-	3,	// push_x
-	2,	// push_s
+	op_copy_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"copy",
+	op_copy_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"copy",
+	op_copy_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"copy",
+	op_copy_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"copy",
+	op_copy_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"copy",
+	op_copy_dd,		2,	ot_ead,		ot_ead,		ot_none,	ot_none,	"copy",
+	op_copy_dx,		2,	ot_ead,		ot_eax,		ot_none,	ot_none,	"copy",
+	op_copy_ds,		2,	ot_ead,		ot_eas,		ot_none,	ot_none,	"copy",
+	op_copy_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"copy",
+	op_copy_xd,		2,	ot_eax,		ot_ead,		ot_none,	ot_none,	"copy",
+	op_copy_xx,		2,	ot_eax,		ot_eax,		ot_none,	ot_none,	"copy",
+	op_copy_xs,		2,	ot_eax,		ot_eas,		ot_none,	ot_none,	"copy",
+	op_copy_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"copy",
+	op_copy_sd,		2,	ot_eas,		ot_ead,		ot_none,	ot_none,	"copy",
+	op_copy_sx,		2,	ot_eas,		ot_eax,		ot_none,	ot_none,	"copy",
+	op_copy_ss,		2,	ot_eas,		ot_eas,		ot_none,	ot_none,	"copy",
+	op_pop_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"pop",
+	op_pop_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"pop",
+	op_pop_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"pop",
+	op_pop_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"pop",
+	op_push_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"push",
+	op_push_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"push",
+	op_push_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"push",
+	op_push_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"push",
 
 	// extensions 2004/11/28
-	3,	// copyh_r
-	4,	// copyh_d
-	4,	// copyh_x
-	3,	// copyh_s
-	4,	// cseq_rr
-	5,	// cseq_rd
-	5,	// cseq_rx
-	4,	// cseq_rs
-	5,	// cseq_dr
-	5,	// cseq_xr
-	4,	// cseq_sr
-	4,	// csne_rr
-	5,	// csne_rd
-	5,	// csne_rx
-	4,	// csne_rs
-	5,	// csne_dr
-	5,	// csne_xr
-	4,	// csne_sr
-	4,	// csgt_rr
-	5,	// csgt_rd
-	5,	// csgt_rx
-	4,	// csgt_rs
-	5,	// csgt_dr
-	5,	// csgt_xr
-	4,	// csgt_sr
-	4,	// csge_rr
-	5,	// csge_rd
-	5,	// csge_rx
-	4,	// csge_rs
-	5,	// csge_dr
-	5,	// csge_xr
-	4,	// csge_sr
-	4,	// cslt_rr
-	5,	// cslt_rd
-	5,	// cslt_rx
-	4,	// cslt_rs
-	5,	// cslt_dr
-	5,	// cslt_xr
-	4,	// cslt_sr
-	4,	// csle_rr
-	5,	// csle_rd
-	5,	// csle_rx
-	4,	// csle_rs
-	5,	// csle_dr
-	5,	// csle_xr
-	4,	// csle_sr
+	op_copyh_r,		2,	ot_handle,	ot_ear,		ot_none,	ot_none,	"copyh",
+	op_copyh_d,		2,	ot_handle,	ot_ead,		ot_none,	ot_none,	"copyh",
+	op_copyh_x,		2,	ot_handle,	ot_eax,		ot_none,	ot_none,	"copyh",
+	op_copyh_s,		2,	ot_handle,	ot_eas,		ot_none,	ot_none,	"copyh",
+
+	op_cseq_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cseq",
+	op_cseq_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cseq",
+	op_cseq_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cseq",
+	op_cseq_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cseq",
+	op_cseq_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cseq",
+	op_cseq_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cseq",
+	op_cseq_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cseq",
+	op_csne_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csne",
+	op_csne_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csne",
+	op_csne_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csne",
+	op_csne_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csne",
+	op_csne_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csne",
+	op_csne_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csne",
+	op_csne_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csne",
+	op_csgt_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csgt",
+	op_csgt_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csgt",
+	op_csgt_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csgt",
+	op_csgt_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csgt",
+	op_csgt_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csgt",
+	op_csgt_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csgt",
+	op_csgt_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csgt",
+	op_csge_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csge",
+	op_csge_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csge",
+	op_csge_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csge",
+	op_csge_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csge",
+	op_csge_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csge",
+	op_csge_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csge",
+	op_csge_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csge",
+	op_cslt_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cslt",
+	op_cslt_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cslt",
+	op_cslt_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cslt",
+	op_cslt_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cslt",
+	op_cslt_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cslt",
+	op_cslt_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cslt",
+	op_cslt_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cslt",
+	op_csle_rr,		3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csle",
+	op_csle_rd,		3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csle",
+	op_csle_rx,		3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csle",
+	op_csle_rs,		3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csle",
+	op_csle_dr,		3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csle",
+	op_csle_xr,		3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csle",
+	op_csle_sr,		3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csle",
 
 	// extensions 2004/12/06
-	3,	// snul_rr
-	3,	// snnul_rr
-	2,	// unot_r
-	3,	// unot_d
-	3,	// unot_x
-	2,	// unot_s
+	op_snul_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"snul",
+	op_snnul_rr,	2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"snnul",
+	op_unot_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"unot",
+	op_unot_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"unot",
+	op_unot_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"unot",
+	op_unot_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"unot",
 
 	// extensions 2004/12/16
-	4,	// streq_rr
-	5,	// streq_rd
-	5,	// streq_rx
-	4,	// streq_rs
-	5,	// streq_dr
-	5,	// streq_xr
-	4,	// streq_sr
-	4,	// strne_rr
-	5,	// strne_rd
-	5,	// strne_rx
-	4,	// strne_rs
-	5,	// strne_dr
-	5,	// strne_xr
-	4,	// strne_sr
-	3,	// stradd_rr
-	4,	// stradd_rd
-	4,	// stradd_rx
-	3,	// stradd_rs
-	4,	// stradd_dr
-	4,	// stradd_xr
-	3,	// stradd_sr
-	3,	// arrcp_rr
-	4,	// arrcp_rd
-	4,	// arrcp_rx
-	3,	// arrcp_rs
-	4,	// arrcp_dr
-	4,	// arrcp_xr
-	3,	// arrcp_sr
-	3,	// arrmv_rr
-	4,	// arrmv_rd
-	4,	// arrmv_rx
-	3,	// arrmv_rs
-	4,	// arrmv_dr
-	4,	// arrmv_xr
-	3,	// arrmv_sr
+	op_streq_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"streq",
+	op_streq_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"streq",
+	op_streq_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"streq",
+	op_streq_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"streq",
+	op_streq_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"streq",
+	op_streq_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"streq",
+	op_streq_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"streq",
+	op_strne_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"strne",
+	op_strne_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"strne",
+	op_strne_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"strne",
+	op_strne_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"strne",
+	op_strne_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"strne",
+	op_strne_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"strne",
+	op_strne_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"strne",
+	op_stradd_rr,	2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"stradd",
+	op_stradd_rd,	2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"stradd",
+	op_stradd_rx,	2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"stradd",
+	op_stradd_rs,	2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"stradd",
+	op_stradd_dr,	2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"stradd",
+	op_stradd_xr,	2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"stradd",
+	op_stradd_sr,	2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"stradd",
+	op_arrcp_rr,	2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_rd,	2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_rx,	2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_rs,	2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_dr,	2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_xr,	2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"arrcp",
+	op_arrcp_sr,	2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"arrcp",
+	op_arrmv_rr,	2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_rd,	2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_rx,	2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_rs,	2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_dr,	2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_xr,	2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"arrmv",
+	op_arrmv_sr,	2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"arrmv",
 
-	// extensions 2005/02/19 defined in jiloparith.c
-	3,	// addl_rr
-	4,	// addl_rd
-	4,	// addl_rx
-	3,	// addl_rs
-	4,	// addl_dr
-	4,	// addl_xr
-	3,	// addl_sr
-	3,	// subl_rr
-	4,	// subl_rd
-	4,	// subl_rx
-	3,	// subl_rs
-	4,	// subl_dr
-	4,	// subl_xr
-	3,	// subl_sr
-	3,	// mull_rr
-	4,	// mull_rd
-	4,	// mull_rx
-	3,	// mull_rs
-	4,	// mull_dr
-	4,	// mull_xr
-	3,	// mull_sr
-	3,	// divl_rr
-	4,	// divl_rd
-	4,	// divl_rx
-	3,	// divl_rs
-	4,	// divl_dr
-	4,	// divl_xr
-	3,	// divl_sr
-	3,	// modl_rr
-	4,	// modl_rd
-	4,	// modl_rx
-	3,	// modl_rs
-	4,	// modl_dr
-	4,	// modl_xr
-	3,	// modl_sr
-	2,	// decl_r
-	3,	// decl_d
-	3,	// decl_x
-	2,	// decl_s
-	2,	// incl_r
-	3,	// incl_d
-	3,	// incl_x
-	2,	// incl_s
-	2,	// negl_r
-	3,	// negl_d
-	3,	// negl_x
-	2,	// negl_s
-	4,	// cseql_rr
-	5,	// cseql_rd
-	5,	// cseql_rx
-	4,	// cseql_rs
-	5,	// cseql_dr
-	5,	// cseql_xr
-	4,	// cseql_sr
-	4,	// csnel_rr
-	5,	// csnel_rd
-	5,	// csnel_rx
-	4,	// csnel_rs
-	5,	// csnel_dr
-	5,	// csnel_xr
-	4,	// csnel_sr
-	4,	// csgtl_rr
-	5,	// csgtl_rd
-	5,	// csgtl_rx
-	4,	// csgtl_rs
-	5,	// csgtl_dr
-	5,	// csgtl_xr
-	4,	// csgtl_sr
-	4,	// csgel_rr
-	5,	// csgel_rd
-	5,	// csgel_rx
-	4,	// csgel_rs
-	5,	// csgel_dr
-	5,	// csgel_xr
-	4,	// csgel_sr
-	4,	// csltl_rr
-	5,	// csltl_rd
-	5,	// csltl_rx
-	4,	// csltl_rs
-	5,	// csltl_dr
-	5,	// csltl_xr
-	4,	// csltl_sr
-	4,	// cslel_rr
-	5,	// cslel_rd
-	5,	// cslel_rx
-	4,	// cslel_rs
-	5,	// cslel_dr
-	5,	// cslel_xr
-	4,	// cslel_sr
+	// extensions 2005/02/19
+	op_addl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"addl",
+	op_addl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"addl",
+	op_addl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"addl",
+	op_addl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"addl",
+	op_addl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"addl",
+	op_addl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"addl",
+	op_addl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"addl",
+	op_subl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"subl",
+	op_subl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"subl",
+	op_subl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"subl",
+	op_subl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"subl",
+	op_subl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"subl",
+	op_subl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"subl",
+	op_subl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"subl",
+	op_mull_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"mull",
+	op_mull_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"mull",
+	op_mull_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"mull",
+	op_mull_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"mull",
+	op_mull_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"mull",
+	op_mull_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"mull",
+	op_mull_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"mull",
+	op_divl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"divl",
+	op_divl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"divl",
+	op_divl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"divl",
+	op_divl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"divl",
+	op_divl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"divl",
+	op_divl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"divl",
+	op_divl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"divl",
+	op_modl_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"modl",
+	op_modl_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"modl",
+	op_modl_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"modl",
+	op_modl_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"modl",
+	op_modl_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"modl",
+	op_modl_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"modl",
+	op_modl_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"modl",
+	op_decl_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"decl",
+	op_decl_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"decl",
+	op_decl_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"decl",
+	op_decl_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"decl",
+	op_incl_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"incl",
+	op_incl_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"incl",
+	op_incl_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"incl",
+	op_incl_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"incl",
+	op_negl_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"negl",
+	op_negl_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"negl",
+	op_negl_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"negl",
+	op_negl_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"negl",
+	op_cseql_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cseql",
+	op_cseql_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cseql",
+	op_cseql_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cseql",
+	op_cseql_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cseql",
+	op_cseql_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cseql",
+	op_cseql_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cseql",
+	op_cseql_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cseql",
+	op_csnel_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csnel",
+	op_csnel_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csnel",
+	op_csnel_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csnel",
+	op_csnel_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csnel",
+	op_csnel_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csnel",
+	op_csnel_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csnel",
+	op_csnel_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csnel",
+	op_csgtl_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csgtl",
+	op_csgtl_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csgtl",
+	op_csgel_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csgel",
+	op_csgel_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csgel",
+	op_csgel_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csgel",
+	op_csgel_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csgel",
+	op_csgel_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csgel",
+	op_csgel_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csgel",
+	op_csgel_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csgel",
+	op_csltl_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csltl",
+	op_csltl_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csltl",
+	op_csltl_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csltl",
+	op_csltl_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csltl",
+	op_csltl_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csltl",
+	op_csltl_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csltl",
+	op_csltl_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csltl",
+	op_cslel_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cslel",
+	op_cslel_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cslel",
+	op_cslel_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cslel",
+	op_cslel_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cslel",
+	op_cslel_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cslel",
+	op_cslel_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cslel",
+	op_cslel_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cslel",
 
-	3,	// addf_rr
-	4,	// addf_rd
-	4,	// addf_rx
-	3,	// addf_rs
-	4,	// addf_dr
-	4,	// addf_xr
-	3,	// addf_sr
-	3,	// subf_rr
-	4,	// subf_rd
-	4,	// subf_rx
-	3,	// subf_rs
-	4,	// subf_dr
-	4,	// subf_xr
-	3,	// subf_sr
-	3,	// mulf_rr
-	4,	// mulf_rd
-	4,	// mulf_rx
-	3,	// mulf_rs
-	4,	// mulf_dr
-	4,	// mulf_xr
-	3,	// mulf_sr
-	3,	// divf_rr
-	4,	// divf_rd
-	4,	// divf_rx
-	3,	// divf_rs
-	4,	// divf_dr
-	4,	// divf_xr
-	3,	// divf_sr
-	3,	// modf_rr
-	4,	// modf_rd
-	4,	// modf_rx
-	3,	// modf_rs
-	4,	// modf_dr
-	4,	// modf_xr
-	3,	// modf_sr
-	2,	// decf_r
-	3,	// decf_d
-	3,	// decf_x
-	2,	// decf_s
-	2,	// incf_r
-	3,	// incf_d
-	3,	// incf_x
-	2,	// incf_s
-	2,	// negf_r
-	3,	// negf_d
-	3,	// negf_x
-	2,	// negf_s
-	4,	// cseqf_rr
-	5,	// cseqf_rd
-	5,	// cseqf_rx
-	4,	// cseqf_rs
-	5,	// cseqf_dr
-	5,	// cseqf_xr
-	4,	// cseqf_sr
-	4,	// csnef_rr
-	5,	// csnef_rd
-	5,	// csnef_rx
-	4,	// csnef_rs
-	5,	// csnef_dr
-	5,	// csnef_xr
-	4,	// csnef_sr
-	4,	// csgtf_rr
-	5,	// csgtf_rd
-	5,	// csgtf_rx
-	4,	// csgtf_rs
-	5,	// csgtf_dr
-	5,	// csgtf_xr
-	4,	// csgtf_sr
-	4,	// csgef_rr
-	5,	// csgef_rd
-	5,	// csgef_rx
-	4,	// csgef_rs
-	5,	// csgef_dr
-	5,	// csgef_xr
-	4,	// csgef_sr
-	4,	// csltf_rr
-	5,	// csltf_rd
-	5,	// csltf_rx
-	4,	// csltf_rs
-	5,	// csltf_dr
-	5,	// csltf_xr
-	4,	// csltf_sr
-	4,	// cslef_rr
-	5,	// cslef_rd
-	5,	// cslef_rx
-	4,	// cslef_rs
-	5,	// cslef_dr
-	5,	// cslef_xr
-	4,	// cslef_sr
+	op_addf_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"addf",
+	op_addf_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"addf",
+	op_addf_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"addf",
+	op_addf_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"addf",
+	op_addf_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"addf",
+	op_addf_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"addf",
+	op_addf_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"addf",
+	op_subf_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"subf",
+	op_subf_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"subf",
+	op_subf_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"subf",
+	op_subf_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"subf",
+	op_subf_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"subf",
+	op_subf_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"subf",
+	op_subf_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"subf",
+	op_mulf_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"mulf",
+	op_mulf_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"mulf",
+	op_mulf_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"mulf",
+	op_mulf_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"mulf",
+	op_mulf_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"mulf",
+	op_mulf_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"mulf",
+	op_mulf_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"mulf",
+	op_divf_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"divf",
+	op_divf_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"divf",
+	op_divf_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"divf",
+	op_divf_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"divf",
+	op_divf_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"divf",
+	op_divf_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"divf",
+	op_divf_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"divf",
+	op_modf_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"modf",
+	op_modf_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"modf",
+	op_modf_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"modf",
+	op_modf_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"modf",
+	op_modf_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"modf",
+	op_modf_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"modf",
+	op_modf_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"modf",
+	op_decf_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"decf",
+	op_decf_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"decf",
+	op_decf_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"decf",
+	op_decf_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"decf",
+	op_incf_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"incf",
+	op_incf_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"incf",
+	op_incf_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"incf",
+	op_incf_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"incf",
+	op_negf_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"negf",
+	op_negf_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"negf",
+	op_negf_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"negf",
+	op_negf_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"negf",
+	op_cseqf_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cseqf",
+	op_cseqf_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cseqf",
+	op_csnef_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csnef",
+	op_csnef_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csnef",
+	op_csnef_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csnef",
+	op_csnef_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csnef",
+	op_csnef_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csnef",
+	op_csnef_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csnef",
+	op_csnef_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csnef",
+	op_csgtf_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csgtf",
+	op_csgtf_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csgtf",
+	op_csgef_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csgef",
+	op_csgef_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csgef",
+	op_csgef_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csgef",
+	op_csgef_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csgef",
+	op_csgef_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csgef",
+	op_csgef_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csgef",
+	op_csgef_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csgef",
+	op_csltf_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"csltf",
+	op_csltf_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"csltf",
+	op_csltf_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"csltf",
+	op_csltf_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"csltf",
+	op_csltf_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"csltf",
+	op_csltf_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"csltf",
+	op_csltf_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"csltf",
+	op_cslef_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cslef",
+	op_cslef_rd,	3,	ot_ear,		ot_ead,		ot_ear,		ot_none,	"cslef",
+	op_cslef_rx,	3,	ot_ear,		ot_eax,		ot_ear,		ot_none,	"cslef",
+	op_cslef_rs,	3,	ot_ear,		ot_eas,		ot_ear,		ot_none,	"cslef",
+	op_cslef_dr,	3,	ot_ead,		ot_ear,		ot_ear,		ot_none,	"cslef",
+	op_cslef_xr,	3,	ot_eax,		ot_ear,		ot_ear,		ot_none,	"cslef",
+	op_cslef_sr,	3,	ot_eas,		ot_ear,		ot_ear,		ot_none,	"cslef",
 
 	// extensions 2005-03-28
-	1,	// pop
-	1,	// push
+	op_pop,			0,	ot_none,	ot_none,	ot_none,	ot_none,	"pop",
+	op_push,		0,	ot_none,	ot_none,	ot_none,	ot_none,	"push",
 
 	// extensions 2005-11-12
-	3,	// rtchk_r
-	4,	// rtchk_d
-	4,	// rtchk_x
-	3,	// rtchk_s
+	op_rtchk_r,		2,	ot_type,	ot_ear,		ot_none,	ot_none,	"rtchk",
+	op_rtchk_d,		2,	ot_type,	ot_ead,		ot_none,	ot_none,	"rtchk",
+	op_rtchk_x,		2,	ot_type,	ot_eax,		ot_none,	ot_none,	"rtchk",
+	op_rtchk_s,		2,	ot_type,	ot_eas,		ot_none,	ot_none,	"rtchk",
 
 	// extensions 2005-11-25
-	2,	// op_jsr
-	2,	// op_jsr_r
-	3,	// op_jsr_d
-	3,	// op_jsr_x
-	2,	// op_jsr_s
+	op_jsr,			1,	ot_number,	ot_none,	ot_none,	ot_none,	"jsr",
+	op_jsr_r,		1,	ot_ear,		ot_none,	ot_none,	ot_none,	"jsr",
+	op_jsr_d,		1,	ot_ead,		ot_none,	ot_none,	ot_none,	"jsr",
+	op_jsr_x,		1,	ot_eax,		ot_none,	ot_none,	ot_none,	"jsr",
+	op_jsr_s,		1,	ot_eas,		ot_none,	ot_none,	ot_none,	"jsr",
 
 	// extensions 2006-07-01
-	5,	// op_newctx
-	2,	// op_resume_r
-	3,	// op_resume_d
-	3,	// op_resume_x
-	2,	// op_resume_s
-	1,	// op_yield
+	op_newctx,		4,	ot_type,	ot_number,	ot_number,	ot_ear,		"newctx",
+	op_resume_r,	1,	ot_ear,		ot_none,	ot_none,	ot_none,	"resume",
+	op_resume_d,	1,	ot_ead,		ot_none,	ot_none,	ot_none,	"resume",
+	op_resume_x,	1,	ot_eax,		ot_none,	ot_none,	ot_none,	"resume",
+	op_resume_s,	1,	ot_eas,		ot_none,	ot_none,	ot_none,	"resume",
+	op_yield,		0,	ot_none,	ot_none,	ot_none,	ot_none,	"yield",
 
 	// extensions 2006-07-12, "weak references"
-	3,	// op_wref_rr
-	4,	// op_wref_rd
-	4,	// op_wref_rx
-	3,	// op_wref_rs
-	4,	// op_wref_dr
-	5,	// op_wref_dd
-	5,	// op_wref_dx
-	4,	// op_wref_ds
-	4,	// op_wref_xr
-	5,	// op_wref_xd
-	5,	// op_wref_xx
-	4,	// op_wref_xs
-	3,	// op_wref_sr
-	4,	// op_wref_sd
-	4,	// op_wref_sx
-	3,	// op_wref_ss
+	op_wref_rr,		2,	ot_ear,		ot_ear,		ot_none,	ot_none,	"wref",
+	op_wref_rd,		2,	ot_ear,		ot_ead,		ot_none,	ot_none,	"wref",
+	op_wref_rx,		2,	ot_ear,		ot_eax,		ot_none,	ot_none,	"wref",
+	op_wref_rs,		2,	ot_ear,		ot_eas,		ot_none,	ot_none,	"wref",
+	op_wref_dr,		2,	ot_ead,		ot_ear,		ot_none,	ot_none,	"wref",
+	op_wref_dd,		2,	ot_ead,		ot_ead,		ot_none,	ot_none,	"wref",
+	op_wref_dx,		2,	ot_ead,		ot_eax,		ot_none,	ot_none,	"wref",
+	op_wref_ds,		2,	ot_ead,		ot_eas,		ot_none,	ot_none,	"wref",
+	op_wref_xr,		2,	ot_eax,		ot_ear,		ot_none,	ot_none,	"wref",
+	op_wref_xd,		2,	ot_eax,		ot_ead,		ot_none,	ot_none,	"wref",
+	op_wref_xx,		2,	ot_eax,		ot_eax,		ot_none,	ot_none,	"wref",
+	op_wref_xs,		2,	ot_eax,		ot_eas,		ot_none,	ot_none,	"wref",
+	op_wref_sr,		2,	ot_eas,		ot_ear,		ot_none,	ot_none,	"wref",
+	op_wref_sd,		2,	ot_eas,		ot_ead,		ot_none,	ot_none,	"wref",
+	op_wref_sx,		2,	ot_eas,		ot_eax,		ot_none,	ot_none,	"wref",
+	op_wref_ss,		2,	ot_eas,		ot_eas,		ot_none,	ot_none,	"wref",
 
 	// extensions 2007-09-13
-	4,	// op_cmpref_rr
+	op_cmpref_rr,	3,	ot_ear,		ot_ear,		ot_ear,		ot_none,	"cmpref",
 
 	// extensions 2008-04-13
-	4,	// op_newdg
-	5,	// op_newdgm
-	2,	// op_calldg_r
-	3,	// op_calldg_d
-	3,	// op_calldg_x
-	2,	// op_calldg_s
+	op_newdg,		3,	ot_type,	ot_number,	ot_ear,		ot_none,	"newdg",
+	op_newdgm,		4,	ot_type,	ot_number,	ot_ear,		ot_ear,		"newdgm",
+	op_calldg_r,	1,	ot_ear,		ot_none,	ot_none,	ot_none,	"calldg",
+	op_calldg_d,	1,	ot_ead,		ot_none,	ot_none,	ot_none,	"calldg",
+	op_calldg_x,	1,	ot_eax,		ot_none,	ot_none,	ot_none,	"calldg",
+	op_calldg_s,	1,	ot_eas,		ot_none,	ot_none,	ot_none,	"calldg",
 
 	// extensions 2010-02-15
-	1,	// op_throw
+	op_throw,		0,	ot_none,	ot_none,	ot_none,	ot_none,	"throw",
 
-	// extensions 2014-04-12
-	3,	// op_alloci
-	3	// op_calli
+	// extensions 2014-04
+	op_alloci,		2,	ot_type,	ot_ear,		ot_none,	ot_none,	"alloci",
+	op_calli,		2,	ot_type,	ot_number,	ot_none,	ot_none,	"calli",
+	op_dcvt,		3,	ot_type,	ot_ear,		ot_ear,		ot_none,	"dcvt"
 };

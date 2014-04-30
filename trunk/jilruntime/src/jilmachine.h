@@ -156,6 +156,13 @@ JILHandle*				JILExceptionCallGetMessage(JILState* ps, JILHandle* hException);
 JILError				JILCallFactory			(JILState* ps, JILArray* pArr, JILLong funcIndex);
 
 //------------------------------------------------------------------------------
+// JILDynamicConvert
+//------------------------------------------------------------------------------
+// Calls a convertor method of an object to dynamically convert a value.
+
+JILError				JILDynamicConvert		(JILState* ps, JILLong dType, JILHandle* sObj, JILHandle** ppOut);
+
+//------------------------------------------------------------------------------
 // Declare Segments
 //------------------------------------------------------------------------------
 

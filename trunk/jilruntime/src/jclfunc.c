@@ -721,7 +721,7 @@ static JILBool IndependentOperands(const OpcodeInfo* pInfo1, const JILLong op1, 
 // Uses the instruction info table built into the JIL Runtime to look up the
 // "base opcode" for a given opcode. The base opcode is the opcode with the
 // simplest addressing mode. For example, if passing a op_move_xd, which is a
-// "move rx(ry), d(rz)" in clear text, the function will return op_move_rr,
+// "move (rx+ry), (rz+d)" in clear text, the function will return op_move_rr,
 // which would be a "move rx, ry" in clear text. The base opcode is used in
 // some of the optimization algorithm to identify the *kind* of instruction to
 // generate, while not regarding the actual addressing mode.
@@ -1581,6 +1581,7 @@ static JILBool GetInstructionInitRegister(CodeBlock* _this, JILLong addr, JILLon
 		case op_strne_sr:
 		case op_strne_rs:
 		case op_cmpref_rr:
+		case op_dcvt:
 			*regNum = _this->array[addr + 3];
 			return JILTrue;
 		case op_cseq_rd:

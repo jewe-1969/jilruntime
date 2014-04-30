@@ -185,6 +185,7 @@ struct JILMethodInfo
 	JILLong			ctor;				///< Method index of the type's standard constructor or -1 if undefined (future, currently unused)
 	JILLong			cctor;				///< Method index of the type's copy-constructor or -1 if undefined
 	JILLong			dtor;				///< Method index of the type's destructor or -1 if undefined (future, currently unused)
+	JILLong			tostr;				///< Method index of the type's string-convertor, or -1 if undefined
 };
 
 //------------------------------------------------------------------------------
@@ -327,7 +328,7 @@ struct JILSymTabEntry
 //------------------------------------------------------------------------------
 // struct JILFuncInfo
 //------------------------------------------------------------------------------
-/// This struct describes a byte-code function and carries information required
+/// This struct describes a function and carries information required
 /// during runtime.
 
 struct JILFuncInfo
@@ -345,14 +346,14 @@ struct JILFuncInfo
 //------------------------------------------------------------------------------
 /// This struct is used to store data handles in the data segment. When the VM
 /// is initialized, it automatically creates runtime handles out of the data
-/// handles. Data handles are used to store global variables and constants
-/// directly referred by some VM instructions.
+/// handles. Data handles are used to store global literals. The moveh
+/// instruction can directly load these literals.
 
 struct JILDataHandle
 {
 	JILWord				type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
 	JILLong				index;		///< The index number this handle should have as a runtime handle
-	JILChar				data[8];	///< The handle data, type dependent
+	JILChar				data[8];	///< The handle data, type dependant
 };
 
 //------------------------------------------------------------------------------
@@ -366,9 +367,9 @@ struct JILDataHandle
 /// of free memory. This value should give a rough picture how much memory
 /// the runtime really has used. Note that FixMem only is used when memory is
 /// allocated during run-time, not when the compiler or other parts of the
-/// library allocate it. The built-in native type libraries, as well as those
-/// that come with the JILRunOnly example, use FixMem too. But of course it is
-/// up to the implementor, whether or not a specific type library uses FixMem.
+/// library allocate it. The built-in native type libraries use FixMem too.
+/// But of course it is up to the implementor, whether or not a specific
+/// type library uses FixMem or just new / malloc.
 /// @see JILUseFixedMemory ()
 
 struct JILMemStats
