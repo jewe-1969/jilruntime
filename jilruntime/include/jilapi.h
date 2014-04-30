@@ -68,8 +68,7 @@
 #ifndef JILAPI_H
 #define JILAPI_H
 
-#include "jilapitypes.h"
-#include "jilexception.h"
+#include "jilnativetypeex.h"
 
 //------------------------------------------------------------------------------
 // JILInitialize
