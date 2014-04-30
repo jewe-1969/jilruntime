@@ -136,7 +136,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	3,	JCL_WARN_Operator_No_Effect,		"Operator has no effect",
 	3,	JCL_WARN_Null_Assign_No_Ref,		"Assigning 'null' to variable that is not a reference",
 	3,	JCL_WARN_Function_Auto_Complete,	"Function declared but not defined, generating default code",
-	3,  JCL_WARN_Dynamic_Conversion,		"Dynamic conversion from typeless to 'string'",
+	2,  JCL_WARN_Dynamic_Conversion,		"Dynamic conversion from typeless to 'string'",
 
 	// leave this at the end of the table
 	0,	JCL_Unknown_Error_Code,				"UNKNOWN COMPILER ERROR CODE"
