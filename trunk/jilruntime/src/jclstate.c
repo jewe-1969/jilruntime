@@ -8758,7 +8758,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 
 	// to save some memory, we can free the file's text contents after the 2nd pass
 	if( pNewFile->miPass == kPassCompile )
-		JCLSetString(pNewFile->mipText, "");
+		pNewFile->Close(pNewFile);
 
 exit:
 	DELETE( pToken );
@@ -10043,14 +10043,14 @@ static JILError p_array_init(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 					goto exit;
 			}
 			JCLTypeInfoToVar(&outType, pExpVar);
+			// generate code to add result to array
+			err = cg_move_var(_this, pExpVar, pArrVar);
+			ERROR_IF(err, err, NULL, goto exit);
 			// we expect to see a "," or "}"
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
 			if( tokenID != tk_curly_close && tokenID != tk_comma )
 				ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-			// generate code to add result to array
-			err = cg_move_var(_this, pExpVar, pArrVar);
-			ERROR_IF(err, err, NULL, goto exit);
 			// are we at end?
 			if( tokenID != tk_curly_close )
 			{
@@ -10606,14 +10606,10 @@ static JILError p_accessor_call(JCLState* _this, Array_JCLVar* pLocals, JCLFunc*
 		// skip the assign token
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
-		err = MakeTempVar(_this, &pTempVar, NULL);
-		ERROR_IF(err, err, NULL, goto exit);
-		// handle case where the accessor's argument is a delegate
 		pArg = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
-		if( TypeFamily(_this, pArg->miType) == tf_delegate )
-			pTempVar->miType = pArg->miType;
-		else
-			pTempVar->miType = type_var;
+		err = MakeTempVar(_this, &pTempVar, pArg);
+		ERROR_IF(err, err, NULL, goto exit);
+		pTempVar->miConst = pTempVar->miConstP = JILFalse; // TODO: If pArg is const, array-constructor expression fails - why???
 		// parse the expression
 		err = p_expression(_this, pLocals, pTempVar, &outType, 0);
 		if( err )

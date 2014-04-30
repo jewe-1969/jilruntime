@@ -181,12 +181,14 @@ static JILError		getToken_JCLFile	(JCLFile* _this, JCLString* pToken, JILLong* p
 static JILError		peekToken_JCLFile	(JCLFile* _this, JCLString* pToken, JILLong* pTokenID);
 static JILLong		getLocator_JCLFile	(JCLFile* _this);
 static void			setLocator_JCLFile	(JCLFile* _this, JILLong pos);
+static JILError		close_JCLFile		(JCLFile* _this);
 
 static JILLong		IsCharType			(JILChar chr, const JILChar* chrSet)	{ return (strchr(chrSet, chr) != NULL); }
 static JILLong		IsDigit				(JILChar chr)							{ return (chr >= '0' && chr <= '9'); }
 static JILLong		IsHexDigit			(JILChar chr)							{ return (chr >= '0' && chr <= '9') || (chr >='A' && chr <= 'F') || (chr >='a' && chr <= 'f'); }
 static JILLong		IsOctDigit			(JILChar chr)							{ return (chr >= '0' && chr <= '7'); }
 static JILLong		HexDigitValue		(JILChar chr)							{ return ((chr >= '0' && chr <= '9') ? chr - 48 : ((chr >= 'A' && chr <= 'Z') ? chr - 55 : chr - 87)); }
+static JILError		GetToken			(JCLFile* _this, JCLString* pToken, JILLong* pTokenID);
 static JILError		Ignore				(JCLFile* _this);
 static JILError		GetStrLiteral		(JCLFile* _this, JCLString* string);
 static JILError		FindTokenAtPosition	(JCLFile* _this, JCLString* string, JILLong* pTokenID, const JCLToken* pTokenList);
@@ -204,11 +206,14 @@ void create_JCLFile( JCLFile* _this )
 	_this->PeekToken = peekToken_JCLFile;
 	_this->GetLocator = getLocator_JCLFile;
 	_this->SetLocator = setLocator_JCLFile;
+	_this->Close = close_JCLFile;
 
 	// init all our members
 	_this->mipName = NULL;
 	_this->mipText = NULL;
 	_this->mipPath = NULL;
+	_this->mipTokens = NULL;
+	_this->miLocator = 0;
 	_this->miPass = 0;
 	_this->miNative = JILFalse;
 }
@@ -223,6 +228,7 @@ void destroy_JCLFile( JCLFile* _this )
 	DELETE( _this->mipName );
 	DELETE( _this->mipText );
 	DELETE( _this->mipPath );
+	DELETE( _this->mipTokens );
 }
 
 //------------------------------------------------------------------------------
@@ -237,166 +243,211 @@ void copy_JCLFile( JCLFile* _this, const JCLFile* src )
 //------------------------------------------------------------------------------
 // JCLFile::Open
 //------------------------------------------------------------------------------
-//
 
 static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath)
 {
 	JILError err = JCL_No_Error;
-
+	JCLString* pToken = NEW(JCLString);
+	JILLong tokenID;
+	JILLong loc;
+	JCLFileToken* pft;
+	// allocate members
 	_this->mipName = NEW(JCLString);
-	JCLSetString(_this->mipName, pName);
 	_this->mipText = NEW(JCLString);
-	JCLSetString(_this->mipText, pText);
 	_this->mipPath = NEW(JCLString);
+	_this->mipTokens = NEW(Array_JCLFileToken);
+	_this->miLocator = 0;
+	// copy arguments
+	JCLSetString(_this->mipName, pName);
+	JCLSetString(_this->mipText, pText);
 	JCLSetString(_this->mipPath, pPath);
-
-	return err;
-}
-
-//------------------------------------------------------------------------------
-// JCLFile::GetToken
-//------------------------------------------------------------------------------
-// Reads the next token from the source file and returns the token type ID as
-// a positive integer value (see enum JCToken). For certain token types, the
-// specific sub-string is return in [pToken].
-
-static JILError getToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
-{
-	JILError err = JCL_No_Error;
-	*pTokenID = tk_unknown;
-
-	// clear output string
-	JCLClear(pToken);
-
-	// ignore whitespace first
-	err = Ignore(_this);
-	if( !err )
+	// pre-parse text
+	for(;;)
 	{
-		// check what we have found
-		JILChar c = JCLGetCurrentChar(_this->mipText);
-		JILChar d = JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1);
-		// un-escaped string literal?
-		if( c == '/' && d == '\"' )
+		if( JCLAtEnd(_this->mipText) )
+			break;
+		err = Ignore(_this);
+		if( err )
+			break;
+		err = GetToken(_this, pToken, &tokenID);
+		if( err )
+			break;
+		loc = JCLGetLocator(_this->mipText);
+		pft = _this->mipTokens->New(_this->mipTokens);
+		pft->miLocation = loc;
+		pft->miTokenID = tokenID;
+		if( JCLGetLength(pToken) )
 		{
-			// read the entire string literal
-			err = GetStrLiteral(_this, pToken);
-			*pTokenID = tk_lit_string;
-		}
-		// part of keyword or identifier characters?
-		else if( IsCharType(c, kKeywordChars) )
-		{
-			// try to read as many characters of the keyword or identifier
-			JCLSpanIncluding(_this->mipText, kIdentifierChars, pToken);
-			// check if it is a keyword
-			*pTokenID = GetTokenID(JCLGetString(pToken), kKeywordList);
-			// check err
-			if( *pTokenID == tk_unknown )
-				*pTokenID = tk_identifier;
-		}
-		// part of operator characters?
-		else if( IsCharType(c, kOperatorChars) && (c != '.' || !IsDigit(d)) )
-		{
-			// try to find a matching operator token
-			err = FindTokenAtPosition(_this, pToken, pTokenID, kOperatorList);
-		}
-		// part of number characters?
-		else if( IsCharType(c, kFirstDigitChars) && (c != '.' || IsDigit(d)) )
-		{
-			JILLong type;
-			// check if long or float number, scan in the token and return tk_lit_int or tk_lit_float!
-			JCLSpanNumber(_this->mipText, pToken, &type);
-			*pTokenID = (type == 0) ? tk_lit_int : tk_lit_float;
-		}
-		else if( IsCharType(c, kCharacterChars) )
-		{
-			// try to read as many characters as possible
-			JCLSpanIncluding(_this->mipText, kCharacterChars, pToken);
-			// try to find the character in the list
-			*pTokenID = GetTokenID(JCLGetString(pToken), kCharacterList);
-			// check err
-			if( *pTokenID == tk_unknown )
-				err = JCL_ERR_Unexpected_Token;
-		}
-		else if( IsCharType(c, kSingleChars) )
-		{
-			// must read only a single character
-			JCLFill(pToken, JCLGetCurrentChar(_this->mipText), 1);
-			JCLSeekForward(_this->mipText, 1);
-			// try to find the character in the list
-			*pTokenID = GetTokenID(JCLGetString(pToken), kCharacterList);
-			// check err
-			if( *pTokenID == tk_unknown )
-				err = JCL_ERR_Unexpected_Token;
-		}
-		else
-		{
-			// single characters
-			switch( c )
-			{
-				case '\"':
-					// read the entire string literal
-					err = GetStrLiteral(_this, pToken);
-					*pTokenID = tk_lit_string;
-					break;
-				case '\'':
-					// read the entire character literal
-					err = GetStrLiteral(_this, pToken);
-					*pTokenID = tk_lit_char;
-					break;
-				default:
-					err = JCL_ERR_Unexpected_Token;
-					break;
-			}
+			pft->mipToken = NEW(JCLString);
+			pft->mipToken->Copy(pft->mipToken, pToken);
 		}
 	}
+	if( err == JCL_ERR_End_Of_File )
+		err = JCL_No_Error;
+	DELETE(pToken);
 	return err;
 }
 
 //------------------------------------------------------------------------------
 // JCLFile::PeekToken
 //------------------------------------------------------------------------------
-// Like getToken, but does not advance in the stream. The locator stays at
-// the beginning of the token.
+// Reads a token from the source file and returns the token type ID as a
+// positive integer value (see enum JCToken). For certain token types, the
+// specific sub-string is return in [pToken].
 
 static JILError peekToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 {
-	JILError err = JCL_No_Error;
-
-	// clear output string
+	JILError err = JCL_ERR_End_Of_File;
+	*pTokenID = tk_unknown;
 	JCLClear(pToken);
-
-	// ignore whitespace first
-	err = Ignore(_this);
-	if( !err )
+	if( _this->miLocator < _this->mipTokens->count )
 	{
-		// save current locator position
-		JILLong oldPos = JCLGetLocator(_this->mipText);
-		// get token
-		err = _this->GetToken(_this, pToken, pTokenID);
-		// restore locator position
-		JCLSetLocator(_this->mipText, oldPos);
+		JCLFileToken* pft = _this->mipTokens->array[_this->miLocator];
+		*pTokenID = pft->miTokenID;
+		if( pft->mipToken )
+			pToken->Copy(pToken, pft->mipToken);
+		err = JCL_No_Error;
 	}
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JCLFile::GetToken
+//------------------------------------------------------------------------------
+// Reads the next token from the source file and advances the read position.
+
+static JILError getToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
+{
+	JILError err = peekToken_JCLFile(_this, pToken, pTokenID);
+	if( err == JCL_No_Error )
+		_this->miLocator++;
 	return err;
 }
 
 //------------------------------------------------------------------------------
 // JCLFile::JCLGetLocator
 //------------------------------------------------------------------------------
-//
 
 static JILLong getLocator_JCLFile(JCLFile* _this)
 {
-	return JCLGetLocator(_this->mipText);
+	return _this->miLocator;
 }
 
 //------------------------------------------------------------------------------
 // JCLFile::JCLSetLocator
 //------------------------------------------------------------------------------
-//
 
 static void setLocator_JCLFile(JCLFile* _this, JILLong pos)
 {
-	JCLSetLocator(_this->mipText, pos);
+	if( pos >= 0 )
+		_this->miLocator = pos;
+}
+
+//------------------------------------------------------------------------------
+// JCLFile::Close
+//------------------------------------------------------------------------------
+
+static JILError close_JCLFile(JCLFile* _this)
+{
+	DELETE(_this->mipText);
+	_this->mipText = NULL;
+	DELETE(_this->mipTokens);
+	_this->mipTokens = NULL;
+	return JCL_No_Error;
+}
+
+//------------------------------------------------------------------------------
+// GetToken
+//------------------------------------------------------------------------------
+// Internal function to get the next token from the text stream.
+
+static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
+{
+	JILError err = JCL_No_Error;
+	JILChar c;
+	JILChar d;
+
+	// clear output string
+	*pTokenID = tk_unknown;
+	JCLClear(pToken);
+
+	// check what we have found
+	c = JCLGetCurrentChar(_this->mipText);
+	d = JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1);
+	// un-escaped string literal?
+	if( c == '/' && d == '\"' )
+	{
+		// read the entire string literal
+		err = GetStrLiteral(_this, pToken);
+		*pTokenID = tk_lit_string;
+	}
+	// part of keyword or identifier characters?
+	else if( IsCharType(c, kKeywordChars) )
+	{
+		// try to read as many characters of the keyword or identifier
+		JCLSpanIncluding(_this->mipText, kIdentifierChars, pToken);
+		// check if it is a keyword
+		*pTokenID = GetTokenID(JCLGetString(pToken), kKeywordList);
+		// check err
+		if( *pTokenID == tk_unknown )
+			*pTokenID = tk_identifier;
+	}
+	// part of operator characters?
+	else if( IsCharType(c, kOperatorChars) && (c != '.' || !IsDigit(d)) )
+	{
+		// try to find a matching operator token
+		err = FindTokenAtPosition(_this, pToken, pTokenID, kOperatorList);
+	}
+	// part of number characters?
+	else if( IsCharType(c, kFirstDigitChars) && (c != '.' || IsDigit(d)) )
+	{
+		JILLong type;
+		// check if long or float number, scan in the token and return tk_lit_int or tk_lit_float!
+		JCLSpanNumber(_this->mipText, pToken, &type);
+		*pTokenID = (type == 0) ? tk_lit_int : tk_lit_float;
+	}
+	else if( IsCharType(c, kCharacterChars) )
+	{
+		// try to read as many characters as possible
+		JCLSpanIncluding(_this->mipText, kCharacterChars, pToken);
+		// try to find the character in the list
+		*pTokenID = GetTokenID(JCLGetString(pToken), kCharacterList);
+		// check err
+		if( *pTokenID == tk_unknown )
+			err = JCL_ERR_Unexpected_Token;
+	}
+	else if( IsCharType(c, kSingleChars) )
+	{
+		// must read only a single character
+		JCLFill(pToken, JCLGetCurrentChar(_this->mipText), 1);
+		JCLSeekForward(_this->mipText, 1);
+		// try to find the character in the list
+		*pTokenID = GetTokenID(JCLGetString(pToken), kCharacterList);
+		// check err
+		if( *pTokenID == tk_unknown )
+			err = JCL_ERR_Unexpected_Token;
+	}
+	else
+	{
+		// single characters
+		switch( c )
+		{
+			case '\"':
+				// read the entire string literal
+				err = GetStrLiteral(_this, pToken);
+				*pTokenID = tk_lit_string;
+				break;
+			case '\'':
+				// read the entire character literal
+				err = GetStrLiteral(_this, pToken);
+				*pTokenID = tk_lit_char;
+				break;
+			default:
+				err = JCL_ERR_Unexpected_Token;
+				break;
+		}
+	}
+	return err;
 }
 
 //------------------------------------------------------------------------------
@@ -488,12 +539,17 @@ void GetCurrentPosition(JCLFile* _this, JILLong* pColumn, JILLong* pLine)
 	JCLString* str;
 	JILLong length;
 	JILLong i;
+	JILLong loc;
 	JILLong line = 1;
 	JILLong column = 1;
 	char c;
 	str = _this->mipText;
-	length = JCLGetLocator(str);
-	if( length > JCLGetLength(str) )
+	loc = _this->miLocator - 1; // because GetToken() advances BEFORE we examine the token
+	if( loc < 0 )
+		loc = 0;
+	if( loc < _this->mipTokens->count )
+		length = _this->mipTokens->array[loc]->miLocation;
+	else
 		length = JCLGetLength(str);
 	for( i = 0; i < length; i++ )
 	{
@@ -639,9 +695,11 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 		{
 			if( bEscape )
 			{
+				JILLong pos;
 				// skip end quote
 				JCLSeekForward(_this->mipText, 1);
 				// ignore whitespace
+				pos = JCLGetLocator(_this->mipText);
 				err = Ignore(_this);
 				if( err )
 					goto error;
@@ -663,6 +721,7 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 				else
 				{
 					// we're done
+					JCLSetLocator(_this->mipText, pos);
 					err = JCL_No_Error;
 					break;
 				}
@@ -748,3 +807,44 @@ static JILError FindTokenAtPosition(JCLFile* _this, JCLString* string, JILLong* 
 	JCLSeekForward(_this->mipText, l_max);
 	return JCL_No_Error;
 }
+
+//------------------------------------------------------------------------------
+// JCLFileToken::Create
+//------------------------------------------------------------------------------
+
+void create_JCLFileToken(JCLFileToken* _this)
+{
+	_this->miLocation = 0;
+	_this->miTokenID = 0;
+	_this->mipToken = NULL;
+}
+
+//------------------------------------------------------------------------------
+// JCLFileToken::Copy
+//------------------------------------------------------------------------------
+
+void copy_JCLFileToken(JCLFileToken* _this, const JCLFileToken* src)
+{
+	_this->miLocation = src->miLocation;
+	_this->miTokenID = src->miTokenID;
+	if( src->mipToken )
+	{
+		_this->mipToken = NEW(JCLString);
+		_this->mipToken->Copy(_this->mipToken, src->mipToken);
+	}
+}
+
+//------------------------------------------------------------------------------
+// JCLFileToken::Destroy
+//------------------------------------------------------------------------------
+
+void destroy_JCLFileToken(JCLFileToken* _this)
+{
+	DELETE(_this->mipToken);
+}
+
+//------------------------------------------------------------------------------
+// Array_JCLFileToken
+//------------------------------------------------------------------------------
+
+IMPL_ARRAY( JCLFileToken )

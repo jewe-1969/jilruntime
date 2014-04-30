@@ -68,12 +68,7 @@ JILLong JILGetInstructionSize(JILLong opcode)
 	JILLong size = 0;
 	const JILInstrInfo* pi = JILGetInfoFromOpcode( opcode );
 	if( pi != NULL )
-	{
-		JILLong j;
-		size = 1;
-		for( j = 0; j < pi->numOperands; j++ )
-			size += JILGetOperandSize( pi->opType[j] );
-	}
+		size = pi->instrSize;
 	return size;
 }
 
@@ -715,9 +710,8 @@ static void JILGetNewctx(JILState* pState, JILChar* pDst, JILLong maxLen, JILLon
 
 void JILCheckInstructionTables(JILState* ps)
 {
-	JILLong i;
-	JILLong l;
 	JILLong e = 0;
+	JILLong i, j, k, l;
 	const JILInstrInfo* pi;
 
 	JILMessageLog(ps, "*** Checking instruction table ***\n");
@@ -727,7 +721,15 @@ void JILCheckInstructionTables(JILState* ps)
 		l = JILGetInstructionSize(i);
 		if( i != pi->opCode )
 		{
-			JILMessageLog(ps, "%3d opcode=%3d '%-8s' size=%2d   ERROR IN TABLE ORDER\n", i, pi->opCode, pi->name, l);
+			JILMessageLog(ps, "%3d opcode=%3d '%-8s' size=%2d   TABLE ORDER ERROR\n", i, pi->opCode, pi->name, l);
+			e++;
+		}
+		k = 1;
+		for( j = 0; j < pi->numOperands; j++ )
+			k += JILGetOperandSize( pi->opType[j] );
+		if( l != k )
+		{
+			JILMessageLog(ps, "%3d opcode=%3d '%-8s' size(L)=%2d size(K)=%2d   INSTRUCTION SIZE ERROR\n", i, pi->opCode, pi->name, l, k);
 			e++;
 		}
 	}

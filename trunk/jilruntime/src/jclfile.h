@@ -23,6 +23,25 @@
 #include "jcltools.h"
 
 //------------------------------------------------------------------------------
+// class JCLFileToken
+//------------------------------------------------------------------------------
+
+FORWARD_CLASS( JCLFileToken )
+DECL_CLASS( JCLFileToken )
+
+	JILLong				miTokenID;		///< The ID number of the token
+	JILLong				miLocation;		///< The character position in the file of the token
+	JCLString*			mipToken;		///< The token string or NULL
+
+END_CLASS( JCLFileToken )
+
+//------------------------------------------------------------------------------
+// Array_JCLFileToken
+//------------------------------------------------------------------------------
+
+DECL_ARRAY( JCLFileToken )
+
+//------------------------------------------------------------------------------
 // class JCLFile
 //------------------------------------------------------------------------------
 // Represents a source code "file" or code-snippet in form of a zero-terminated
@@ -36,10 +55,13 @@ DECL_CLASS( JCLFile )
 	JILError			(*PeekToken)	(JCLFile*, JCLString*, JILLong*);
 	JILLong				(*GetLocator)	(JCLFile*);
 	void				(*SetLocator)	(JCLFile*, JILLong);
+	JILError			(*Close)		(JCLFile*);
 
 	JCLString*			mipName;		///< Name of file or code-snippet
 	JCLString*			mipText;		///< The source code
 	JCLString*			mipPath;		///< Filename and path of the file
+	Array_JCLFileToken*	mipTokens;		///< Array of tokens
+	JILLong				miLocator;		///< Current parsing position
 	JILLong				miPass;			///< Current compile pass
 	JILBool				miNative;		///< File is a native type declaration
 

@@ -233,6 +233,7 @@ struct JILTypeListItem
 struct JILInstrInfo
 {
 	JILLong			opCode;			///< Virtual machine instruction number
+	JILLong			instrSize;		///< Instruction size (number of ints)
 	JILLong			numOperands;	///< Number of operands of this instruction
 	JILLong			opType[4];		///< Enumeration value describing the operand, see enum JILOperandType
 	const JILChar*	name;			///< Clear text name of the instruction (mnemonic)
