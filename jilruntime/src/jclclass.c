@@ -57,6 +57,7 @@ void create_JCLClass( JCLClass* _this )
 	_this->miMethodInfo.ctor = -1;
 	_this->miMethodInfo.cctor = -1;
 	_this->miMethodInfo.dtor = -1;
+	_this->miMethodInfo.tostr = -1;
 }
 
 //------------------------------------------------------------------------------
@@ -101,6 +102,7 @@ void copy_JCLClass( JCLClass* _this, const JCLClass* src )
 	_this->miMethodInfo.ctor = src->miMethodInfo.ctor;
 	_this->miMethodInfo.cctor = src->miMethodInfo.cctor;
 	_this->miMethodInfo.dtor = src->miMethodInfo.dtor;
+	_this->miMethodInfo.tostr = src->miMethodInfo.tostr;
 }
 
 //------------------------------------------------------------------------------

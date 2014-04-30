@@ -530,9 +530,10 @@ enum
 	// extensions 2010-02-15
 	op_throw,
 
-	// extensions 2014-04-12
+	// extensions 2014-04
 	op_alloci,
 	op_calli,
+	op_dcvt,
 
 	JILNumOpcodes
 };

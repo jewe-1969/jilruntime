@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: JILMachine.c                                       (c) 2003 jewe.org
+// File: JILMachine.c                                          (c) 2003 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -37,7 +37,8 @@ static JILError JILCallMethod		(JILState* pState, JILHandle* object, JILLong nIn
 extern const JILLong kInterfaceExceptionGetError;
 extern const JILLong kInterfaceExceptionGetMessage;
 
-JILLong		JILExecuteInfinite		(JILState*, JILContext*);
+JILLong JILExecuteInfinite(JILState*, JILContext*);
+void JILCheckInstructionTables(JILState* ps);
 
 //------------------------------------------------------------------------------
 // JILInitVM
@@ -65,6 +66,8 @@ JILError JILInitVM(JILState* pState)
 		// allocate and use root context
 		pState->vmpRootContext = JILAllocContext(pState, 0, 0);
 		pState->vmpContext = pState->vmpRootContext;
+
+		JIL_INSERT_DEBUG_CODE( JILCheckInstructionTables(pState) );
 	}
 
 	// incrementally create handles from data segment
@@ -746,6 +749,80 @@ JILError JILCallFactory(JILState* ps, JILArray* pArr, JILLong funcIndex)
 	JILRelease(ps, ppR0[1]);
 	ppR0[1] = saveR1;
 	JILRelease(ps, saveR1);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JILDynamicConvert
+//------------------------------------------------------------------------------
+
+JILError JILDynamicConvert(JILState* ps, JILLong dType, JILHandle* sObj, JILHandle** ppOut)
+{
+	JILError err = JIL_No_Exception;
+	JILChar buf[32];
+	const JILChar* pStr = buf;
+	JILTypeInfo* pti = NULL;
+
+	// TODO: only conversions to 'string' supported at this time
+	if( dType == type_string )
+	{
+		switch( sObj->type )
+		{
+			case type_null:
+			{
+				pStr = "null";
+				goto use_buf;
+			}
+			case type_int:
+			{
+				JILSnprintf(buf, 32, "%d", JILGetIntHandle(sObj)->l);
+				goto use_buf;
+			}
+			case type_float:
+			{
+				JILSnprintf(buf, 32, "%g", JILGetFloatHandle(sObj)->f);
+				goto use_buf;
+			}
+			case type_string:
+			{
+				JILAddRef(sObj);
+				*ppOut = sObj;
+				break;
+			}
+			default:
+			{
+				JILHandle* pH;
+				JILStackFrame stackFrame;
+				JILPushStackFrame(ps, &stackFrame);
+				pti = JILTypeInfoFromType(ps, sObj->type);
+				if( pti->methodInfo.tostr < 0 )
+					goto use_typeinfo;
+				err = JILCallMethod(ps, sObj, pti->methodInfo.tostr);
+				if( err == JIL_No_Exception )
+				{
+					pH = stackFrame.ctx->vmppRegister[kReturnRegister];
+					JILAddRef(pH);
+					*ppOut = pH;
+				}
+				JILPopStackFrame(ps, &stackFrame);
+				break;
+			}
+		}
+	}
+	return err;
+
+use_typeinfo:
+	pStr = JILCStrGetString(ps, pti->offsetName);
+
+use_buf:
+	{
+		JILHandle* pResult = JILGetNewHandle(ps);
+		JILString* pString = JILString_New(ps);
+		pResult->type = type_string;
+		JILGetStringHandle(pResult)->str = pString;
+		JILString_Assign(pString, pStr);
+		*ppOut = pResult;
+	}
 	return err;
 }
 

@@ -30,7 +30,7 @@
 enum
 { 
 	JIL_Num_Exception_Strings =	50,
-	JCL_Num_Compiler_Codes =	108
+	JCL_Num_Compiler_Codes =	109
 };
 
 //------------------------------------------------------------------------------
@@ -222,6 +222,7 @@ enum
 	JCL_WARN_Operator_No_Effect,			// 1515
 	JCL_WARN_Null_Assign_No_Ref,			// 1516
 	JCL_WARN_Function_Auto_Complete,		// 1517
+	JCL_WARN_Dynamic_Conversion,			// 1518
 
 	JCL_Unknown_Error_Code
 };

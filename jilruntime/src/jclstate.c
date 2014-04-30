@@ -344,6 +344,7 @@ static JILError		cg_moveh_var		(JCLState*, JILLong, JCLVar*);
 static JILError		cg_alloca_var		(JCLState*, JILLong, JILLong, JCLVar*);
 static JILError		cg_cvf_var			(JCLState*, JCLVar*, JCLVar*);
 static JILError		cg_cvl_var			(JCLState*, JCLVar*, JCLVar*);
+static JILError		cg_dcvt_var			(JCLState*, JCLVar*, JCLVar*);
 static JILError		cg_and_or_xor_var	(JCLState*, JCLVar*, JCLVar*, JILLong);
 static JILError		cg_bnot_var			(JCLState*, JCLVar*);
 static JILError		cg_rtchk			(JCLState*, JCLVar*, JILLong);
@@ -4271,6 +4272,8 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 	{
 		// inherit from interface
 		pClass->miBaseType = pSrcClass->miType;
+		// copy method info
+		memcpy(&pClass->miMethodInfo, &pSrcClass->miMethodInfo, sizeof(JILMethodInfo));
 		// copy over all function declarations from source class
 		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
 		// create function handles for each new function
@@ -4669,7 +4672,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 	}
 	// check for ctor, cctor
-	if( pFunc->miCtor )
+	if( pFunc->miCtor && !pFunc->miExplicit ) // TODO: disallow 'explicit' OK?
 	{
 		if (pFunc->mipArgs->count == 0 && pClass->miMethodInfo.ctor == -1)
 		{
@@ -4682,8 +4685,14 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 				pClass->miMethodInfo.cctor = pFunc->miFuncIdx;
 		}
 	}
+	// check for string convertor
+	else if( pFunc->miConvertor && !pFunc->miExplicit ) // TODO: disallow 'explicit' OK?
+	{
+		if( pFunc->mipResult->miType == type_string && pClass->miMethodInfo.tostr == -1)
+			pClass->miMethodInfo.tostr = pFunc->miFuncIdx;
+	}
 	// cofunction: create cofunction class
-	if( pFunc->miCofunc )
+	else if( pFunc->miCofunc )
 	{
 		JILLong classIdx;
 		JCLFunc* pFunc2;
@@ -14033,12 +14042,21 @@ static JILError cg_auto_convert(JCLState* _this, JCLVar* src, JCLVar* dst, JCLVa
 	if( ImpConvertible(_this, src, dst) )
 	{
 		if( (src->miType == type_var && dst->miType != type_var)
-			|| (src->miMode == kModeArray && src->miType != dst->miType && dst->miType != type_var) )
+			|| (src->miMode == kModeArray && src->miType == type_var && dst->miType != type_var) )
 		{
-			if( src->miMode != kModeArray )
-				EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_From_Var);
-			if( GetOptions(_this)->miUseRTCHK )
+			if( dst->miType == type_string )
 			{
+				EmitWarning(_this, NULL, JCL_WARN_Dynamic_Conversion);
+				err = MakeTempVar(_this, ppTmpOut, dst);
+				if( err )
+					goto exit;
+				*ppSrcOut = *ppTmpOut;
+				err = cg_dcvt_var(_this, src, *ppTmpOut);
+				goto exit;
+			}
+			else if( GetOptions(_this)->miUseRTCHK )
+			{
+				EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_From_Var);
 				// place RTCHK instruction
 				err = cg_rtchk(_this, src, dst->miType);
 				if( err )
@@ -14983,6 +15001,51 @@ static JILError cg_cvl_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 			break;
 		default:
 			FATALERROREXIT("cg_cvl_var", "Var mode not implemented");
+			break;
+	}
+	// conversion creates unique value
+	dst->miUnique = JILTrue;
+
+exit:
+	FreeTempVar(_this, &pTempVar);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// cg_dcvt_var
+//------------------------------------------------------------------------------
+// Create code for dynamic runtime conversion. Called from cg_auto_convert.
+// Destination is always a temp register.
+
+static JILError cg_dcvt_var(JCLState* _this, JCLVar* src, JCLVar* dst)
+{
+	JILError err = JCL_No_Error;
+	JCLVar* pTempVar = NULL;
+	if( dst->miMode != kModeRegister )
+		FATALERROREXIT("cg_dcvt_var", "Var mode not implemented");
+	switch( src->miMode )
+	{
+		case kModeRegister:
+			cg_opcode(_this, op_dcvt);
+			cg_opcode(_this, dst->miType);
+			cg_opcode(_this, src->miIndex);
+			cg_opcode(_this, dst->miIndex);
+			break;
+		case kModeStack:
+		case kModeMember:
+		case kModeArray:
+			err = MakeTempVar(_this, &pTempVar, src);
+			if( err )
+				goto exit;
+			cg_move_var(_this, src, pTempVar);
+			cg_opcode(_this, op_dcvt);
+			cg_opcode(_this, dst->miType);
+			cg_opcode(_this, pTempVar->miIndex);
+			cg_opcode(_this, dst->miIndex);
+			FreeTempVar(_this, &pTempVar);
+			break;
+		default:
+			FATALERROREXIT("cg_dcvt_var", "Var mode not implemented");
 			break;
 	}
 	// conversion creates unique value

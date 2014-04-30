@@ -1336,6 +1336,17 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					JIL_POP_CS(i)
 					JIL_THROW( result )
 					JIL_IEND
+				case op_dcvt:
+					JIL_IBEGIN( 4 )
+					hObj = JIL_GET_DATA(pState);
+					JIL_LEA_R(pContext, operand1)
+					JIL_LEA_R(pContext, operand2)
+					result = JILDynamicConvert(pState, hObj, *operand1, &pNewHandle);
+					JIL_THROW( result )
+					JIL_STORE_HANDLE(pState, operand2, pNewHandle);
+					JILRelease(pState, pNewHandle);
+					pNewHandle = NULL;
+					JIL_IEND
 				default:
 					JIL_IBEGIN( 1 )
 					JIL_THROW( JIL_VM_Illegal_Instruction )

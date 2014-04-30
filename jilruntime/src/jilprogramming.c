@@ -241,6 +241,10 @@ JILError JILCreateType(JILState* pState, const JILChar* pName, JILTypeFamily fam
 	pTypeInfo->base = 0;
 	pTypeInfo->family = family;
 	pTypeInfo->isNative = bNative;
+	pTypeInfo->methodInfo.ctor = -1;
+	pTypeInfo->methodInfo.cctor = -1;
+	pTypeInfo->methodInfo.dtor = -1;
+	pTypeInfo->methodInfo.tostr = -1;
 
 	// try to find the native type
 	if( bNative )
