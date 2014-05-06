@@ -780,7 +780,7 @@ JILError JILDynamicConvert(JILState* ps, JILLong dType, JILHandle* sObj, JILHand
 			}
 			case type_float:
 			{
-				JILSnprintf(buf, 32, "%g", JILGetFloatHandle(sObj)->f);
+				JILSnprintf(buf, 32, "%.16g", JILGetFloatHandle(sObj)->f);
 				goto use_buf;
 			}
 			case type_string:
