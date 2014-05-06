@@ -30,6 +30,7 @@
 //------------------------------------------------------------------------------
 
 JILError JCLCreateType(JCLState*, const JILChar*, JILLong, JILTypeFamily, JILBool, JILLong*);
+JILError JILDynamicConvert(JILState*, JILLong, JILHandle*, JILHandle**);
 
 //------------------------------------------------------------------------------
 // constants
@@ -370,6 +371,24 @@ const JILChar* NTLHandleToString(JILState* pState, JILHandle* handle)
 		return "";
 	else
 		return JILString_String(JILGetStringHandle(handle)->str);
+}
+
+//------------------------------------------------------------------------------
+// NTLConvertToString
+//------------------------------------------------------------------------------
+
+JILHandle* NTLConvertToString(JILState* pState, JILHandle* handle)
+{
+	JILHandle* hStr = NULL;
+	if( handle != NULL )
+	{
+		if( JILDynamicConvert(pState, type_string, handle, &hStr) != JIL_No_Exception )
+		{
+			NTLFreeHandle(pState, hStr);
+			hStr = NULL;
+		}
+	}
+	return hStr;
 }
 
 //------------------------------------------------------------------------------

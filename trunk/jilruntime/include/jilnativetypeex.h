@@ -104,10 +104,27 @@ JILEXTERN JILFloat		NTLHandleToFloat		(JILState* pState, JILHandle* handle);
 //------------------------------------------------------------------------------
 // NTLHandleToString
 //------------------------------------------------------------------------------
-/// Convert a string handle directly to a const char pointer. If the specified
-/// handle is not a string handle, returns a pointer to an empty string.
+/// Convert a string handle directly to a const char pointer. This does not
+/// dynamically convert the handle's object to a string. If the specified
+/// handle is not a string, this returns a pointer to an empty string.
+/// To convert an object to a string dynamically (by calling the object's
+/// string convertor method) use NTLConvertToString().
 
 JILEXTERN const JILChar*	NTLHandleToString	(JILState* pState, JILHandle* handle);
+
+//------------------------------------------------------------------------------
+// NTLConvertToString
+//------------------------------------------------------------------------------
+/// Dynamically convert an object to a string. This will actually call the
+/// object's string convertor method. If 'handle' does not represent an
+/// instance of a class, or the class does not implement a string convertor,
+/// this will return NULL.
+/// <p>Use NTLHandleToString() or NTLHandleToObject() to convert the result of
+/// this function to a C-string or JILString pointer, respectively.</p>
+/// You should call NTLFreeHandle() on the result of this function when you
+/// don't need it any longer.
+
+JILEXTERN JILHandle*		NTLConvertToString	(JILState* pState, JILHandle* handle);
 
 //------------------------------------------------------------------------------
 // NTLHandleToError
