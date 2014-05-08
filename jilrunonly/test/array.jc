@@ -1,5 +1,5 @@
 /*
- *  arrayobj.jc
+ *  array.jc
  *
  *  A little demonstration how to use the built-in array object.
  */
@@ -19,14 +19,14 @@ using stdlib;   // get rid of stdlib namespace
  *      myArray[0].Print();
  *
  *  will give you a compiler error message. However, there is a way around this
- *  restriction, by using the scope operator:
+ *  restriction, by using the full qualified function name:
  *
  *      myArray[0].Person::Print();
  *
  *  This will tell the compiler to interprete the item in the array as an instance
  *  of class Person and call it's member function Print().
- *  Of course this would fail BADLY at runtime, if we would use this expression
- *  while there are no Person objects, but other data in the array!
+ *  Of course this would fail at runtime, if we would use this expression and there
+ *  are values of a different type in the array.
  *
  *  Note that since v0.9, you can use type-safe arrays, which allow you to easily
  *  access members from objects:
@@ -89,10 +89,9 @@ function string main(const string[] args)
 
 function PrintAddresses( const Person[] addresses )
 {
-    print("Addresses:\n");
-    for( int i; i < addresses.length; i++ )
-        addresses[i].Print();
-    print("\n");
+    println("Addresses:");
+    addresses.enumerate(function(e, a){ e.Person::Print(); }, null);
+    println("");
 }
 
 /*
@@ -110,15 +109,15 @@ class Date
         Year = y;
     }
 
-    method const string convertor()
+    method string convertor()
     {
         return (string) Month + "/" + Day + "/" + Year;
     }
 
     function int Compare(const var value1, const var value2)
     {
-        Date d1 = value1;
-        Date d2 = value2;
+        const Date d1 = value1;
+        const Date d2 = value2;
         if( d2.Year != d1.Year )
             return d2.Year - d1.Year;
         else if( d2.Month != d1.Month )
@@ -150,16 +149,12 @@ class Person
 
     method Print()
     {
-        print( "Name:     " + Name + "\n" );
-        print( "Address:  " + Address + "\n" );
-        print( "Birthday: " + Birthday + "\n\n" );
+        println({Name, Address, Birthday}.format("Name:     %s\nAddress:  %s\nBirthday: %s\n"));
     }
 
-    function int CompareBirthday(const var value1, const var value2)
+    function int CompareBirthday(const var v1, const var v2)
     {
-        Person p1 = value1;
-        Person p2 = value2;
-        return Date::Compare(p1.Birthday, p2.Birthday);
+        return Date::Compare(v1.Person::Birthday, v2.Person::Birthday);
     }
 
     // data
