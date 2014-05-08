@@ -387,15 +387,15 @@ static JILError StringCallMember(NTLInstance* pInst, JILLong funcID, JILString* 
 			break;
 		case kCtorLong:
 		{
-			JILChar buf[64];
-			JILSnprintf(buf, 64, "%d", NTLGetArgInt(ps, 0));
+			JILChar buf[32];
+			JILSnprintf(buf, 32, "%d", NTLGetArgInt(ps, 0));
 			JILString_Assign(_this, buf);
 			break;
 		}
 		case kCtorFloat:
 		{
-			JILChar buf[64];
-			JILSnprintf(buf, 64, "%g", NTLGetArgFloat(ps, 0));
+			JILChar buf[32];
+			JILSnprintf(buf, 32, "%.15g", NTLGetArgFloat(ps, 0));
 			JILString_Assign(_this, buf);
 			break;
 		}

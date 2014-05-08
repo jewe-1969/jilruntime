@@ -62,7 +62,7 @@ enum
 // array class declaration
 //------------------------------------------------------------------------------
 
-static const char* kClassDeclaration =
+static const JILChar* kClassDeclaration =
 	TAG("This is the built-in array class. JewelScript arrays can dynamically grow depending on the index used to access elements from it. In general, setting an array element with an index that is out of range, will cause the array to grow to the required number of elements. Getting an array index with an index that is out of range will NOT resize the array, but return null instead. So one should be cautious to not use invalid array indices. The array index is a signed 32-bit value, so an array is limited to about 2 billion elements. Operator += can be used to add new elements to an array, as well as append an array to an array.")
 	"delegate			enumerator(var element, var args);" TAG("Delegate type for the array::enumerate() method.")
 	"delegate var		processor(var element, var args);" TAG("Delegate type for the array::process() method.")
@@ -91,12 +91,12 @@ static const char* kClassDeclaration =
 // string class constants
 //------------------------------------------------------------------------------
 
-static const char*	kClassName		=	"array";
-static const char*	kAuthorName		=	"www.jewe.org";
-static const char*	kAuthorString	=	"Built-in array class for JewelScript.";
-static const char*	kTimeStamp		=	"06/15/2005";
+static const JILChar*	kClassName		=	"array";
+static const JILChar*	kAuthorName		=	"www.jewe.org";
+static const JILChar*	kAuthorString	=	"Built-in array class for JewelScript.";
+static const JILChar*	kTimeStamp		=	"06/15/2005";
 
-static const int	kStaticBufferSize = 4096;
+static const int kStaticBufferSize = 4096;
 
 //------------------------------------------------------------------------------
 // forward declare proc message handler functions
@@ -134,11 +134,11 @@ JILError JILArrayProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown
 		// class information queries
 		case NTL_GetInterfaceVersion:	return NTLRevisionToLong(JIL_TYPE_INTERFACE_VERSION);
 		case NTL_GetAuthorVersion:		return NTLRevisionToLong(JIL_LIBRARY_VERSION);
-		case NTL_GetClassName:			(*(const char**) ppDataOut) = kClassName; break;
-		case NTL_GetDeclString:			(*(const char**) ppDataOut) = kClassDeclaration; break;
-		case NTL_GetBuildTimeStamp:		(*(const char**) ppDataOut) = kTimeStamp; break;
-		case NTL_GetAuthorName:			(*(const char**) ppDataOut) = kAuthorName; break;
-		case NTL_GetAuthorString:		(*(const char**) ppDataOut) = kAuthorString; break;
+		case NTL_GetClassName:			(*(const JILChar**) ppDataOut) = kClassName; break;
+		case NTL_GetDeclString:			(*(const JILChar**) ppDataOut) = kClassDeclaration; break;
+		case NTL_GetBuildTimeStamp:		(*(const JILChar**) ppDataOut) = kTimeStamp; break;
+		case NTL_GetAuthorName:			(*(const JILChar**) ppDataOut) = kAuthorName; break;
+		case NTL_GetAuthorString:		(*(const JILChar**) ppDataOut) = kAuthorString; break;
 
 		default:						result = JIL_ERR_Unsupported_Native_Call; break;
 	}
@@ -1087,10 +1087,10 @@ void JILArrayHandleToStringF(JILState* ps, JILString* pOutStr, const JILString* 
 {
 	JILLong typeID;
 	JILUnknown* vec;
-	char* pBuffer;
+	JILChar* pBuffer;
 	typeID = NTLHandleToTypeID(ps, handle);
 	vec = NTLHandleToObject(ps, typeID, handle);
-	pBuffer = (char*) malloc(kStaticBufferSize);
+	pBuffer = (JILChar*) malloc(kStaticBufferSize);
 	switch( typeID )
 	{
 		case type_int:
@@ -1116,7 +1116,18 @@ void JILArrayHandleToStringF(JILState* ps, JILString* pOutStr, const JILString* 
 		}
 		default:
 		{
-			JILString_Assign(pOutStr, NTLGetTypeName(ps, typeID));
+			JILHandle* hstr = NTLConvertToString(ps, handle);
+			if( hstr != NULL )
+			{
+				JILString* pStr = (JILString*) NTLHandleToObject(ps, type_string, hstr);
+				JILSnprintf(pBuffer, kStaticBufferSize, JILString_String(pFormat), JILString_String(pStr));
+				JILString_Assign(pOutStr, pBuffer);
+				NTLFreeHandle(ps, hstr);
+			}
+			else
+			{
+				JILString_Assign(pOutStr, NTLGetTypeName(ps, typeID));
+			}
 			break;
 		}
 	}
@@ -1130,52 +1141,30 @@ void JILArrayHandleToStringF(JILState* ps, JILString* pOutStr, const JILString* 
 
 void JILArrayHandleToString(JILState* ps, JILString* pOutStr, JILHandle* handle)
 {
-	JILLong typeID;
-	JILUnknown* vec;
-	JILChar pBuffer[64];
-	typeID = NTLHandleToTypeID(ps, handle);
-	vec = NTLHandleToObject(ps, typeID, handle);
-	switch( typeID )
+	if( NTLHandleToTypeID(ps, handle) == type_array )
 	{
-		case type_int:
+		JILLong i;
+		JILArray* pArray = (JILArray*) NTLHandleToObject(ps, type_array, handle);
+		JILString* pStr = JILString_New(ps);
+		for( i = 0; i < pArray->size; i++ )
 		{
-			JILLong* pLong = (JILLong*) vec;
-			JILSnprintf(pBuffer, 64, "%d", *pLong);
-			JILString_Assign(pOutStr, pBuffer);
-			break;
+			JILArrayHandleToString(ps, pStr, pArray->ppHandles[i]);
+			JILString_Append(pOutStr, pStr);
 		}
-		case type_float:
+		JILString_Delete(pStr);
+	}
+	else
+	{
+		JILHandle* hstr = NTLConvertToString(ps, handle);
+		if( hstr != NULL )
 		{
-			JILFloat* pFloat = (JILFloat*) vec;
-			JILSnprintf(pBuffer, 64, "%g", *pFloat);
-			JILString_Assign(pOutStr, pBuffer);
-			break;
+			JILString* pStr = (JILString*) NTLHandleToObject(ps, type_string, hstr);
+			JILString_Set(pOutStr, pStr);
+			NTLFreeHandle(ps, hstr);
 		}
-		case type_string:
+		else
 		{
-			JILString* pStr = (JILString*) vec;
-			JILString_Assign(pOutStr, JILString_String(pStr));
-			break;
-		}
-		case type_array:
-		{
-			int i;
-			JILString* pStr;
-			JILArray* pArray = (JILArray*) vec;
-			pStr = JILString_New(ps);
-			JILString_Clear( pOutStr );
-			for( i = 0; i < pArray->size; i++ )
-			{
-				JILArrayHandleToString(ps, pStr, pArray->ppHandles[i]);
-				JILString_Append(pOutStr, pStr);
-			}
-			JILString_Delete(pStr);
-			break;
-		}
-		default:
-		{
-			JILString_Assign(pOutStr, NTLGetTypeName(ps, typeID));
-			break;
+			JILString_Assign(pOutStr, NTLGetTypeName(ps, NTLHandleToTypeID(ps, handle)));
 		}
 	}
 }
