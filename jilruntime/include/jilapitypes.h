@@ -139,8 +139,9 @@ typedef enum
 	// reserved			= 14,		//   Type ID used by delegate defined in list class
 	type_iterator		= 15,		///< Type ID of the built-in iterator class
 	type_table			= 16,		///< Type ID of the built-in table class
-	type_delegate		= 17,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
-	type_var			= 18,		///< Pseudo type used by the compiler for typeless variables
+	// reserved			= 17,		//   Type ID used by delegate defined in table class
+	type_delegate		= 18,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
+	type_var			= 19,		///< Pseudo type used by the compiler for typeless variables
 
 	// additional constants
 	kNumPredefTypes				///< This and every following value is a type ID for a user defined type

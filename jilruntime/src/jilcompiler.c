@@ -862,7 +862,7 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 	if( err )
 		goto error;
 
-	// generic delegate type, only used when calling JILGetDelegate() API function
+	// generic delegate type, only used when calling JILGetFunction() API function
 	err = JCLCreateType(_this, "__delegate", 0, tf_delegate, JILFalse, &type);
 	if( err )
 		goto error;

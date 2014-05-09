@@ -44,6 +44,12 @@ typedef enum
 	kTableModeNativeManaged					// the table contains native pointers and manages their lifetime (objects are stored and destroyed when no longer needed)
 } JILTableMode;
 
+typedef enum
+{
+	copy_shallow,
+	copy_deep
+} JILTableCopyMode;
+
 struct JILTable
 {
 	JILTableDestructor		pDestructor;
@@ -52,13 +58,28 @@ struct JILTable
 	JILTableMode			mode;			// native mode is used internally by the runtime, see NTLTypeNameToTypeID()
 };
 
+typedef struct JILTableMergeData
+{
+	JILState*	pState;
+	JILTable*	pTableL;
+	JILTable*	pTableR;
+	JILTable*	pResult;
+	JILHandle*	hTableL;
+	JILHandle*	hTableR;
+	JILHandle*	hResult;
+	JILHandle*	hDelegate;
+} JILTableMergeData;
+
+static JILError JILTable_Merge(JILTableMergeData* pData);
 static void DestroyNodeRecursive(JILTable*, JILTableNode*);
-static void CopyNodeRecursive(JILState*, const JILTableNode*, JILTableNode**, JILTableMode);
+static void CopyNodeRecursive(JILState*, const JILTableNode*, JILTableNode**, JILTableCopyMode);
+static void CopyNodeStructure(JILState*, const JILTableNode*, JILTableNode**);
 static JILError EnumerateNodeRecursive(JILState*, const JILTableNode*, JILHandle*, JILHandle*);
 static JILError MarkNodeRecursive(JILState*, const JILTableNode*);
 static JILLong FreeEmptyNodeRecursive(JILTable*, JILTableNode*);
 static JILError AddToArrayRecursive(const JILTableNode*, JILArray*);
 static JILError AddToListRecursive(const JILTableNode*, JILString*, JILLong, JILBool, JILList*);
+static JILError MergeNodeRecursive(const JILTableNode*, JILTableMergeData*, JILString*, JILLong, JILBool);
 
 //------------------------------------------------------------------------------
 // function index numbers
@@ -77,7 +98,8 @@ enum
 	kEnumerate,
 	kCleanup,
 	kToArray,
-	kToList
+	kToList,
+	kMerge
 };
 
 //------------------------------------------------------------------------------
@@ -87,6 +109,7 @@ enum
 static const char* kClassDeclaration =
 	TAG("This is the built-in table class.")
 	"delegate		enumerator(var element, var args);" TAG("Delegate type for the table::enumerate() and array::enumerate() methods.")
+	"delegate		merger(const string key, const table t1, const table t2, table result);" TAG("Delegate type for the table::merge() function.")
 	"method			table();" TAG("Constructs a new, empty hashtable.")
 	"method			table(const table);" TAG("Copy constructs a new table from the specified one. The new table will be a shallow-copy, meaning values in the table will only be copied by reference.")
 	"method			table(const array);" TAG("Constructs a new table from the specified array. The array is expected to be one-dimensional and have the following format: Every even element must be a string and is considered a key. Every odd element can be of any type and is considered a value.")
@@ -98,6 +121,7 @@ static const char* kClassDeclaration =
 	"method int		cleanup();" TAG("Frees all empty nodes in this table, releasing unneeded resources. This only affects internal infrastructure, all table data will remain intact. When storing and clearing large amounts of values in the table, calling this can improve memory footprint and performance of all other recursive table methods.")
 	"method array	toArray();" TAG("Moves all values from this table into a new array. This is a highly recursive operation that can be very time consuming with complex tables.")
 	"method list	toList();" TAG("Moves all keys and values from this table into a new list. This is a highly recursive operation that can be very time consuming with complex tables.")
+	"function table merge(const table t1, const table t2, merger fn);" TAG("Merges the given tables according to the specified delegate and returns a new table. The function works as follows: First a reference table is created that contains all keys from both tables, but not their values. Then the reference table is iterated recursively. For every key in the reference table, the table::merger delegate is called. The current key, both source tables and a result table are passed to the delegate. The delegate defines how values from either or both source tables are stored in the result table.")
 ;
 
 //------------------------------------------------------------------------------
@@ -113,10 +137,11 @@ static const char*		kTimeStamp		=	"02/15/2007";
 // forward declare static functions
 //------------------------------------------------------------------------------
 
-static JILLong TableNew			(NTLInstance* pInst, JILTable** ppObject);
-static JILLong TableDelete		(NTLInstance* pInst, JILTable* _this);
-static JILLong TableMark		(NTLInstance* pInst, JILTable* _this);
-static JILLong TableCallMember	(NTLInstance* pInst, JILLong funcID, JILTable* _this);
+static JILError TableNew		(NTLInstance* pInst, JILTable** ppObject);
+static JILError TableDelete		(NTLInstance* pInst, JILTable* _this);
+static JILError TableMark		(NTLInstance* pInst, JILTable* _this);
+static JILError TableCallStatic	(NTLInstance* pInst, JILLong funcID);
+static JILError TableCallMember	(NTLInstance* pInst, JILLong funcID, JILTable* _this);
 
 //------------------------------------------------------------------------------
 // JILTableProc
@@ -124,15 +149,14 @@ static JILLong TableCallMember	(NTLInstance* pInst, JILLong funcID, JILTable* _t
 
 JILError JILTableProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown* pDataIn, JILUnknown** ppDataOut)
 {
-	JILLong result = JIL_No_Exception;
-
+	JILError result = JIL_No_Exception;
 	switch( msg )
 	{
 		// runtime messages
 		case NTL_Register:				break;
 		case NTL_Initialize:			break;
 		case NTL_NewObject:				return TableNew(pInst, (JILTable**) ppDataOut);
-		case NTL_CallStatic:			return JIL_ERR_Unsupported_Native_Call;
+		case NTL_CallStatic:			return TableCallStatic(pInst, param);
 		case NTL_CallMember:			return TableCallMember(pInst, param, (JILTable*) pDataIn);
 		case NTL_MarkHandles:			return TableMark(pInst, (JILTable*) pDataIn);
 		case NTL_DestroyObject:			return TableDelete(pInst, (JILTable*) pDataIn);
@@ -157,7 +181,7 @@ JILError JILTableProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown
 // TableNew
 //------------------------------------------------------------------------------
 
-static JILLong TableNew(NTLInstance* pInst, JILTable** ppObject)
+static JILError TableNew(NTLInstance* pInst, JILTable** ppObject)
 {
 	*ppObject = JILTable_NewManaged( NTLInstanceGetVM(pInst) );
 	return JIL_No_Exception;
@@ -167,7 +191,7 @@ static JILLong TableNew(NTLInstance* pInst, JILTable** ppObject)
 // TableDelete
 //------------------------------------------------------------------------------
 
-static JILLong TableDelete(NTLInstance* pInst, JILTable* _this)
+static JILError TableDelete(NTLInstance* pInst, JILTable* _this)
 {
 	JILTable_Delete( _this );
 	return JIL_No_Exception;
@@ -177,7 +201,7 @@ static JILLong TableDelete(NTLInstance* pInst, JILTable* _this)
 // TableMark
 //------------------------------------------------------------------------------
 
-static JILLong TableMark(NTLInstance* pInst, JILTable* _this)
+static JILError TableMark(NTLInstance* pInst, JILTable* _this)
 {
 	if( _this->mode != kTableModeManaged )
 		return JIL_ERR_Unsupported_Native_Call;
@@ -191,9 +215,46 @@ static JILLong TableMark(NTLInstance* pInst, JILTable* _this)
 // TableCallMember
 //------------------------------------------------------------------------------
 
-static JILLong TableCallMember(NTLInstance* pInst, JILLong funcID, JILTable* _this)
+static JILError TableCallStatic(NTLInstance* pInst, JILLong funcID)
 {
-	JILLong result = JIL_No_Exception;
+	JILError result = JIL_No_Exception;
+	JILState* ps = NTLInstanceGetVM(pInst);
+	switch( funcID )
+	{
+		case kMerge:
+		{
+			JILTableMergeData* pData = (JILTableMergeData*) ps->vmMalloc(ps, sizeof(JILTableMergeData));
+			pData->pState = ps;
+			pData->hTableL = NTLGetArgHandle(ps, 0);
+			pData->hTableR = NTLGetArgHandle(ps, 1);
+			pData->hDelegate = NTLGetArgHandle(ps, 2);
+			pData->pResult = JILTable_NewManaged(ps);
+			pData->pTableL = NTLHandleToObject(ps, type_table, pData->hTableL);
+			pData->pTableR = NTLHandleToObject(ps, type_table, pData->hTableR);
+			pData->hResult = NTLNewHandleForObject(ps, type_table, pData->pResult);
+			result = JILTable_Merge(pData);
+			NTLReturnHandle(ps, pData->hResult);
+			NTLFreeHandle(ps, pData->hDelegate);
+			NTLFreeHandle(ps, pData->hResult);
+			NTLFreeHandle(ps, pData->hTableL);
+			NTLFreeHandle(ps, pData->hTableR);
+			ps->vmFree(ps, pData);
+			break;
+		}
+		default:
+			result = JIL_ERR_Invalid_Function_Index;
+			break;
+	}
+	return result;
+}
+
+//------------------------------------------------------------------------------
+// TableCallMember
+//------------------------------------------------------------------------------
+
+static JILError TableCallMember(NTLInstance* pInst, JILLong funcID, JILTable* _this)
+{
+	JILError result = JIL_No_Exception;
 	JILState* ps = NTLInstanceGetVM(pInst);
 	JILHandle* pHandle;
 	switch( funcID )
@@ -591,6 +652,34 @@ void JILTable_SetItem(JILTable* _this, const JILChar* pKey, JILUnknown* pData)
 }
 
 //------------------------------------------------------------------------------
+// JILTable_Merge
+//------------------------------------------------------------------------------
+
+static JILError JILTable_Merge(JILTableMergeData* pData)
+{
+	JILError err = JIL_No_Exception;
+	JILString* pKey;
+	JILLong i;
+	JILTable* pReference;
+	pReference = JILTable_NewNativeUnmanaged(pData->pState);
+	CopyNodeStructure(pData->pState, pData->pTableL->pNode, &pReference->pNode);
+	CopyNodeStructure(pData->pState, pData->pTableR->pNode, &pReference->pNode);
+	pKey = JILString_New(pData->pState);
+	for( i = 0; i < 16; i++ )
+	{
+		if( pReference->pNode->p[i] )
+		{
+			err = MergeNodeRecursive(pReference->pNode->p[i], pData, pKey, i, JILFalse);
+			if( err )
+				break;
+		}
+	}
+	JILString_Delete(pKey);
+	JILTable_Delete(pReference);
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // DestroyNodeRecursive
 //------------------------------------------------------------------------------
 // Helper function to destroy the table.
@@ -626,27 +715,49 @@ static void DestroyNodeRecursive(JILTable* pTable, JILTableNode* pNode)
 //------------------------------------------------------------------------------
 // Helper function to copy the table. Does NOT work in native mode.
 
-static void CopyNodeRecursive(JILState* pVM, const JILTableNode* pSrc, JILTableNode** ppDest, JILBool deep)
+static void CopyNodeRecursive(JILState* pVM, const JILTableNode* pSrc, JILTableNode** ppDest, JILTableCopyMode mode)
 {
 	if( pSrc )
 	{
 		JILLong i;
 		JILTableNode* pNode;
-
 		pNode = (JILTableNode*) pVM->vmMalloc(pVM, sizeof(JILTableNode));
 		memset(pNode, 0, sizeof(JILTableNode));
-
+		*ppDest = pNode;
 		for( i = 0; i < 16; i++ )
-			CopyNodeRecursive(pVM, pSrc->p[i], &(pNode->p[i]), deep);
-
+			CopyNodeRecursive(pVM, pSrc->p[i], &(pNode->p[i]), mode);
 		if( pSrc->pData )
 		{
-			if( deep )
+			if( mode == copy_deep )
 				pNode->pData = NTLCopyHandle(pVM, pSrc->pData);
 			else
 				pNode->pData = NTLCopyValueType(pVM, pSrc->pData);
 		}
-		*ppDest = pNode;
+	}
+}
+
+//------------------------------------------------------------------------------
+// CopyNodeStructure
+//------------------------------------------------------------------------------
+// Recursively copies the table structure, but not the table data. This is meant
+// for unmanaged native tables only!
+
+static void CopyNodeStructure(JILState* pVM, const JILTableNode* pSrc, JILTableNode** ppDest)
+{
+	if( pSrc )
+	{
+		JILLong i;
+		JILTableNode* pNode = *ppDest;
+		if( pNode == NULL )
+		{
+			pNode = (JILTableNode*) pVM->vmMalloc(pVM, sizeof(JILTableNode));
+			memset(pNode, 0, sizeof(JILTableNode));
+			*ppDest = pNode;
+		}
+		for( i = 0; i < 16; i++ )
+			CopyNodeStructure(pVM, pSrc->p[i], &(pNode->p[i]));
+		if( pSrc->pData )
+			pNode->pData = pNode;
 	}
 }
 
@@ -784,7 +895,7 @@ static JILError AddToListRecursive(const JILTableNode* pSrc, JILString* pKey, JI
 		{
 			err = AddToListRecursive(pSrc->p[i], pKeyCopy, (nibble << 4 | i) & 0xFF, !isByte, pList);
 			if( err )
-				return err;
+				goto exit;
 		}
 	}
 	if( pSrc->pData )
@@ -794,6 +905,59 @@ static JILError AddToListRecursive(const JILTableNode* pSrc, JILString* pKey, JI
 		JILList_Add(pList, newKey, pSrc->pData);
 		NTLFreeHandle(ps, newKey);
 	}
+
+exit:
+	if( isByte )
+	{
+		JILString_Delete(pKeyCopy);
+	}
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// MergeNodeRecursive
+//------------------------------------------------------------------------------
+
+static JILError MergeNodeRecursive(const JILTableNode* pNode, JILTableMergeData* pData, JILString* pKey, JILLong nibble, JILBool isByte)
+{
+	JILError err = JIL_No_Exception;
+	JILLong i;
+	JILHandle* hNewKey;
+	JILHandle* hException;
+	JILString* keyStr;
+	JILString* pKeyCopy = pKey;
+	JILState* ps = pData->pState;
+	JILChar buf[2] = {0};
+	if( isByte )
+	{
+		pKeyCopy = JILString_Copy(pKey);
+		buf[0] = nibble;
+		JILString_AppendCStr(pKeyCopy, buf);
+	}
+	for( i = 0; i < 16; i++ )
+	{
+		if( pNode->p[i] )
+		{
+			err = MergeNodeRecursive(pNode->p[i], pData, pKeyCopy, (nibble << 4 | i) & 0xFF, !isByte);
+			if( err )
+				goto exit;
+		}
+	}
+	if( pNode->pData )
+	{
+		keyStr = JILString_Copy(pKeyCopy);
+		hNewKey = NTLNewHandleForObject(ps, type_string, keyStr);
+		hException = JILCallFunction(ps, pData->hDelegate, 4,
+			kArgHandle, hNewKey,
+			kArgHandle, pData->hTableL,
+			kArgHandle, pData->hTableR,
+			kArgHandle, pData->hResult);
+		err = NTLHandleToError(ps, hException);
+		NTLFreeHandle(ps, hException);
+		NTLFreeHandle(ps, hNewKey);
+	}
+
+exit:
 	if( isByte )
 	{
 		JILString_Delete(pKeyCopy);
