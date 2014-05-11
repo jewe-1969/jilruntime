@@ -14837,6 +14837,7 @@ JILError cg_begin_intro(JCLState* _this)
 	// create init function in global class
 	pClass = GetClass(_this, type_global);
 	pClass->miHasVTable = JILTrue;
+	pClass->miHasBody = JILTrue;
 	JCLSetString(pClass->mipTag, "This class is maintained by the runtime and represents the global space.");
 	pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 	pFunc->miHandle = 0;

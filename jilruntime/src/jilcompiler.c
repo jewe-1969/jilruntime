@@ -541,11 +541,9 @@ JILError JCLGenerateDocs(JILState* pVM, const JILChar* pPath, const JILChar* pPa
 			goto exit;
 	}
 	// analyze optional parameters
-	{
-		err = JCLAnalyzeParameters(_this, pParams, pTable);
-		if (err)
-			goto exit;
-	}
+	err = JCLAnalyzeParameters(_this, pParams, pTable);
+	if (err)
+		goto exit;
 	// document all classes
 	for( clas = startClass; clas < endClass; clas++ )
 	{
