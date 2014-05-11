@@ -269,7 +269,7 @@ static JILBool		IsClassToken		(JILLong token);
 static JILBool		IsTypeName			(JCLState*, JILLong, const JCLString*, TypeInfo*);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
-static JILBool		IsModifierNative	(JCLClass*);
+static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
 static void			PushOptions			(JCLState*);
@@ -3243,13 +3243,13 @@ static JILBool IsSubClass(JCLState* _this, JILLong type1, JILLong type2)
 }
 
 //------------------------------------------------------------------------------
-// IsModifierNative
+// IsModifierNativeBinding
 //------------------------------------------------------------------------------
 // Returns true if the specified class has been declared using the 'native' modifier.
 
-static JILBool IsModifierNative(JCLClass* pClass)
+static JILBool IsModifierNativeBinding(JCLClass* pClass)
 {
-	return ((pClass->miModifier & kModiNative) == kModiNative);
+	return ((pClass->miModifier & kModiNativeBinding) == kModiNativeBinding);
 }
 
 //------------------------------------------------------------------------------
@@ -3271,7 +3271,7 @@ static JILBool IsModifierNativeInterface(JCLClass* pClass)
 
 static JILBool IsClassNative(JCLClass* pClass)
 {
-	return (pClass->miNative || IsModifierNative(pClass));
+	return (pClass->miNative || IsModifierNativeBinding(pClass));
 }
 
 //------------------------------------------------------------------------------
@@ -3974,7 +3974,7 @@ static JILError p_root(JCLState* _this)
 				err = p_class_modifier( _this, kModiExtern );
 				break;
 			case tk_native:
-				err = p_class_modifier( _this, kModiNative );
+				err = p_class_modifier( _this, kModiNativeBinding );
 				break;
 			case tk_delegate:
 				err = p_delegate( _this );
@@ -4221,7 +4221,7 @@ static JILError p_class_modifier(JCLState* _this, JILLong modifier)
 
 	if( tokenID == tk_class )
 		err = p_class(_this, modifier);
-	else if( modifier == kModiNative )
+	else if( modifier == kModiNativeBinding )
 		err = p_interface(_this, kModiNativeInterface);
 	else
 		err = p_interface(_this, modifier);
@@ -4342,7 +4342,7 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 	dstType = pClass->miType;
 
 	// not allowed with 'native' class declaration
-	ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_With_Hybrid, NULL, goto exit);
+	ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_With_Hybrid, NULL, goto exit);
 	// we expect an identifier
 	err = pFile->GetToken(pFile, pBaseName, &tokenID);
 	ERROR_IF(err, err, pBaseName, goto exit);
@@ -4515,7 +4515,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		ERROR_IF(!pClass, JCL_ERR_Undefined_Identifier, pName, goto exit);
 		ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Method_Definition_Illegal, pName, goto exit);
 		ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pName, goto exit);
-		ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_Modifier_Illegal, pName, goto exit);
+		ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pName, goto exit);
 		// make this the current class
 		SetCompileContext(_this, pClass->miType, 0);
 		// expecting an identifier, this time function name
@@ -5624,7 +5624,7 @@ static JILError p_member_decl(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 	pClass = GetClass(_this, classIdx);
 	ERROR_IF(!pClass, JCL_ERR_Undefined_Identifier, NULL, goto exit);
 
-	if( !pVar->miConst || IsModifierNative(pClass) )
+	if( !pVar->miConst || IsModifierNativeBinding(pClass) )
 	{
 		for(;;)
 		{
@@ -6221,7 +6221,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 					ERROR_IF(pClass == NULL, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 					ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
 					ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-					ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
+					ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
 					// skip "::"
 					err = pFile->GetToken(pFile, pToken, &tokenID);
 					ERROR_IF(err, err, pToken, goto exit);
@@ -6485,7 +6485,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 		// function call
 		if( !ClassHasBody(_this, pVarOut->miType) )
 			ERROR(JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-		if( IsModifierNative(GetClass(_this, pVarOut->miType)) )
+		if( IsModifierNativeBinding(GetClass(_this, pVarOut->miType)) )
 			ERROR(JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
 		JCLClrTypeInfo( &outType );
 		// first attempt first-class function or cofunction
@@ -6572,7 +6572,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 			ERROR(JCL_ERR_Not_An_Object, pVarOut->mipName, goto exit);
 		if( !ClassHasBody(_this, pVarOut->miType) )
 			ERROR(JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-		if( IsModifierNative(GetClass(_this, pVarOut->miType)) )
+		if( IsModifierNativeBinding(GetClass(_this, pVarOut->miType)) )
 			ERROR(JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
 		// first try to find an accessor function
 		FindAccessor(_this, pVarOut->miType, pToken, 0, &pFunc);
@@ -8974,7 +8974,7 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 		pClass = GetClass(_this, typeID);
 		ERROR_IF(pClass->miFamily != tf_class && pClass->miFamily != tf_interface && pClass->miFamily != tf_thread, JCL_ERR_Type_Not_Class, pToken, goto exit);
 		ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-		ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
+		ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
 		// fill out source var
 		pVar->miType = pClass->miType;
 		pVar->miElemType = type_var;
@@ -9733,7 +9733,7 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 			{
 				ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
 				ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-				ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
+				ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
 				typeID = pClass->miType;
 			}
 			break;
@@ -15502,7 +15502,7 @@ static JILError cg_init_var(JCLState* _this, JCLVar* pLVar)
 			pClass = GetClass(_this, pLVar->miType);
 			ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, NULL, goto exit);
 			ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, NULL, goto exit);
-			ERROR_IF(IsModifierNative(pClass), JCL_ERR_Native_Modifier_Illegal, NULL, goto exit);
+			ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, NULL, goto exit);
 			err = FindDefaultCtor(_this, pLVar, &pFunc);
 			if( err )
 				goto exit;

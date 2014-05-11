@@ -174,6 +174,18 @@ JILEXTERN JILError				JCLGenerateBindings		(JILState* pState, const JILChar* pPa
 JILEXTERN JILError				JCLGenerateDocs			(JILState* pState, const JILChar* pPath, const JILChar* pParams);
 
 //------------------------------------------------------------------------------
+// JCLExportTypeInfo
+//------------------------------------------------------------------------------
+/// Exports all type information currently known to the compiler to disk.
+/// The function will write an XML file to the specified path. The file could be
+/// used by an external documentation generation tool, or by an IDE to get a
+/// hierarchical model of the script application currently being developed.
+/// The XML file will not contain documentation tags in release builds, as they
+/// are stripped from the source in release builds.
+
+JILEXTERN JILError				JCLExportTypeInfo		(JILState* pState, const JILChar* pFilename);
+
+//------------------------------------------------------------------------------
 // JCLAddImportPath
 //------------------------------------------------------------------------------
 /// <p>Adds an import path to the compiler's list of import pathes. By default, the

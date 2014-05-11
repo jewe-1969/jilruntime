@@ -544,6 +544,7 @@ static void WriteAliasTable(JCLState* _this, JCLClass* pClass, FILE* pFile, cons
 {
 	JCLString* workstr = NEW(JCLString);
 	JCLString* tagstr = NEW(JCLString);
+	JCLString* tmpstr = NEW(JCLString);
 	int i;
 
 	// first check if there is anything to document in this section
@@ -556,8 +557,9 @@ static void WriteAliasTable(JCLState* _this, JCLClass* pClass, FILE* pFile, cons
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
 		GetFamilyAndTypeName(_this, pClass, tagstr, workstr, kClearFirst|kFullDecl|kIdentNames);
-		fprintf(pFile, "<tr id='%s'><td id='column1'>%s</td><td>%s %s</td></tr>\n", (i & 1)?"dark":"light", JCLGetString(pAlias), JCLGetString(tagstr), JCLGetString(workstr));
-		// *pAnchor = *pAnchor + 1;
+		JCLFormat(tmpstr, "(%s)", JCLGetString(pClass->mipName));
+		JCLReplace(workstr, JCLGetString(tmpstr), JCLGetString(pAlias));
+		fprintf(pFile, "<tr id='%s'><td>%s %s</td></tr>\n", (i & 1)?"dark":"light", JCLGetString(tagstr), JCLGetString(workstr));
 	}
 	fprintf(pFile, "</tbody>\n</table>\n");
 	fprintf(pFile, "<p><br /></p>\n");
@@ -565,6 +567,7 @@ static void WriteAliasTable(JCLState* _this, JCLClass* pClass, FILE* pFile, cons
 exit:
 	DELETE(workstr);
 	DELETE(tagstr);
+	DELETE(tmpstr);
 }
 
 //------------------------------------------------------------------------------
@@ -575,12 +578,14 @@ static void GetFamilyAndTypeName(JCLState* _this, JCLClass* pClass, JCLString* f
 {
 	if (pClass->miFamily == tf_class)
 	{
-		JCLSetString(familyName, "class");
+		JCLSetString(familyName, (pClass->miModifier & kModiStrict) ? "strict " : "");
+		JCLAppend(familyName, "class");
 		JCLSetString(typeName, JCLGetString(pClass->mipName));
 	}
 	else if (pClass->miFamily == tf_interface)
 	{
-		JCLSetString(familyName, (pClass->miModifier & kModiNative) ? "native interface" : "interface");
+		JCLSetString(familyName, (pClass->miModifier & kModiStrict) ? "strict " : "");
+		JCLAppend(familyName, (pClass->miModifier & kModiNativeInterface) ? "native interface" : "interface");
 		JCLSetString(typeName, JCLGetString(pClass->mipName));
 	}
 	else if (pClass->miFamily == tf_thread)
