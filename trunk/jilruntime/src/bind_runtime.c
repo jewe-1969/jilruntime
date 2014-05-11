@@ -42,8 +42,8 @@ static const char* kClassDeclaration =
 	"function string getTypeDescription (int type);" TAG("Returns the description string of the specified native type.")
 	"function string getTypeTimeStamp (int type);" TAG("Returns the build time stamp of the specified native type.")
 	"function int getNumTypes ();" TAG("Returns the total number of types known to the runtime.")
-	"function int generateBindings (const string path);" TAG("Generates native binding code at the specified path.")
-	"function int generateDocs (const string path, const string args);" TAG("Generates HTML documentation at the specified path.")
+	"function int generateBindings (const string path);" TAG("Generates native binding code at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
+	"function int generateDocs (const string path, const string args);" TAG("Generates HTML documentation at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 ;
 
 //------------------------------------------------------------------------------
