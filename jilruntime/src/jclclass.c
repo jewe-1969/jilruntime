@@ -154,7 +154,7 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	{
 		JCLAppend(pOut, "strict ");
 	}
-	if(_this->miModifier & kModiNative)
+	if(_this->miModifier & kModiNativeInterface)
 	{
 		JCLAppend(pOut, "native ");
 	}

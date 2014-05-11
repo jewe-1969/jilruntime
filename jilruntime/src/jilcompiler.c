@@ -207,7 +207,7 @@ JILError JCLLink(JILState* pVM)
 	for( clas = 0; clas < NumClasses(_this); clas++ )
 	{
 		pClass = GetClass(_this, clas);
-		if( (pClass->miFamily == tf_class || pClass->miFamily == tf_thread) && !(pClass->miModifier & kModiNative) )
+		if( (pClass->miFamily == tf_class || pClass->miFamily == tf_thread) && !(pClass->miModifier & kModiNativeBinding) )
 		{
 			// set class instance size and v-table
 			if( !pClass->miHasVTable)
@@ -478,7 +478,7 @@ JILError JCLGenerateBindings(JILState* pVM, const JILChar* pPath)
 	for( clas = 0; clas < NumClasses(_this); clas++ )
 	{
 		pClass = GetClass(_this, clas);
-		if( pClass->miFamily == tf_class && (pClass->miModifier & kModiNative) )
+		if( pClass->miFamily == tf_class && (pClass->miModifier & kModiNativeBinding) )
 		{
 			err = JCLCreateBindingCode(_this, pClass, pPath);
 			if (err)
@@ -488,62 +488,6 @@ JILError JCLGenerateBindings(JILState* pVM, const JILChar* pPath)
 
 exit:
 	FlushErrorsAndWarnings(_this);
-	return err;
-}
-
-//------------------------------------------------------------------------------
-// JCLExportToXml
-//------------------------------------------------------------------------------
-
-static JILError JCLExportToXml(JILState* pVM, const JILChar* pPath)
-{
-	JILError err = JCL_No_Error;
-
-#if JIL_USE_HTML_CODEGEN && !JIL_NO_FPRINTF && JIL_USE_LOCAL_FILESYS
-
-	JILLong clas;
-	JCLState* _this;
-	JCLClass* pClass;
-	JCLString* workstr = NULL;
-	JCLString* pathstr = NULL;
-	FILE* pFile = NULL;
-
-	if( (_this = pVM->vmpCompiler) == NULL )
-		return JIL_ERR_No_Compiler;
-	JCLVerbosePrint(_this, "Exporting all type definitions to XML...\n");
-	workstr = NEW(JCLString);
-
-	// iterate over all classes
-	for( clas = 0; clas < NumClasses(_this); clas++ )
-	{
-		pClass = GetClass(_this, clas);
-		if( pClass->miFamily == tf_class
-			|| pClass->miFamily == tf_interface
-			|| pClass->miFamily == tf_thread
-			|| pClass->miFamily == tf_delegate )
-		{
-			pClass->ToXml(pClass, _this, workstr);
-		}
-	}
-
-	// write file
-	pathstr = NEW(JCLString);
-	JCLFormat(pathstr, "%s\\types.xml", pPath);
-	pFile = fopen(JCLGetString(pathstr), "wt");
-	if( pFile )
-	{
-		fprintf(pFile, "<xml>\n");
-		fputs(JCLGetString(workstr), pFile);
-		fprintf(pFile, "</xml>\n");
-		fclose(pFile);
-	}
-
-	FlushErrorsAndWarnings(_this);
-	DELETE(workstr);
-	DELETE(pathstr);
-
-#endif
-
 	return err;
 }
 
@@ -614,10 +558,6 @@ JILError JCLGenerateDocs(JILState* pVM, const JILChar* pPath, const JILChar* pPa
 	err = JCLCreateClassIndex(_this, pTable, pPath, startClass, endClass);
 	if (err)
 		goto exit;
-	// export xml
-	err = JCLExportToXml(pVM, pPath);
-	if (err)
-		goto exit;
 
 exit:
 	JILTable_Delete(pTable);
@@ -628,6 +568,57 @@ exit:
 	return err;
 }
 
+//------------------------------------------------------------------------------
+// JCLExportTypeInfo
+//------------------------------------------------------------------------------
+
+JILError JCLExportTypeInfo(JILState* pVM, const JILChar* pFilename)
+{
+	JILError err = JCL_No_Error;
+
+#if !JIL_NO_FPRINTF && JIL_USE_LOCAL_FILESYS
+
+	JILLong clas;
+	JCLState* _this;
+	JCLClass* pClass;
+	JCLString* workstr = NULL;
+	FILE* pFile = NULL;
+
+	if( (_this = pVM->vmpCompiler) == NULL )
+		return JIL_ERR_No_Compiler;
+	JCLVerbosePrint(_this, "Exporting type definitions to XML...\n");
+	workstr = NEW(JCLString);
+
+	// iterate over all classes
+	for( clas = 0; clas < NumClasses(_this); clas++ )
+	{
+		pClass = GetClass(_this, clas);
+		if( pClass->miFamily == tf_class
+			|| pClass->miFamily == tf_interface
+			|| pClass->miFamily == tf_thread
+			|| pClass->miFamily == tf_delegate )
+		{
+			pClass->ToXml(pClass, _this, workstr);
+		}
+	}
+
+	// write file
+	pFile = fopen(pFilename, "wt");
+	if( pFile )
+	{
+		fprintf(pFile, "<xml>\n");
+		fputs(JCLGetString(workstr), pFile);
+		fprintf(pFile, "</xml>\n");
+		fclose(pFile);
+	}
+
+	FlushErrorsAndWarnings(_this);
+	DELETE(workstr);
+
+#endif
+
+	return err;
+}
 
 //------------------------------------------------------------------------------
 // JCLAddImportPath
