@@ -5,9 +5,9 @@
  *  To generate C++ binding files for this class, start the JILRunOnly command line tool
  *  with the following parameters:
  *
- *      jilrunonly -bind native.jc
+ *      jilrunonly -bind ./bind native.jc
  *
- *  This will produce "bind_Point.cpp" in your current working directory.
+ *  This will produce "bind_Point.cpp" in the "bind" sub-directory.
  */
 
 /*
