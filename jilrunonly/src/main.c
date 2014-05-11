@@ -90,7 +90,11 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.3.1.61"
+#define	VERSION		"0.3.1.62"
+
+#ifndef MAX_PATH
+#define MAX_PATH	260
+#endif
 
 //------------------------------------------------------------------------------
 // THROW
@@ -119,7 +123,6 @@ static void			CBBreakException		(JILState*);
 static int			OnError					(JILState* pMachine, int e, const char* alt);
 static JILHandle*	CreateParameterArray	(JILState* pMachine, int nArgs, char** ppArgList);
 static int			PrintVersionInfo		(JILState* pMachine);
-static int			SortArgList				(char** ppArgList, int argc, char* argv[], int nFile, int noSort);
 static void			GetAppPath				(const char* pFilespec);
 static void			WaitForEnter			();
 static int			LoadBinary				(JILState* pMachine, const char* pFileName);
@@ -129,20 +132,25 @@ static int			SaveBinary				(JILState* pMachine, const char* pFileName);
 // static variables and constants
 //------------------------------------------------------------------------------
 
-static char gAppPath[1024];
-static char gDefaultPath[1024];
-static char gCompilerOptions[1024];
-static char gExtension[32];
-static char gBinaryName[1024];
+static char gAppPath[MAX_PATH];
+static char gDefaultPath[MAX_PATH];
+static char gCompilerOptions[MAX_PATH];
+static char gExtension[MAX_PATH];
+static char gBinaryName[MAX_PATH];
+static char gExportName[MAX_PATH];
 
 // The initial stack size the runtime is going to use (can be increased by script if neccessary)
 const long kStackSize = 1024;
+
+enum { export_nothing, export_bindings, export_html, export_xml };
 
 // Usage info when specifying an unknown option
 const char* kUsageString =
 	"Usage: jilrunonly [options] <file> [<para1> <para2> ...]\n"
 	"<file>       JewelScript source file to compile and run\n"
 	"<para>       optional parameters to be passed to the scripts main function\n"
+	"-bind <path> Generate C++ binding code in the specified directory\n"
+	"-doc <path>  Generate HTML documentation in the specified directory\n"
 	"-e <string>  specify script file extension to assume (default: jc)\n"
 	"-l           output virtual assembler listing of compiled code\n"
 	"-o <string>  specify compiler options (enclose in quotes)\n"
@@ -151,8 +159,8 @@ const char* kUsageString =
 	"-w           wait for enter\n"
 	"-wb <file>   write a compiled binary program using the given filename\n"
 	"-x           exit without running the script\n"
-	"-bind        generate C++ binding code\n"
-	"-doc         generate HTML documentation\n";
+	"-xml <file>  Export type information to the specified XML file\n"
+;
 
 // The path where new files are created (for option -bind and -doc)
 const char* kFileOutputDir = ".";
@@ -166,7 +174,7 @@ const char* kForwardDeclareMain =
 //------------------------------------------------------------------------------
 // just doing my job.
 
-int main(int argc, char* argv[])
+int main(int nArgs, char* ppArgList[])
 {
 	JILState* pMachine = NULL;
 	JILHandle* hParameterArray = NULL;
@@ -174,7 +182,6 @@ int main(int argc, char* argv[])
 	JILHandle* hFunctionMain = NULL;
 	JILHandle* hException = NULL;
 	const JILChar* pStr;
-	char** ppArgList = NULL;
 	int bListCode = 0;
 	int bWait = 0;
 	int bExit = 0;
@@ -183,10 +190,8 @@ int main(int argc, char* argv[])
 	int bSetExt = 0;
 	int bReadBinary = 0;
 	int bWriteBinary = 0;
-	int bGenerateDoc = 0;
-	int bGenerateBind = 0;
 	int nFile = 1;
-	int nArgs = 0;
+	int nExportMode = export_nothing;
 	int err = 0;
 
 	strcpy(gAppPath, "");
@@ -194,52 +199,66 @@ int main(int argc, char* argv[])
 	strcpy(gCompilerOptions, "");
 	strcpy(gExtension, ".jc");
 	// we need at least 1 parameter
-	if( argc < 2 )
+	if( nArgs < 2 )
 	{
 		printf(	kUsageString );
 		return 0;
 	}
 	// check for options
-	while( argv[nFile][0] == '-' )
+	while( ppArgList[nFile][0] == '-' )
 	{
-		if( strcmp(argv[nFile], "-e") == 0 )
+		if( strcmp(ppArgList[nFile], "-e") == 0 )
 		{
-			if( ++nFile == argc ) break;
-			strcpy(gExtension + 1, argv[nFile]);
+			if( ++nFile == nArgs ) break;
+			strcpy(gExtension + 1, ppArgList[nFile]);
 			bSetExt = 1;
 		}
-		else if( strcmp(argv[nFile], "-o") == 0 )
+		else if( strcmp(ppArgList[nFile], "-o") == 0 )
 		{
-			if( ++nFile == argc ) break;
-			strcpy(gCompilerOptions, argv[nFile]);
+			if( ++nFile == nArgs ) break;
+			strcpy(gCompilerOptions, ppArgList[nFile]);
 			bOptions = 1;
 		}
-		else if( strcmp(argv[nFile], "-wb") == 0 )
+		else if( strcmp(ppArgList[nFile], "-wb") == 0 )
 		{
-			if( ++nFile == argc ) break;
-			strcpy(gBinaryName, argv[nFile]);
+			if( ++nFile == nArgs ) break;
+			strcpy(gBinaryName, ppArgList[nFile]);
 			bWriteBinary = 1;
 		}
-		else if( strcmp(argv[nFile], "-rb") == 0 )
+		else if( strcmp(ppArgList[nFile], "-bind") == 0 )
+		{
+			if( ++nFile == nArgs ) break;
+			strcpy(gExportName, ppArgList[nFile]);
+			nExportMode = export_bindings;
+		}
+		else if( strcmp(ppArgList[nFile], "-doc") == 0 )
+		{
+			if( ++nFile == nArgs ) break;
+			strcpy(gExportName, ppArgList[nFile]);
+			nExportMode = export_html;
+		}
+		else if( strcmp(ppArgList[nFile], "-xml") == 0 )
+		{
+			if( ++nFile == nArgs ) break;
+			strcpy(gExportName, ppArgList[nFile]);
+			nExportMode = export_xml;
+		}
+		else if( strcmp(ppArgList[nFile], "-rb") == 0 )
 			bReadBinary = 1;
-		else if( strcmp(argv[nFile], "-l") == 0 )
+		else if( strcmp(ppArgList[nFile], "-l") == 0 )
 			bListCode = 1;
-		else if( strcmp(argv[nFile], "-v") == 0 )
+		else if( strcmp(ppArgList[nFile], "-v") == 0 )
 			bVers = 1;
-		else if( strcmp(argv[nFile], "-w") == 0 )
+		else if( strcmp(ppArgList[nFile], "-w") == 0 )
 			bWait = 1;
-		else if( strcmp(argv[nFile], "-x") == 0 )
+		else if( strcmp(ppArgList[nFile], "-x") == 0 )
 			bExit = 1;
-		else if( strcmp(argv[nFile], "-bind") == 0 )
-			bGenerateBind = 1;
-		else if( strcmp(argv[nFile], "-doc") == 0 )
-			bGenerateDoc = 1;
 		else
 		{
 			printf(	kUsageString );
 			return 0;
 		}
-		if( ++nFile == argc ) break;
+		if( ++nFile == nArgs ) break;
 	}
 	if( bSetExt )
 	{
@@ -250,12 +269,7 @@ int main(int argc, char* argv[])
 		bOptions = 1;
 	}
 	// get the path to this application
-	GetAppPath( argv[0] );
-	// allocate a new argument list
-	ppArgList = (char**) malloc(argc * sizeof(char*));
-	memset(ppArgList, 0, argc * sizeof(char*));
-	// sort command line arguments
-	nArgs = SortArgList(ppArgList, argc, argv, nFile, bReadBinary);
+	GetAppPath( ppArgList[0] );
 
 	/*
 	 *	1) initialize the JIL virtual machine
@@ -270,7 +284,7 @@ int main(int argc, char* argv[])
 		PrintVersionInfo( pMachine );
 
 	// leave if no file specified
-	if( ppArgList[0] == NULL )
+	if( nFile == nArgs )
 		goto cleanup;
 
 	// install a log message handler (this is optional)
@@ -321,7 +335,7 @@ int main(int argc, char* argv[])
 		THROW( err, err, "" )
 
 		// load and compile specified script file
-		err = JCLLoadAndCompile(pMachine, ppArgList[0]);
+		err = JCLLoadAndCompile(pMachine, ppArgList[nFile]);
 		THROW( err, err, "" )
 
 		// link...
@@ -329,18 +343,23 @@ int main(int argc, char* argv[])
 		THROW( err, err, "" )
 
 		// generate bindings or html documentation?
-		if( bGenerateBind )
+		if( nExportMode == export_bindings )
 		{
-			err = JCLGenerateBindings(pMachine, kFileOutputDir);
+			err = JCLGenerateBindings(pMachine, gExportName);
 			THROW( err, err, NULL );
 		}
-		if( bGenerateDoc )
+		else if( nExportMode == export_html )
 		{
-			err = JCLGenerateDocs(pMachine, kFileOutputDir, "application=JILRunOnly, @ignore=runtime" );
+			err = JCLGenerateDocs(pMachine, gExportName, "application=JILRunOnly");
+			THROW( err, err, NULL );
+		}
+		else if( nExportMode == export_xml )
+		{
+			err = JCLExportTypeInfo(pMachine, gExportName);
 			THROW( err, err, NULL );
 		}
 
-		// optionally, to save some memory, we can free the compiler
+		// optionally, we can free the compiler to save memory
 		err = JCLFreeCompiler(pMachine);
 		THROW( err, err, "The JewelScript compiler could not be freed!" )
 	}
@@ -432,9 +451,6 @@ int main(int argc, char* argv[])
 	pMachine = NULL;
 	THROW( err, err, "The virtual machine could not be terminated!" )
 
-	free( ppArgList );
-	ppArgList = NULL;
-
 	if( bWait)
 		WaitForEnter();
 
@@ -451,8 +467,6 @@ cleanup:
 		NTLFreeHandle(pMachine, hFunctionMain);
 		JILTerminate(pMachine);
 	}
-	if( ppArgList )
-		free( ppArgList );
 
 	if( bWait)
 		WaitForEnter();
@@ -628,71 +642,6 @@ static int PrintVersionInfo(JILState* pMachine)
 		printf( "- Extended runtime checks are disabled\n\n" );
 
 	return 0;
-}
-
-//------------------------------------------------------------------------------
-// SortArgList
-//------------------------------------------------------------------------------
-// Sort the command line argument list so that the first file with a ".jc"
-// extension is sorted to the begin of the argument list. This will allow users
-// to run this application from the desktop environment, instead of the
-// terminal / command prompt. When multiple files, including a script file,
-// are dragged on the application icon, the actual order of the files in the
-// argument list is not always defined (depending on the OS you are on). The
-// script file might appear in the middle or at the end of the argument list.
-// Therefore this function will search for any file with the extension ".jc"
-// in the argument list and move it to the start of the list.
-// If no such file is found at all, the function will insert "default.jc"
-// at the beginning of the list. This allows users to have a default script
-// together with this application in a folder, which is executed when the user
-// drags files onto the application.
-
-static int SortArgList(char** ppArgList, int argc, char* argv[], int nFile, int noSort)
-{
-	int nArgs = 0;
-	int i, j;
-	char* pArg, *pos;
-
-	// try to find a file that has the extension ".jc"
-	for( i = nFile; i < argc; i++ )
-	{
-		pArg = argv[i];
-		if( pArg )
-		{
-			pos = strrchr(pArg, '.');
-			if( pos && strcmp(pos, gExtension) == 0 )
-				break;
-		}
-	}
-	// if i == nFile just copy arguments
-	if( i == nFile || noSort )
-	{
-		for( j = nFile; j < argc; j++ )
-			ppArgList[nArgs++] = argv[j];
-	}
-	else if( i >= argc )
-	{
-		// no script file found, insert default
-		strcpy(gDefaultPath, gAppPath);
-		strcat(gDefaultPath, "default");
-		strcat(gDefaultPath, gExtension);
-		ppArgList[nArgs++] = gDefaultPath;
-		// copy arguments
-		for( j = nFile; j < argc; j++ )
-			ppArgList[nArgs++] = argv[j];
-	}
-	else
-	{
-		// found a script file in the middle
-		ppArgList[nArgs++] = argv[i];
-		// copy arguments
-		for( j = nFile; j < argc; j++ )
-		{
-			if( j != i )
-				ppArgList[nArgs++] = argv[j];
-		}
-	}
-	return nArgs;
 }
 
 //------------------------------------------------------------------------------

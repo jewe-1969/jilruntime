@@ -6,9 +6,9 @@
  *  import all the classes you want to have documented.
  *  Then run the debug build of the JILRunOnly tool with following parameters:
  *
- *      jilrunonlyd -doc gendocs.jc
+ *      jilrunonlyd -doc ./docs gendocs.jc
  *
- *  The html files will be written into the current working directory.
+ *  The html files will be written into the "docs" sub-directory.
  *
  *  ATTENTION: The documentation engine is disabled in release builds of the library.
  *  If the above command doesn't produce any output, try the debug build of the program.
