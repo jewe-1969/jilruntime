@@ -14842,7 +14842,7 @@ JILError cg_begin_intro(JCLState* _this)
 	pFunc->miHandle = 0;
 	pFunc->miClassID = type_global;
 	JCLSetString(pFunc->mipName, kNameGlobalInitFunction);
-	JCLSetString(pFunc->mipTag, "The runtime automatically creates and calls this function to intialize all global objects.");
+	JCLSetString(pFunc->mipTag, "The runtime automatically creates and calls this function to intialize all global variables.");
 	err = JILCreateFunction(_this->mipMachine, type_global, 0, 0, kNameGlobalInitFunction, &(pFunc->miHandle));
 	if( err )
 		goto exit;
