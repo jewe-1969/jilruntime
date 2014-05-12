@@ -882,12 +882,10 @@ static JILError AddToListRecursive(const JILTableNode* pSrc, JILString* pKey, JI
 	JILString* keyStr;
 	JILString* pKeyCopy = pKey;
 	JILState* ps = pList->pState;
-	JILChar buf[2] = {0};
 	if( isByte )
 	{
 		pKeyCopy = JILString_Copy(pKey);
-		buf[0] = nibble;
-		JILString_AppendCStr(pKeyCopy, buf);
+		JILString_AppendChar(pKeyCopy, nibble);
 	}
 	for( i = 0; i < 16; i++ )
 	{
@@ -927,12 +925,10 @@ static JILError MergeNodeRecursive(const JILTableNode* pNode, JILTableMergeData*
 	JILString* keyStr;
 	JILString* pKeyCopy = pKey;
 	JILState* ps = pData->pState;
-	JILChar buf[2] = {0};
 	if( isByte )
 	{
 		pKeyCopy = JILString_Copy(pKey);
-		buf[0] = nibble;
-		JILString_AppendCStr(pKeyCopy, buf);
+		JILString_AppendChar(pKeyCopy, nibble);
 	}
 	for( i = 0; i < 16; i++ )
 	{
