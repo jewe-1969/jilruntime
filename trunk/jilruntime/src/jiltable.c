@@ -361,7 +361,7 @@ JILTable* JILTable_NewManaged(JILState* pVM)
 JILTable* JILTable_NewNativeUnmanaged(JILState* pVM)
 {
 	JILTable* _this = (JILTable*) pVM->vmMalloc(pVM, sizeof(JILTable));
-	_this->pDestructor = JILTable_DefaultDestructor;
+	_this->pDestructor = NULL;
 	_this->pState = pVM;
 	_this->pNode = NULL;
 	_this->mode = kTableModeNativeUnmanaged;
