@@ -90,6 +90,7 @@ JILLong			JILString_ContainsAllOf(const JILString* _this, const JILArray* pArray
 void			JILString_SetSize(JILString* _this, JILLong newSize);
 void			JILString_Assign(JILString* _this, const JILChar* str);
 void			JILString_AppendCStr(JILString* _this, const JILChar* str);
+void			JILString_AppendChar(JILString* _this, JILChar chr);
 void			JILString_Clear(JILString* _this);
 void			JILString_SubStr(JILString* _this, const JILString* source, JILLong index, JILLong length);
 JILLong			JILString_SpanIncl(const JILString* _this, const JILString* pCharSet, JILLong index);

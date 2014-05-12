@@ -1062,6 +1062,22 @@ void JILString_AppendCStr(JILString* _this, const JILChar* str)
 }
 
 //------------------------------------------------------------------------------
+// JILString_AppendChar
+//------------------------------------------------------------------------------
+/// Append a single character to this string.
+
+void JILString_AppendChar(JILString* _this, JILChar chr)
+{
+	JILChar* pStr;
+	if( (_this->length + 2) >= _this->maxLength )				// + 2 because termination
+		JILStringReAlloc(_this, _this->length + 1, JILTrue);	// + 1 because function accounts for termination
+	pStr = _this->string + _this->length;
+	*pStr++ = chr;
+	*pStr = 0;
+	_this->length++;
+}
+
+//------------------------------------------------------------------------------
 // JILString_Clear
 //------------------------------------------------------------------------------
 /// Clear this string. This function directly modifies the given string.
