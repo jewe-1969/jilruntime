@@ -469,11 +469,7 @@ void create_JCLState( JCLState* _this )
 	_this->miStackPos = kSimStackSize;
 	// init register maps
 	for( i = 0; i < kNumRegisters; i++ )
-	{
 		_this->mipRegs[i] = NULL;
-		_this->miRegUsage[i] = 0;
-	}
-	_this->miNumRegsToSave = 0;
 	_this->miNumVarRegisters = 0;
 	_this->miBlockLevel = 0;
 	// break / continue / clause statement information
@@ -1529,7 +1525,7 @@ static JILError MakeLocalVar(JCLState* _this, Array_JCLVar* pLocals, JILLong whe
 			if( SimRegisterGet(_this, i) == NULL )
 			{
 				SimRegisterSet(_this, i, pVar);
-				_this->miRegUsage[i]++;
+				CurrentFunc(_this)->miRegUsage[i]++;
 				CurrentFunc(_this)->miLocalRegs[i]++;
 				break;
 			}
@@ -1700,7 +1696,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 				pVar->miUnique = JILTrue;
 				*ppVar = pVar;
 				SimRegisterSet(_this, i, pVar);
-				_this->miRegUsage[i]++;
+				CurrentFunc(_this)->miRegUsage[i]++;
 				break;
 			}
 		}
@@ -4895,15 +4891,10 @@ static JILError p_function_body(JCLState* _this)
 	JCLFile* pFile;
 	JCLFunc* pFunc;
 	JCLVar* pThis = NULL;
-	JILLong savePos;
-	SMarker marker;
-	JILLong i;
-	JILLong j;
 	JILBool freeThis = JILFalse;
 
 	pFile = _this->mipFile;
 	pFunc = CurrentFunc(_this);
-
 	// prepare "this"
 	if( pFunc->miMethod )
 	{
@@ -4913,34 +4904,10 @@ static JILError p_function_body(JCLState* _this)
 	}
 	// save current optimization level from compiler options (we don't have the option object anymore in linker stage!)
 	pFunc->miOptLevel = GetOptions(_this)->miOptimizeLevel;
-	// create restore point, so we can undo compilation later
-	savePos = pFile->GetLocator(pFile);
-	SetMarker(_this, &marker);
-	// clear register usage information
-	for( i = 0; i < kNumRegisters; i++ )
-		_this->miRegUsage[i] = 0;
-	_this->miNumRegsToSave = 0;
-	// *** PASS 1: Test-compile function body to get register usage information ***
+	// compile the function
 	err = p_function_pass(_this);
 	if( err )
 		goto write_ret;
-	// update register usage information
-	for( j = 0; j < kNumRegisters; j++ )
-	{
-		if( _this->miRegUsage[j] )
-			_this->miNumRegsToSave++;
-	}
-	// do we need to save registers at all?
-	if( _this->miNumRegsToSave && !pFunc->miCofunc )
-	{
-		// then undo previous compilation and recompile with correct settings
-		pFile->SetLocator(pFile, savePos);
-		RestoreMarker(_this, &marker);
-		// *** PASS 2: Compile function with correct register usage information ***
-		err = p_function_pass(_this);
-		if( err )
-			goto write_ret;
-	}
 	// compile function literals
 	err = p_sub_functions(_this);
 	if( err )
@@ -4983,10 +4950,9 @@ write_ret:
 //------------------------------------------------------------------------------
 // p_function_pass
 //------------------------------------------------------------------------------
-// Functions need to be compiled in two passes to find out how many registers
-// the function is going to use. In the second pass the correct number of
-// registers will then be saved to stack at function begin and restored from
-// stack before the function returns.
+// Functions are no longer compiled in two passes to find out how many registers
+// the function uses. The register saving and restoring code is now added during
+// the linking process. This should cut compilation time in half.
 
 static JILError p_function_pass(JCLState* _this)
 {
@@ -5012,12 +4978,6 @@ static JILError p_function_pass(JCLState* _this)
 	pArgs = pFunc->mipArgs;
 	for( i = pArgs->count - 1; i >= 0; i-- )
 		SimStackPush(_this, pArgs->Get(pArgs, i), JILFalse);
-	// generate register saving code
-	if( _this->miNumRegsToSave )
-	{
-		cg_push_registers(_this, _this->miRegUsage, _this->miNumRegsToSave);
-		SimStackReserve(_this, _this->miNumRegsToSave);
-	}
 	// un-init members in ctors
 	if( pFunc->miCtor )
 	{
@@ -5103,7 +5063,6 @@ static JILError p_function_pass(JCLState* _this)
 			{
 				// Unroll entire stack
 				JILLong numStack = kSimStackSize - _this->miStackPos;	// number of items on stack
-				numStack -= _this->miNumRegsToSave;						// minus saved registers
 				numStack -= pFunc->mipArgs->count;						// minus arguments
 				if( numStack < 0 )
 					FATALERROREXIT("p_function_pass", "No. of items on stack is negative");
@@ -5112,12 +5071,6 @@ static JILError p_function_pass(JCLState* _this)
 					// pop all local variables from stack
 					cg_pop_multi(_this, numStack);
 					SimStackPop(_this, numStack);
-				}
-				// restore saved registers
-				if( _this->miNumRegsToSave )
-				{
-					cg_pop_registers(_this, _this->miRegUsage, _this->miNumRegsToSave);
-					SimStackPop(_this, _this->miNumRegsToSave);
 				}
 				// take function arguments from stack
 				pArgs = pFunc->mipArgs;
@@ -5735,7 +5688,6 @@ no_expr:
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
 	numStack -= pFunc->mipArgs->count;		// minus arguments
-	numStack -= _this->miNumRegsToSave;		// minus saved registers
 	if( numStack < 0 )
 		FATALERROREXIT("p_return", "Number of items on stack is negative");
 	if( numStack )
@@ -5744,13 +5696,6 @@ no_expr:
 		cg_pop_multi(_this, numStack);
 		if( _this->miBlockLevel == 1 )	// are we at function level?
 			SimStackPop(_this, numStack);
-	}
-	// restore saved registers
-	if( _this->miNumRegsToSave )
-	{
-		cg_pop_registers(_this, _this->miRegUsage, _this->miNumRegsToSave);
-		if( _this->miBlockLevel == 1 )	// are we at function level?
-			SimStackPop(_this, _this->miNumRegsToSave);
 	}
 	cg_return(_this);
 
@@ -5810,7 +5755,6 @@ static JILError p_throw(JCLState* _this, Array_JCLVar* pLocals)
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
 	numStack -= pFunc->mipArgs->count;		// minus arguments
-	numStack -= _this->miNumRegsToSave;		// minus saved registers
 	if( numStack < 0 )
 		FATALERROREXIT("p_throw", "Number of items on stack is negative");
 	if( numStack )
@@ -5819,13 +5763,6 @@ static JILError p_throw(JCLState* _this, Array_JCLVar* pLocals)
 		cg_pop_multi(_this, numStack);
 		if( _this->miBlockLevel == 1 )	// are we at function level?
 			SimStackPop(_this, numStack);
-	}
-	// restore saved registers
-	if( _this->miNumRegsToSave )
-	{
-		cg_pop_registers(_this, _this->miRegUsage, _this->miNumRegsToSave);
-		if( _this->miBlockLevel == 1 )	// are we at function level?
-			SimStackPop(_this, _this->miNumRegsToSave);
 	}
 	// generate throw
 	cg_opcode(_this, op_throw);
@@ -14842,6 +14779,7 @@ JILError cg_begin_intro(JCLState* _this)
 	pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 	pFunc->miHandle = 0;
 	pFunc->miClassID = type_global;
+	pFunc->miNaked = JILTrue;
 	JCLSetString(pFunc->mipName, kNameGlobalInitFunction);
 	JCLSetString(pFunc->mipTag, "The runtime automatically creates and calls this function to intialize all global variables.");
 	err = JILCreateFunction(_this->mipMachine, type_global, 0, 0, kNameGlobalInitFunction, &(pFunc->miHandle));

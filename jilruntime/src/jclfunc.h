@@ -73,12 +73,14 @@ DECL_CLASS( JCLFunc )
 	JILBool				miExplicit;		// constructor / convertor declared explicit
 	JILBool				miStrict;		// fail if this function has no body during link stage
 	JILBool				miLinked;		// the function has been linked
+	JILBool				miNaked;		// do not save / restore registers for this function
 	JILLong				miOptLevel;		// optimization level saved from compiler options
 	JCLVar*				mipResult;		// result var / type
 	Array_JCLVar*		mipArgs;		// function argument list
 	Array_JILLong*		mipCode;		// buffer to compile code to
 	Array_JCLLiteral*	mipLiterals;	// literals
 	JILLong				miLocalRegs[kNumRegisters];	// regs used for local variables
+	JILLong				miRegUsage[kNumRegisters];	// counts how often regs were allocated in function
 
 END_CLASS( JCLFunc )
 

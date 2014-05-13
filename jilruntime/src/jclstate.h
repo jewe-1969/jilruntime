@@ -61,8 +61,6 @@ DECL_CLASS( JCLState )
 	JCLVar**			mipStack;					///< Simulated data stack when compiling function body
 	JILLong				miStackPos;					///< Current simulated data stack pointer
 	JCLVar*				mipRegs[kNumRegisters];		///< Simulated register contents when compiling function body
-	JILLong				miRegUsage[kNumRegisters];	///< Count how often regs were allocated in function
-	JILLong				miNumRegsToSave;			///< No. of regs function must save / restore
 	JILLong				miNumVarRegisters;			///< No. of regs currently used for local variables
 	JILLong				miBlockLevel;				///< Nested block level counter
 	JILLong				miBreakUnrollSP;			///< Saved stack pointer for unrolling the stack in case of a break or continue statement
