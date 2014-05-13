@@ -4541,6 +4541,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	pFunc->miCofunc = (fnKind & kCofunction);
 	pFunc->miExplicit = (fnKind & kExplicit);
 	pFunc->miStrict = (fnKind & kStrict);
+	pFunc->miOptLevel = GetOptions(_this)->miOptimizeLevel;
 	pClass->miHasMethod = (fnKind & (kAccessor | kMethod));
 	removeFunc = JILTrue;
 
@@ -4846,6 +4847,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			// copy new tag if there is one
 			if( JCLGetLength(pFunc->mipTag) > 0 )
 				pFunc2->mipTag->Copy(pFunc2->mipTag, pFunc->mipTag);
+			pFunc2->miOptLevel = pFunc->miOptLevel;
 			// discard our prototype
 			pClass = CurrentClass(_this);
 			pClass->mipFuncs->Trunc(pClass->mipFuncs, pFunc->miFuncIdx);
@@ -4902,8 +4904,6 @@ static JILError p_function_body(JCLState* _this)
 		SimRegisterSet(_this, 0, pThis);
 		freeThis = JILTrue;
 	}
-	// save current optimization level from compiler options (we don't have the option object anymore in linker stage!)
-	pFunc->miOptLevel = GetOptions(_this)->miOptimizeLevel;
 	// compile the function
 	err = p_function_pass(_this);
 	if( err )
