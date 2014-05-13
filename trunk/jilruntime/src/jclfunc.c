@@ -222,6 +222,7 @@ static JILError optimizeCode_JCLFunc	(JCLFunc*, JCLState*);
 static JCLString* toString_JCLFunc		(JCLFunc*, JCLState*, JCLString*, JILLong);
 static JCLString* toXml_JCLFunc			(JCLFunc*, JCLState*, JCLString*);
 static JILError DebugListFunction		(JCLFunc*, JCLState*);
+static JILError InsertRegisterSaving	(JCLFunc*);
 
 //------------------------------------------------------------------------------
 // JCLFunc
@@ -259,10 +260,14 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miLinked = JILFalse;
 	_this->miExplicit = JILFalse;
 	_this->miStrict = JILFalse;
+	_this->miNaked = JILFalse;
 	_this->miOptLevel = 0;
 
 	for( i = 0; i < kNumRegisters; i++ )
+	{
 		_this->miLocalRegs[i] = 0;
+		_this->miRegUsage[i] = 0;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -309,12 +314,16 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miCofunc = src->miCofunc;
 	_this->miAnonymous = src->miAnonymous;
 	_this->miLinked = src->miLinked;
+	_this->miNaked = src->miNaked;
 	_this->miExplicit = src->miExplicit;
 	_this->miOptLevel = src->miOptLevel;
 	_this->miStrict= src->miStrict;
 
 	for( i = 0; i < kNumRegisters; i++ )
+	{
 		_this->miLocalRegs[i] = src->miLocalRegs[i];
+		_this->miRegUsage[i] = src->miRegUsage[i];
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -417,6 +426,10 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 		}
 		// generate data handles for literals and patch code
 		err = createLiterals_JCLFunc(_this, pCompiler);
+		if( err )
+			goto exit;
+		// insert register saving code
+		err = InsertRegisterSaving(_this);
 		if( err )
 			goto exit;
 		// do optimization
@@ -624,6 +637,26 @@ typedef struct
 	JILLong		numPasses;
 	JILLong		totalPasses;
 } OptimizeReport;
+
+//------------------------------------------------------------------------------
+// GetNumRegsToSave
+//------------------------------------------------------------------------------
+// Returns the number of registers that need to be saved to the stack.
+
+static int GetNumRegsToSave(JCLFunc* pFunc)
+{
+	JILLong j;
+	JILLong numRegs = 0;
+	if( !pFunc->miCofunc && !pFunc->miNaked ) // exclude co-functions and __init() function
+	{
+		for( j = 3; j < kNumRegisters; j++ )
+		{
+			if( pFunc->miRegUsage[j] )
+				numRegs++;
+		}
+	}
+	return numRegs;
+}
 
 //------------------------------------------------------------------------------
 // CopyOperand
@@ -974,9 +1007,10 @@ static JILBool IsAddrBranchTarget(CodeBlock* _this, JILLong addr)
 // InsertCode
 //------------------------------------------------------------------------------
 // JCLInsert instruction words (ints) into the function code and automatically fix
-// branch addresses in the code.
+// branch addresses in the code. If fixInsPoint is false, branches jumping to
+// insPoint are NOT altered, instead they will branch to the inserted code.
 
-static void InsertCode(CodeBlock* _this, JILLong insPoint, JILLong numInts)
+static void InsertCode(CodeBlock* _this, JILLong insPoint, JILLong numInts, JILBool fixInsPoint)
 {
 	JILLong opaddr;
 	JILLong opcode;
@@ -992,6 +1026,8 @@ static void InsertCode(CodeBlock* _this, JILLong insPoint, JILLong numInts)
 		opsize = JILGetInstructionSize(opcode);
 		if( GetBranchAddr(_this, opaddr, &branchAddr) )
 		{
+			if( branchAddr == insPoint && !fixInsPoint )
+				continue;
 			if( opaddr < insPoint && branchAddr >= insPoint )
 			{
 				branchAddr += numInts;
@@ -1098,7 +1134,7 @@ static void ReplaceCode(CodeBlock* _this, JILLong addr, JILLong oldNumInts, JILL
 		// insert NOP instructions
 		JILLong intsToAdd = newNumInts - oldNumInts;
 		JILLong insPoint = addr + oldNumInts;
-		InsertCode(_this, insPoint, intsToAdd);
+		InsertCode(_this, insPoint, intsToAdd, JILTrue);
 	}
 	else if( oldNumInts > newNumInts )
 	{
@@ -2088,7 +2124,7 @@ static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stop
 		{
 			if( instrInfo->opType[i] == ot_eas )
 			{
-				if( _this->array[subAddr] > stackPointer )
+				if( _this->array[subAddr] >= stackPointer )	// TODO: this was ">" - does OptimizeRegisterReplacing() still work correctly?
 					_this->array[subAddr] += fixup;
 			}
 			subAddr += JILGetOperandSize(instrInfo->opType[i]);
@@ -2157,6 +2193,69 @@ static JILBool IsTestEqual(CodeBlock* _this, JILLong addr, OpcodeInfo* pInfo)
 		}
 	}
 	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// InsertRegisterSaving
+//------------------------------------------------------------------------------
+// Inserts code that saves all modified registers at the start of the function
+// and restores all saved registers at the end.
+
+static JILError InsertRegisterSaving(JCLFunc* pFunc)
+{
+	JILError err = JCL_No_Error;
+	JILLong numRegsToSave;
+	JILLong opaddr;
+	JILLong opsize;
+	JILLong opcode;
+	CodeBlock* _this = pFunc->mipCode;
+
+	// calculate numbers of registers to save
+	numRegsToSave = GetNumRegsToSave(pFunc);
+	// if zero, nothing to do
+	if( numRegsToSave == 0 )
+		return err;
+	// fix all stack offsets accordingly
+	FixStackOffsetsInBranch(_this, 0, _this->count, numRegsToSave, 0);
+	// insert push code at start of function
+	if( numRegsToSave == 1 )
+	{
+		InsertCode(_this, 0, 2, JILFalse);
+		_this->array[0] = op_push_r;
+		_this->array[1] = 3;
+	}
+	else if (numRegsToSave > 1)
+	{
+		InsertCode(_this, 0, 3, JILFalse);
+		_this->array[0] = op_pushr;
+		_this->array[1] = 3;
+		_this->array[2] = numRegsToSave;
+	}
+	// insert pop code at all exits of function
+	for( opaddr = 0; opaddr < _this->count; opaddr += opsize )
+	{
+		opcode = _this->array[opaddr];
+		opsize = JILGetInstructionSize(opcode);
+		if( opcode == op_ret )
+		{
+			if( numRegsToSave == 1 )
+			{
+				InsertCode(_this, opaddr, 2, JILFalse);
+				_this->array[opaddr] = op_pop_r;
+				_this->array[opaddr + 1] = 3;
+				opsize += 2;
+			}
+			else if (numRegsToSave > 1)
+			{
+				InsertCode(_this, opaddr, 3, JILFalse);
+				_this->array[opaddr] = op_popr;
+				_this->array[opaddr + 1] = 3;
+				_this->array[opaddr + 2] = numRegsToSave;
+				opsize += 3;
+			}
+		}
+	}
+	return err;
 }
 
 //------------------------------------------------------------------------------
