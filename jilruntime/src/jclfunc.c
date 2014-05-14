@@ -222,7 +222,7 @@ static JILError optimizeCode_JCLFunc	(JCLFunc*, JCLState*);
 static JCLString* toString_JCLFunc		(JCLFunc*, JCLState*, JCLString*, JILLong);
 static JCLString* toXml_JCLFunc			(JCLFunc*, JCLState*, JCLString*);
 static JILError DebugListFunction		(JCLFunc*, JCLState*);
-static JILError InsertRegisterSaving	(JCLFunc*);
+static JILError InsertRegisterSaving	(JCLFunc*, JCLState*);
 
 //------------------------------------------------------------------------------
 // JCLFunc
@@ -429,7 +429,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 		if( err )
 			goto exit;
 		// insert register saving code
-		err = InsertRegisterSaving(_this);
+		err = InsertRegisterSaving(_this, pCompiler);
 		if( err )
 			goto exit;
 		// do optimization
@@ -2096,27 +2096,33 @@ static JILBool IsBranchInstruction(CodeBlock* _this, JILLong addr, JILLong* offs
 // the given address until either a 'ret' instruction is found or the given stop
 // address is detected.
 
-static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stopAddr, JILLong fixup, JILLong stackp)
+static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stopAddr, JILLong fixup, JILLong stackPointer, JILChar* tbl)
 {
 	JILLong opaddr;
 	JILLong opsize;
 	JILLong opcode;
 	JILLong i;
 	JILLong subAddr;
-	JILLong stackPointer;
 	JILLong modiAmount;
 	JILLong branchOffset;
 	JILBool isConditional;
+	JILBool freeTbl = JILFalse;
 	const JILInstrInfo* instrInfo;
-
-	stackPointer = stackp;
+	// if 'tbl' is NULL, create a new table
+	if( tbl == NULL )
+	{
+		freeTbl = JILTrue;
+		tbl = malloc(_this->count);
+		memset(tbl, 0, _this->count);
+	}
 	for( opaddr = addr; opaddr < stopAddr; opaddr += opsize )
 	{
 		opcode = _this->array[opaddr];
 		opsize = JILGetInstructionSize(opcode);
-		// stop at ret
-		if( opcode == op_ret )
+		// stop if ret || this code path has already been traced
+		if( opcode == op_ret || tbl[opaddr] )
 			break;	// done
+		tbl[opaddr] = JILTrue;
 		// check if instruction accesses stack and fix up
 		instrInfo = JILGetInfoFromOpcode(opcode);
 		subAddr = opaddr + 1;
@@ -2124,7 +2130,7 @@ static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stop
 		{
 			if( instrInfo->opType[i] == ot_eas )
 			{
-				if( _this->array[subAddr] >= stackPointer )	// TODO: this was ">" - does OptimizeRegisterReplacing() still work correctly?
+				if( _this->array[subAddr] >= stackPointer )
 					_this->array[subAddr] += fixup;
 			}
 			subAddr += JILGetOperandSize(instrInfo->opType[i]);
@@ -2142,12 +2148,16 @@ static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stop
 				JILLong targetAddr = opaddr + branchOffset;
 				// if branch is conditional, recurse to fix conditional "body"
 				if( isConditional )
-					FixStackOffsetsInBranch(_this, opaddr + opsize, targetAddr, fixup, stackPointer);
+					FixStackOffsetsInBranch(_this, opaddr + opsize, _this->count, fixup, stackPointer, tbl);
 				// continue from branch target
 				opaddr = targetAddr;
 				opsize = 0;
 			}
 		}
+	}
+	if( freeTbl )
+	{
+		free(tbl);
 	}
 }
 
@@ -2201,7 +2211,7 @@ static JILBool IsTestEqual(CodeBlock* _this, JILLong addr, OpcodeInfo* pInfo)
 // Inserts code that saves all modified registers at the start of the function
 // and restores all saved registers at the end.
 
-static JILError InsertRegisterSaving(JCLFunc* pFunc)
+static JILError InsertRegisterSaving(JCLFunc* pFunc, JCLState* pCompiler)
 {
 	JILError err = JCL_No_Error;
 	JILLong numRegsToSave;
@@ -2216,7 +2226,7 @@ static JILError InsertRegisterSaving(JCLFunc* pFunc)
 	if( numRegsToSave == 0 )
 		return err;
 	// fix all stack offsets accordingly
-	FixStackOffsetsInBranch(_this, 0, _this->count, numRegsToSave, 0);
+	FixStackOffsetsInBranch(_this, 0, _this->count, numRegsToSave, 0, NULL);
 	// insert push code at start of function
 	if( numRegsToSave == 1 )
 	{
@@ -2796,7 +2806,7 @@ static JILError OptimizeRegisterSaving(JCLFunc* pFunc, OptimizeReport* pReport)
 	if( fixupCount )
 	{
 		pReport->numPasses++;
-		FixStackOffsetsInBranch(_this, 0, _this->count, fixupCount, 0);
+		FixStackOffsetsInBranch(_this, 0, _this->count, fixupCount, 0, NULL);
 	}
 	return err;
 }
