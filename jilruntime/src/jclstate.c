@@ -45,7 +45,6 @@ COMPILER TODO:
 	Feature ideas:
 	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 	* Indexer function: object[index] is compiled as call to method <type> indexer (int i);
-	* Compiler option "defaultfloat": (interpret all numeric literals as float by default, useful for calculators)
 	* Lambda expressions: (arg1, arg2) => <expr> (compiles <expr> into a function with a single return statement)
 	* Native structures: struct MyStruct { int a; float b; string c; } (object that is binary compatible to a C-Struct and can be manipulated
 		by script. self-contained memory-block, no pointers or references allowed, even when nesting structs. Limited to int, float, string,
@@ -2960,7 +2959,7 @@ static JILBool AllMembersInited(JCLState* _this, JILLong typeID, JCLString* pArg
 static JCLFile* PushImport(JCLState* _this, const JCLString* pClassName, const JCLString* pText, const JCLString* pPath, JILBool native)
 {
 	JCLFile* pImport = _this->mipImportStack->New(_this->mipImportStack);
-	pImport->Open(pImport, JCLGetString(pClassName), JCLGetString(pText), JCLGetString(pPath));
+	pImport->Open(pImport, JCLGetString(pClassName), JCLGetString(pText), JCLGetString(pPath), GetOptions(_this));
 	pImport->miNative = native;
 	return pImport;
 }
@@ -5897,6 +5896,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 	JILLong tokenID;
 	JILLong tokenID2;
 	JILLong savePos;
+	JILLong typeID;
 	JILBool litIsNegative = JILFalse;
 	TypeInfo outType;
 
@@ -5929,14 +5929,17 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 	switch( tokenID )
 	{
 		case tk_lit_int:
-			tokenID = type_int;
+			typeID = type_int;
 			if( pLVar && (pLVar->miType == type_int || pLVar->miType == type_float) )
-				tokenID = pLVar->miType;
-			err = cg_get_literal(_this, tokenID, pToken, pLVar, ppVarOut, ppTempVar, litIsNegative);
+				typeID = pLVar->miType;
+			err = cg_get_literal(_this, typeID, pToken, pLVar, ppVarOut, ppTempVar, litIsNegative);
 			ERROR_IF(err, err, NULL, goto exit);
 			break;
 		case tk_lit_float:
-			err = cg_get_literal(_this, type_float, pToken, pLVar, ppVarOut, ppTempVar, litIsNegative);
+			typeID = type_float;
+			if( pLVar && (pLVar->miType == type_int || pLVar->miType == type_float) )
+				typeID = pLVar->miType;
+			err = cg_get_literal(_this, typeID, pToken, pLVar, ppVarOut, ppTempVar, litIsNegative);
 			ERROR_IF(err, err, NULL, goto exit);
 			break;
 		case tk_lit_string:

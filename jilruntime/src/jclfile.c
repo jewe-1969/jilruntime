@@ -19,6 +19,7 @@
 #include "jclstring.h"
 #include "jclvar.h"
 #include "jclfile.h"
+#include "jcloption.h"
 
 //------------------------------------------------------------------------------
 // the keyword list
@@ -176,7 +177,7 @@ static const JILChar* kOctDigitChars =		"01234567";
 // internal functions
 //------------------------------------------------------------------------------
 
-static JILError		open_JCLFile		(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath);
+static JILError		open_JCLFile		(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath, JCLOption* pOptions);
 static JILError		getToken_JCLFile	(JCLFile* _this, JCLString* pToken, JILLong* pTokenID);
 static JILError		peekToken_JCLFile	(JCLFile* _this, JCLString* pToken, JILLong* pTokenID);
 static JILLong		getLocator_JCLFile	(JCLFile* _this);
@@ -213,6 +214,7 @@ void create_JCLFile( JCLFile* _this )
 	_this->mipText = NULL;
 	_this->mipPath = NULL;
 	_this->mipTokens = NULL;
+	_this->mipOtions = NULL;
 	_this->miLocator = 0;
 	_this->miPass = 0;
 	_this->miNative = JILFalse;
@@ -244,7 +246,7 @@ void copy_JCLFile( JCLFile* _this, const JCLFile* src )
 // JCLFile::Open
 //------------------------------------------------------------------------------
 
-static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath)
+static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath, JCLOption* pOptions)
 {
 	JILError err = JCL_No_Error;
 	JCLString* pToken = NEW(JCLString);
@@ -256,6 +258,7 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	_this->mipText = NEW(JCLString);
 	_this->mipPath = NEW(JCLString);
 	_this->mipTokens = NEW(Array_JCLFileToken);
+	_this->mipOtions = pOptions;
 	_this->miLocator = 0;
 	// copy arguments
 	JCLSetString(_this->mipName, pName);
@@ -285,6 +288,7 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	if( err == JCL_ERR_End_Of_File )
 		err = JCL_No_Error;
 	DELETE(pToken);
+	_this->mipOtions = NULL;
 	return err;
 }
 
@@ -404,7 +408,7 @@ static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 		JILLong type;
 		// check if long or float number, scan in the token and return tk_lit_int or tk_lit_float!
 		JCLSpanNumber(_this->mipText, pToken, &type);
-		*pTokenID = (type == 0) ? tk_lit_int : tk_lit_float;
+		*pTokenID = (type || _this->mipOtions->miDefaultFloat) ? tk_lit_float : tk_lit_int;
 	}
 	else if( IsCharType(c, kCharacterChars) )
 	{

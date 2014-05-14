@@ -111,7 +111,7 @@ static JILError JCLBeginCompile(JILState* pVM, const JILChar* pName, const JILCh
 	// create a new file object
 	pFile = _this->mipFile = NEW(JCLFile);
 	// open it
-	err = pFile->Open(pFile, pName, pText, pPath);
+	err = pFile->Open(pFile, pName, pText, pPath, GetGlobalOptions(_this));
 	if( !err )
 	{
 		err = cg_resume_intro(_this);

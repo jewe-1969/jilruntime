@@ -51,6 +51,7 @@ DECL_CLASS( JCLOption )
 	JILLong				miOptimizeLevel;	///< optimization level
 	JILBool				miUseRTCHK;			///< use runtime type checking
 	JILBool				miAllowFileImport;	///< allow import of additional scripts from local filesys
+	JILBool				miDefaultFloat;		///< interpret all numeric literals as float
 	JILLong				miErrorFormat;		///< error and warning output format
 	JCLString*			mipFileExt;			///< script file extension to use for import
 	Array_JILLong*		mipUsing;			///< list for using statement
