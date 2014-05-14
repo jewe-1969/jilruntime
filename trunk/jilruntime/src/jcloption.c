@@ -36,6 +36,7 @@ enum
 	opt_file_ext,
 	opt_file_import,
 	opt_error_format,
+	opt_default_float
 };
 
 //------------------------------------------------------------------------------
@@ -52,6 +53,7 @@ const JCLToken kOptionTokenList[] =
 	opt_file_ext,			"file-ext",
 	opt_file_import,		"file-import",
 	opt_error_format,		"error-format",
+	opt_default_float,		"default-float",
 
 	0,						NULL
 };
@@ -93,6 +95,7 @@ void create_JCLOption( JCLOption* _this )
 	_this->miUseRTCHK = JILTrue;
 	_this->miAllowFileImport = JIL_USE_LOCAL_FILESYS;
 	_this->miErrorFormat = kErrorFormatDefault;
+	_this->miDefaultFloat = JILFalse;
 	_this->mipFileExt = NEW(JCLString);
 	JCLSetString(_this->mipFileExt, "jc");
 	_this->mipUsing = NEW( Array_JILLong );
@@ -134,6 +137,7 @@ void copy_JCLOption(JCLOption* _this, const JCLOption* src)
 	_this->miOptimizeLevel = src->miOptimizeLevel;
 	_this->miUseRTCHK = src->miUseRTCHK;
 	_this->miAllowFileImport = src->miAllowFileImport;
+	_this->miDefaultFloat = src->miDefaultFloat;
 	_this->miErrorFormat = src->miErrorFormat;
 	_this->mipFileExt->Copy(_this->mipFileExt, src->mipFileExt);
 	_this->mipUsing->Copy(_this->mipUsing, src->mipUsing);
@@ -196,6 +200,9 @@ static JILError parseOption_JCLOption(JCLOption* _this, const JCLString* str, JI
 			break;
 		case opt_error_format:
 			err = SetErrorFormat(_this, pValue);
+			break;
+		case opt_default_float:
+			err = SetStdIntValue(&_this->miDefaultFloat, 0, 1, pValue);
 			break;
 		default:
 			err = proc(user, JCLGetString(pName), JCLGetString(pValue));
