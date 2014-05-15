@@ -770,8 +770,9 @@ JILError JILDynamicConvert(JILState* ps, JILLong dType, JILHandle* sObj, JILHand
 		{
 			case type_null:
 			{
-				pStr = "null";
-				goto use_buf;
+				JILAddRef(sObj);
+				*ppOut = sObj;
+				break;
 			}
 			case type_int:
 			{
