@@ -78,8 +78,8 @@ static JILError EnumerateNodeRecursive(JILState*, const JILTableNode*, JILHandle
 static JILError MarkNodeRecursive(JILState*, const JILTableNode*);
 static JILLong FreeEmptyNodeRecursive(JILTable*, JILTableNode*);
 static JILError AddToArrayRecursive(const JILTableNode*, JILArray*);
-static JILError AddToListRecursive(const JILTableNode*, JILString*, JILLong, JILBool, JILList*);
-static JILError MergeNodeRecursive(const JILTableNode*, JILTableMergeData*, JILString*, JILLong, JILBool);
+static JILError AddToListRecursive(const JILTableNode*, JILString*, JILLong, JILList*);
+static JILError MergeNodeRecursive(const JILTableNode*, JILTableMergeData*, JILString*, JILLong);
 
 //------------------------------------------------------------------------------
 // function index numbers
@@ -132,6 +132,8 @@ static const char*		kClassName		=	"table";
 static const char*		kAuthorName		=	"www.jewe.org";
 static const char*		kAuthorString	=	"A hashtable class for JewelScript.";
 static const char*		kTimeStamp		=	"02/15/2007";
+
+static const int		kMaxKeyBufferLength = 256;
 
 //------------------------------------------------------------------------------
 // forward declare static functions
@@ -538,20 +540,32 @@ JILError JILTable_ToList(JILTable* _this, JILList* pList)
 {
 	JILError err;
 	JILString* pKey;
-	JILLong i;
 	if (_this->mode != kTableModeManaged)
 		return JIL_ERR_Unsupported_Native_Call;
 	pKey = JILString_New(_this->pState);
-	for( i = 0; i < 16; i++ )
-	{
-		if( _this->pNode->p[i] )
-		{
-			err = AddToListRecursive(_this->pNode->p[i], pKey, i, JILFalse, pList);
-			if( err )
-				break;
-		}
-	}
+	JILString_SetSize(pKey, kMaxKeyBufferLength);
+	err = AddToListRecursive(_this->pNode, pKey, 0, pList);
 	JILString_Delete(pKey);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JILTable_Merge
+//------------------------------------------------------------------------------
+
+static JILError JILTable_Merge(JILTableMergeData* pData)
+{
+	JILError err = JIL_No_Exception;
+	JILString* pKey;
+	JILTable* pReference;
+	pReference = JILTable_NewNativeUnmanaged(pData->pState);
+	CopyNodeStructure(pData->pState, pData->pTableL->pNode, &pReference->pNode);
+	CopyNodeStructure(pData->pState, pData->pTableR->pNode, &pReference->pNode);
+	pKey = JILString_New(pData->pState);
+	JILString_SetSize(pKey, kMaxKeyBufferLength);
+	err = MergeNodeRecursive(pReference->pNode, pData, pKey, 0);
+	JILString_Delete(pKey);
+	JILTable_Delete(pReference);
 	return err;
 }
 
@@ -652,34 +666,6 @@ void JILTable_SetItem(JILTable* _this, const JILChar* pKey, JILUnknown* pData)
 }
 
 //------------------------------------------------------------------------------
-// JILTable_Merge
-//------------------------------------------------------------------------------
-
-static JILError JILTable_Merge(JILTableMergeData* pData)
-{
-	JILError err = JIL_No_Exception;
-	JILString* pKey;
-	JILLong i;
-	JILTable* pReference;
-	pReference = JILTable_NewNativeUnmanaged(pData->pState);
-	CopyNodeStructure(pData->pState, pData->pTableL->pNode, &pReference->pNode);
-	CopyNodeStructure(pData->pState, pData->pTableR->pNode, &pReference->pNode);
-	pKey = JILString_New(pData->pState);
-	for( i = 0; i < 16; i++ )
-	{
-		if( pReference->pNode->p[i] )
-		{
-			err = MergeNodeRecursive(pReference->pNode->p[i], pData, pKey, i, JILFalse);
-			if( err )
-				break;
-		}
-	}
-	JILString_Delete(pKey);
-	JILTable_Delete(pReference);
-	return err;
-}
-
-//------------------------------------------------------------------------------
 // DestroyNodeRecursive
 //------------------------------------------------------------------------------
 // Helper function to destroy the table.
@@ -691,8 +677,19 @@ static void DestroyNodeRecursive(JILTable* pTable, JILTableNode* pNode)
 		JILLong i;
 		for( i = 0; i < 16; i++ )
 		{
-			DestroyNodeRecursive(pTable, pNode->p[i]);
-			pNode->p[i] = NULL;
+			if( pNode->p[i] )
+			{
+				JILLong j;
+				JILTableNode* pNode2 = pNode->p[i];
+				for( j = 0; j < 16; j++ )
+				{
+					if( pNode2->p[j] )
+					{
+						DestroyNodeRecursive(pTable, pNode2->p[j]);
+					}
+				}
+				pTable->pState->vmFree(pTable->pState, pNode2);
+			}
 		}
 		if( pNode->pData )
 		{
@@ -704,7 +701,6 @@ static void DestroyNodeRecursive(JILTable* pTable, JILTableNode* pNode)
 			{
 				pTable->pDestructor(pNode->pData);
 			}
-			pNode->pData = NULL;
 		}
 		pTable->pState->vmFree(pTable->pState, pNode);
 	}
@@ -766,25 +762,39 @@ static void CopyNodeStructure(JILState* pVM, const JILTableNode* pSrc, JILTableN
 //------------------------------------------------------------------------------
 // Calls a delegate for every item in this table. Obviously does not work in native mode.
 
-static JILError EnumerateNodeRecursive(JILState* pVM, const JILTableNode* pSrc, JILHandle* pDelegate, JILHandle* pArgs)
+static JILError EnumerateNodeRecursive(JILState* pVM, const JILTableNode* pNode, JILHandle* pDelegate, JILHandle* pArgs)
 {
 	JILError err = JIL_No_Exception;
-	if( pSrc )
+	JILLong i, j;
+	const JILTableNode* pNode2;
+	if( pNode )
 	{
-		JILLong i;
-		for( i = 0; i < 16; i++ )
+		if( pNode->pData )
 		{
-			err = EnumerateNodeRecursive(pVM, pSrc->p[i], pDelegate, pArgs);
-			if( err )
-				return err;
-		}
-		if( pSrc->pData )
-		{
-			JILHandle* pResult = JILCallFunction(pVM, pDelegate, 2, kArgHandle, pSrc->pData, kArgHandle, pArgs);
+			JILHandle* pResult = JILCallFunction(pVM, pDelegate, 2, kArgHandle, pNode->pData, kArgHandle, pArgs);
 			err = NTLHandleToError(pVM, pResult);
 			NTLFreeHandle(pVM, pResult);
+			if( err )
+				goto exit;
+		}
+		for( i = 0; i < 16; i++ )
+		{
+			if( pNode->p[i] )
+			{
+				pNode2 = pNode->p[i];
+				for( j = 0; j < 16; j++ )
+				{
+					if( pNode2->p[j] )
+					{
+						err = EnumerateNodeRecursive(pVM, pNode2->p[j], pDelegate, pArgs);
+						if( err )
+							goto exit;
+					}
+				}
+			}
 		}
 	}
+exit:
 	return err;
 }
 
@@ -874,41 +884,43 @@ static JILError AddToArrayRecursive(const JILTableNode* pSrc, JILArray* pArray)
 //------------------------------------------------------------------------------
 // Helper function to add all table items to a list.
 
-static JILError AddToListRecursive(const JILTableNode* pSrc, JILString* pKey, JILLong nibble, JILBool isByte, JILList* pList)
+static JILError AddToListRecursive(const JILTableNode* pNode, JILString* pKey, JILLong pos, JILList* pList)
 {
 	JILError err = JIL_No_Exception;
-	JILLong i;
-	JILHandle* newKey;
-	JILString* keyStr;
-	JILString* pKeyCopy = pKey;
+	JILLong i, j;
+	const JILTableNode* pNode2;
+	JILHandle* hNewKey;
+	JILString* pKeyStr;
 	JILState* ps = pList->pState;
-	if( isByte )
+	if( pNode )
 	{
-		pKeyCopy = JILString_Copy(pKey);
-		JILString_AppendChar(pKeyCopy, nibble);
-	}
-	for( i = 0; i < 16; i++ )
-	{
-		if( pSrc->p[i] )
+		if( pNode->pData )
 		{
-			err = AddToListRecursive(pSrc->p[i], pKeyCopy, (nibble << 4 | i) & 0xFF, !isByte, pList);
-			if( err )
-				goto exit;
+			pKey->string[pos] = 0;
+			pKeyStr = JILString_Copy(pKey);
+			hNewKey = NTLNewHandleForObject(ps, type_string, pKeyStr);
+			JILList_Add(pList, hNewKey, pNode->pData);
+			NTLFreeHandle(ps, hNewKey);
+		}
+		for( i = 0; i < 16; i++ )
+		{
+			if( pNode->p[i] )
+			{
+				pNode2 = pNode->p[i];
+				for( j = 0; j < 16; j++ )
+				{
+					if( pNode2->p[j] )
+					{
+						pKey->string[pos] = (i << 4 | j);
+						err = AddToListRecursive(pNode2->p[j], pKey, pos + 1, pList);
+						if( err )
+							goto exit;
+					}
+				}
+			}
 		}
 	}
-	if( pSrc->pData )
-	{
-		keyStr = JILString_Copy(pKeyCopy);
-		newKey = NTLNewHandleForObject(ps, type_string, keyStr);
-		JILList_Add(pList, newKey, pSrc->pData);
-		NTLFreeHandle(ps, newKey);
-	}
-
 exit:
-	if( isByte )
-	{
-		JILString_Delete(pKeyCopy);
-	}
 	return err;
 }
 
@@ -916,47 +928,51 @@ exit:
 // MergeNodeRecursive
 //------------------------------------------------------------------------------
 
-static JILError MergeNodeRecursive(const JILTableNode* pNode, JILTableMergeData* pData, JILString* pKey, JILLong nibble, JILBool isByte)
+static JILError MergeNodeRecursive(const JILTableNode* pNode, JILTableMergeData* pData, JILString* pKey, JILLong pos)
 {
 	JILError err = JIL_No_Exception;
-	JILLong i;
+	JILLong i, j;
+	const JILTableNode* pNode2;
 	JILHandle* hNewKey;
 	JILHandle* hException;
-	JILString* keyStr;
-	JILString* pKeyCopy = pKey;
+	JILString* pKeyStr;
 	JILState* ps = pData->pState;
-	if( isByte )
+	if( pNode )
 	{
-		pKeyCopy = JILString_Copy(pKey);
-		JILString_AppendChar(pKeyCopy, nibble);
-	}
-	for( i = 0; i < 16; i++ )
-	{
-		if( pNode->p[i] )
+		if( pNode->pData )
 		{
-			err = MergeNodeRecursive(pNode->p[i], pData, pKeyCopy, (nibble << 4 | i) & 0xFF, !isByte);
+			pKey->string[pos] = 0;
+			pKeyStr = JILString_Copy(pKey);
+			hNewKey = NTLNewHandleForObject(ps, type_string, pKeyStr);
+			hException = JILCallFunction(ps, pData->hDelegate, 4,
+				kArgHandle, hNewKey,
+				kArgHandle, pData->hTableL,
+				kArgHandle, pData->hTableR,
+				kArgHandle, pData->hResult);
+			err = NTLHandleToError(ps, hException);
+			NTLFreeHandle(ps, hException);
+			NTLFreeHandle(ps, hNewKey);
 			if( err )
 				goto exit;
 		}
+		for( i = 0; i < 16; i++ )
+		{
+			if( pNode->p[i] )
+			{
+				pNode2 = pNode->p[i];
+				for( j = 0; j < 16; j++ )
+				{
+					if( pNode2->p[j] )
+					{
+						pKey->string[pos] = (i << 4 | j);
+						err = MergeNodeRecursive(pNode2->p[j], pData, pKey, pos + 1);
+						if( err )
+							goto exit;
+					}
+				}
+			}
+		}
 	}
-	if( pNode->pData )
-	{
-		keyStr = JILString_Copy(pKeyCopy);
-		hNewKey = NTLNewHandleForObject(ps, type_string, keyStr);
-		hException = JILCallFunction(ps, pData->hDelegate, 4,
-			kArgHandle, hNewKey,
-			kArgHandle, pData->hTableL,
-			kArgHandle, pData->hTableR,
-			kArgHandle, pData->hResult);
-		err = NTLHandleToError(ps, hException);
-		NTLFreeHandle(ps, hException);
-		NTLFreeHandle(ps, hNewKey);
-	}
-
 exit:
-	if( isByte )
-	{
-		JILString_Delete(pKeyCopy);
-	}
 	return err;
 }
