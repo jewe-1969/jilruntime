@@ -174,6 +174,7 @@ JILError JILRegisterNativeType(JILState* pState, JILTypeProc proc)
 		// if null or error we fail
 		if( err || pClassName == NULL )
 			goto exit;
+		err = JIL_ERR_Register_Type_Failed;
 		// try to allocate a type list item
 		pItem = JILNewNativeType( pState, pClassName, proc );
 		// if we get a null pointer the class name is invalid or already taken
