@@ -33,7 +33,7 @@ static const JILLong kFormatWorstCaseBufferSize = 16384;
 
 static void Reallocate(JCLString* _this, JILLong newSize, JILLong keepData);
 static void Deallocate(JCLString* _this);
-static int StrEquNoCase(const JILChar* str1, const JILChar* str2);
+static JILBool StrEquNoCase(const JILChar* str1, const JILChar* str2);
 
 //------------------------------------------------------------------------------
 // JCLString
@@ -111,7 +111,7 @@ void JCLSetString(JCLString* _this, const JILChar* string)
 //------------------------------------------------------------------------------
 // Returns true (1) if the strings are equal, false (0) if they are not.
 
-JILLong JCLCompare(const JCLString* _this, const JCLString* Other)
+JILBool JCLCompare(const JCLString* _this, const JCLString* Other)
 {
 	return (strcmp(JCLGetString(_this), JCLGetString( (JCLString*) Other )) == 0);
 }
@@ -121,7 +121,7 @@ JILLong JCLCompare(const JCLString* _this, const JCLString* Other)
 //------------------------------------------------------------------------------
 // JCLCompare strings ignoring the case.
 
-JILLong JCLCompareNoCase(const JCLString* _this, const JCLString* Other)
+JILBool JCLCompareNoCase(const JCLString* _this, const JCLString* Other)
 {
 	return StrEquNoCase(JCLGetString(_this), JCLGetString( (JCLString*) Other ));
 }
@@ -937,7 +937,7 @@ static void Deallocate(JCLString* _this)
 //------------------------------------------------------------------------------
 // Compares two strings, but ignores the case of characters "A" to "Z".
 
-static int StrEquNoCase(const JILChar* str1, const JILChar* str2)
+static JILBool StrEquNoCase(const JILChar* str1, const JILChar* str2)
 {
 	register int c1;
 	register int c2;

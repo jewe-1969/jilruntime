@@ -197,6 +197,7 @@ static JILError		FindCopyCtor		(JCLState*, JCLVar*, JCLFunc**);
 static JILLong		FindAccessor		(JCLState*, JILLong, const JCLString*, JILLong, JCLFunc**);
 static JILBool		FindSetAccessor		(JCLState*, JILLong, const JCLString*, JCLVar*, JCLFunc**);
 static JILBool		FindGetAccessor		(JCLState*, JILLong, const JCLString*, JCLVar*, JCLFunc**);
+static JILLong		FindInNamespace		(JCLState*, const JCLString*, JCLClass**);
 static void			SimStackFixup		(JCLState*, JILLong);
 static void			SimStackPush		(JCLState*, JCLVar*, JILBool);
 static JILLong		SimStackReserve		(JCLState*, JILLong);
@@ -264,7 +265,8 @@ static JILBool		IsInterfaceType		(JCLState*, JILLong);
 static JILBool		IsValueType			(JCLState*, JILLong);
 static JILBool		IsTypeCopyable		(JCLState*, JILLong);
 static JILBool		IsGlobalScope		(JCLState*, JILLong);
-static JILBool		IsClassToken		(JILLong token);
+static JILBool		IsClassToken		(JILLong);
+static JILBool		IsTypeToken			(JILLong);
 static JILBool		IsTypeName			(JCLState*, JILLong, const JCLString*, TypeInfo*);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
@@ -275,11 +277,13 @@ static JILBool		IsFullQualified		(JCLState*, const JCLString*);
 static void			MakeFullQualified	(JCLState*, JCLString*, const JCLString*);
 static void			MakeUnqualified		(JCLState*, JCLString*, const JCLString*);
 static void			GetParentNamespace	(JCLState*, JCLString*, const JCLString*);
+static void			RemoveParentNamespace(JCLState*, JCLString*, const JCLString*);
+static JILBool		CompareUnqualified	(JCLState*, const JCLString*, const JCLString*);
 static void			SetCurrentNamespace	(JCLState*, JCLString*);
 static JCLString*	GetCurrentNamespace	(JCLState*);
 static void			PushOptions			(JCLState*);
 static void			PopOptions			(JCLState*);
-static JILLong		StringToType		(JCLState*, const JCLString*, JILLong);
+static JILLong		StringToType		(JCLState*, const JCLString*);
 static JILError		IsFullTypeDecl		(JCLState*, JCLString*, JCLVar*, JILBool);
 static JILError		CreateCofunction	(JCLState*, JCLVar*, Array_JCLVar*, JILLong*);
 static JILError		CreateDelegate		(JCLState*, JCLVar*, Array_JCLVar*, JILLong*);
@@ -421,7 +425,7 @@ static JILError		p_array_init		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCL
 static JILError		p_new_basic_type	(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILLong);
 static JILError		p_new_copy_ctor		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILBool*);
 static JILError		p_do_while			(JCLState*, Array_JCLVar*);
-static JILError		p_global_decl		(JCLState*, JCLVar*, JCLString*);
+static JILError		p_global_decl		(JCLState*, JCLVar*);
 static JILError		p_interface			(JCLState*, JILLong);
 static JILError		p_accessor_call		(JCLState*, Array_JCLVar*, JCLFunc*, JCLVar*, JCLVar*, TypeInfo*);
 static JILError		p_skip_braces		(JCLState*, JILLong, JILLong);
@@ -881,6 +885,50 @@ JILLong FindClass( JCLState* _this, const JCLString* pName, JCLClass** ppClass )
 	}
 	*ppClass = NULL;
 	return 0;
+}
+
+//------------------------------------------------------------------------------
+// FindInNamespace
+//------------------------------------------------------------------------------
+// Find a type in the current namespace OR all it's parent namespaces. The name
+// can be full qualified or unqualified.
+
+static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass** ppClass)
+{
+	/*
+	TODO: Support partial namespaces?
+	The commented out code ensures that the user can only use either a single type name, or a full qualified name, no partial names.
+	But this is inconvenient, since it will force us to always specify the full qualified name of a type that is not in our own class.
+	For now, we support partial namespaces. If this should prove too undeterministic, we should comment the code below back in.
+	*/
+	//if( IsFullQualified(_this, pName) )
+	//{
+	//	return FindClass(_this, pName, ppClass);
+	//}
+	//else
+	{
+		JILLong index = 0;
+		JCLString* pFullName = NEW(JCLString);
+		JCLString* pCurrentNamespace = NEW(JCLString);
+		pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
+		while( JCLGetLength(pCurrentNamespace) )
+		{
+			JCLSetString(pFullName, JCLGetString(pCurrentNamespace));
+			JCLAppend(pFullName, "::");
+			JCLAppend(pFullName, JCLGetString(pName));
+			index = FindClass(_this, pFullName, ppClass);
+			if( index )
+				break;
+			GetParentNamespace(_this, pCurrentNamespace, pCurrentNamespace);
+		}
+		if( index == 0 )
+		{
+			index = FindClass(_this, pName, ppClass);
+		}
+		DELETE(pFullName);
+		DELETE(pCurrentNamespace);
+		return index;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -1689,6 +1737,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 				if( src )
 				{
 					pVar->Copy(pVar, src);
+					JCLClear(pVar->mipName);
 					pVar->miMode = kModeUnused;
 					pVar->miIniType = pVar->miType;
 				}
@@ -3167,9 +3216,19 @@ static JILBool IsGlobalScope(JCLState* pState, JILLong typeID)
 //------------------------------------------------------------------------------
 // Checks if the given token is allowed as a class name.
 
-static JILBool IsClassToken	(JILLong token)
+static JILBool IsClassToken(JILLong token)
 {
 	return (token == tk_identifier || token == tk_string || token == tk_array);
+}
+
+//------------------------------------------------------------------------------
+// IsTypeToken
+//------------------------------------------------------------------------------
+// Checks if the given token is a type name.
+
+static JILBool IsTypeToken(JILLong token)
+{
+	return (IsClassToken(token) || token == tk_int || token == tk_float || token == tk_var);
 }
 
 //------------------------------------------------------------------------------
@@ -3197,7 +3256,7 @@ static JILBool IsTypeName(JCLState* _this, JILLong token, const JCLString* pName
 		case tk_identifier:
 		{
 			// check name
-			JILLong type = StringToType(_this, pName, token);
+			JILLong type = StringToType(_this, pName);
 			if( type != type_null )
 				JCLSetTypeInfo(pOut, type, JILFalse, JILFalse, JILFalse, type_var, JILFalse);
 			else
@@ -3301,9 +3360,13 @@ static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLStri
 	}
 	else
 	{
+		// copy source, in case source == dest
+		JCLString* newSrc = NEW(JCLString);
+		newSrc->Copy(newSrc, pIdentifier);
 		JCLSetString(pResult, JCLGetString(_this->mipNamespace));
 		JCLAppend(pResult, "::");
-		JCLAppend(pResult, JCLGetString(pIdentifier));
+		JCLAppend(pResult, JCLGetString(newSrc));
+		DELETE(newSrc);
 	}
 }
 
@@ -3342,6 +3405,39 @@ static void GetParentNamespace(JCLState* _this, JCLString* pResult, const JCLStr
 	{
 		JCLClear(pResult);
 	}
+}
+
+//------------------------------------------------------------------------------
+// RemoveParentNamespace
+//------------------------------------------------------------------------------
+// Removes the parent namespace from the given full qualified identifier.
+
+static void RemoveParentNamespace(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
+{
+	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
+	if( pos >= 0 )
+	{
+		JCLSubString(pResult, pIdentifier, pos + 1, JCLGetLength(pIdentifier) - pos - 1);
+	}
+	else
+	{
+		JCLSetString(pResult, JCLGetString(pIdentifier));
+	}
+}
+
+//------------------------------------------------------------------------------
+// CompareUnqualified
+//------------------------------------------------------------------------------
+// Makes the first identifier unqualified and compares it to the second.
+
+static JILBool CompareUnqualified(JCLState* _this, const JCLString* fullqual, const JCLString* unqual)
+{
+	JILBool result;
+	JCLString* str = NEW(JCLString);
+	RemoveParentNamespace(_this, str, fullqual);
+	result = JCLCompare(str, unqual);
+	DELETE(str);
+	return result;
 }
 
 //------------------------------------------------------------------------------
@@ -3434,68 +3530,11 @@ static void PopOptions(JCLState* _this)
 //------------------------------------------------------------------------------
 // Helper function for IsFullTypeDecl
 
-static JILLong StringToType(JCLState* _this, const JCLString* pToken, JILLong tokenID)
+static JILLong StringToType(JCLState* _this, const JCLString* pToken)
 {
 	JILLong type = type_null;
-	switch( tokenID )
-	{
-		case tk_int:
-			type = type_int;
-			break;
-		case tk_float:
-			type = type_float;
-			break;
-		case tk_var:
-			type = type_var;
-			break;
-		case tk_string:
-			type = type_string;
-			break;
-		case tk_array:
-			type = type_array;
-			break;
-		case tk_identifier:
-		{
-			JCLClass* pClass;
-			// check for mangled type in current class first
-			if( !IsGlobalScope(_this, _this->miClass) )
-			{
-				JCLClass* pCurClass = CurrentClass(_this);
-				JCLString* pName = NEW(JCLString);
-				JCLSetString(pName, JCLGetString(pCurClass->mipName));
-				JCLAppend(pName, "::");
-				JCLAppend(pName, JCLGetString(pToken));
-				FindClass(_this, pName, &pClass);
-				if( pClass )
-				{
-					type = pClass->miType;
-				}
-				else if( HasParentType(_this, _this->miClass) )
-				{
-					// check inside parent class too
-					pClass = GetClass(_this, GetParentType(_this, _this->miClass));
-					JCLSetString(pName, JCLGetString(pClass->mipName));
-					JCLAppend(pName, "::");
-					JCLAppend(pName, JCLGetString(pToken));
-					FindClass(_this, pName, &pClass);
-					if( pClass )
-					{
-						type = pClass->miType;
-					}
-				}
-				DELETE(pName);
-			}
-			// if not found, check for unmangled type
-			if( type == type_null )
-			{
-				FindClass(_this, pToken, &pClass);
-				if( pClass )
-					type = pClass->miType;
-			}
-			break;
-		}
-	}
-	return type;
+	JCLClass* pClass;
+	return FindInNamespace(_this, pToken, &pClass);
 }
 
 //------------------------------------------------------------------------------
@@ -3526,40 +3565,53 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 
 	pFile = _this->mipFile;
 
+	// check for const
+	savePos = pFile->GetLocator(pFile);
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	if( err )
 		goto exit;
-	// check for const
 	if( tokenID == tk_const )
 	{
 		pVar->miConst = JILTrue;
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		if( err )
-			goto exit;
+	}
+	else
+	{
+		pFile->SetLocator(pFile, savePos);
 	}
 	// check for weak
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	if( err )
+		goto exit;
 	if( tokenID == tk_weak )
 	{
 		pVar->miWeak = JILTrue;
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		if( err )
-			goto exit;
+	}
+	else
+	{
+		pFile->SetLocator(pFile, savePos);
 	}
 	// check for type identifier
-	type1 = StringToType(_this, pToken, tokenID);
+	err = p_full_qualified(_this, pToken);
+	if( err )
+	{
+		err = JCL_ERR_No_Type_Declaration;
+		goto exit;
+	}
+	type1 = StringToType(_this, pToken);
 	if( type1 == type_null )
 	{
 		err = JCL_ERR_No_Type_Declaration;
 		goto exit;
 	}
-	// check if there is a "(" or "::" behind the identifier
+	// check if there is a "(" behind the identifier
 	savePos = pFile->GetLocator(pFile);
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	if( err )
 		goto exit;
 	nextPos = pFile->GetLocator(pFile);
 	pFile->SetLocator(pFile, savePos);
-	if( tokenID == tk_round_open || tokenID == tk_scope )
+	if( tokenID == tk_round_open )
 	{
 		// looks like we ran into a function call or something
 		err = JCL_ERR_No_Type_Declaration;
@@ -4095,7 +4147,7 @@ static JILError p_root(JCLState* _this)
 				ERROR_IF(err, err, pToken, goto exit);
 				if( _this->miPass == kPassPrecompile )
 				{
-					err = p_global_decl(_this, pVar, NULL);
+					err = p_global_decl(_this, pVar);
 				}
 				else if( _this->miPass == kPassCompile )
 				{
@@ -4132,9 +4184,8 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	JCLString* pToken;
 	JCLString* pClassName;
 	JCLString* pIfaceName;
-	JCLString* pOldNamespace;
+	JCLString* pOldNS;
 	JILLong tokenID;
-//	JILLong classToken;
 	JILLong classIdx;
 	JILLong savePos;
 	JILLong strict;
@@ -4142,7 +4193,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	pVar = NEW(JCLVar);
 	pClassName = NEW(JCLString);
 	pIfaceName = NEW(JCLString);
-	pOldNamespace = GetCurrentNamespace(_this);
+	pOldNS = GetCurrentNamespace(_this);
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
@@ -4150,7 +4201,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	// we expect to find a class name
 	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-//	ERROR_IF(!IsClassToken(classToken), JCL_ERR_Unexpected_Token, pToken, goto exit);
+	// don't allow full qualified name inside namespace
+	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
+		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	MakeFullQualified(_this, pClassName, pToken);
 
 	// peek for ';'
@@ -4292,7 +4345,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 exit:
 	// MUST! go back to "global" class
 	SetCompileContext(_this, type_global, 0);
-	SetCurrentNamespace(_this, pOldNamespace);
+	SetCurrentNamespace(_this, pOldNS);
 	DELETE( pToken );
 	DELETE( pClassName );
 	DELETE( pIfaceName );
@@ -4342,7 +4395,6 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
-	JILLong tokenID;
 	JCLString* pIfaceName;
 	JCLString* pClassName;
 	JCLClass* pSrcClass;
@@ -4361,9 +4413,9 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 	bStrict = (pClass->miModifier & kModiStrict);
 
 	// we expect an identifier
-	err = pFile->GetToken(pFile, pIfaceName, &tokenID);
+	err = p_full_qualified(_this, pIfaceName);
 	ERROR_IF(err, err, pIfaceName, goto exit);
-	ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pIfaceName, goto exit);
+	MakeFullQualified(_this, pIfaceName, pIfaceName);
 	FindClass(_this, pIfaceName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pIfaceName, goto exit);
 	ERROR_IF(pSrcClass->miFamily != tf_interface, JCL_ERR_Type_Not_Interface, pIfaceName, goto exit);
@@ -4424,7 +4476,6 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
-	JILLong tokenID;
 	JCLString* pToken;
 	JCLString* pBaseName;
 	JCLClass* pSrcClass;
@@ -4446,9 +4497,9 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 	// not allowed with 'native' class declaration
 	ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_With_Hybrid, NULL, goto exit);
 	// we expect an identifier
-	err = pFile->GetToken(pFile, pBaseName, &tokenID);
+	err = p_full_qualified(_this, pBaseName);
 	ERROR_IF(err, err, pBaseName, goto exit);
-	ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pBaseName, goto exit);
+	MakeFullQualified(_this, pBaseName, pBaseName);
 	FindClass(_this, pBaseName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
 	srcType = pSrcClass->miType;
@@ -4553,9 +4604,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	JCLVar* pResVar;
 	Array_JCLVar* pArgs;
 	JCLString* pToken;
+	JCLString* pFullName;
 	JCLString* pName;
+	JCLString* pOldNamespace;
 	JILLong tokenID;
-	JILLong classToken;
 	JILLong savePos;
 	JILLong errorNamePos;
 	JILLong funcIdx;
@@ -4565,8 +4617,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	JILBool removeFunc = JILFalse;
 	JILLong i, j;
 
+	pOldNamespace = GetCurrentNamespace(_this);
 	pResVar = NEW(JCLVar);
 	pToken = NEW(JCLString);
+	pFullName = NEW(JCLString);
 	pName = NEW(JCLString);
 	pFile = _this->mipFile;
 
@@ -4600,40 +4654,33 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		pResVar->miInited = JILTrue;
 	}
 
-	// expecting an identifier, either function name, or class name
-	err = pFile->GetToken(pFile, pName, &classToken);
-	ERROR_IF(err, err, pName, goto exit);
-	if( !IsClassToken(classToken) && classToken != tk_convertor )
-		ERROR(JCL_ERR_Unexpected_Token, pName, goto exit);
-
-	// expecting scope operator, qualifying identifier as class name,
-	// or parenthese, qualifying identifier as function name
-	errorNamePos = pFile->GetLocator(pFile);
-	err = pFile->GetToken(pFile, pToken, &tokenID);
+	// expecting an identifier
+	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( IsGlobalScope(_this, _this->miClass) && tokenID == tk_scope )
+	MakeFullQualified(_this, pFullName, pToken);
+	RemoveParentNamespace(_this, pName, pFullName);
+	errorNamePos = pFile->GetLocator(pFile);
+
+	// handle function implementation from global space
+	if( IsGlobalScope(_this, _this->miClass) && IsFullQualified(_this, pFullName) )
 	{
-		FindClass(_this, pName, &pClass);
-		ERROR_IF(!pClass, JCL_ERR_Undefined_Identifier, pName, goto exit);
+		GetParentNamespace(_this, pToken, pFullName);
+		FindInNamespace(_this, pToken, &pClass);
+		// TODO: This will currently fail if we define a global function directly in a namespace. Currently we only support one global object!
+		ERROR_IF(!pClass, JCL_ERR_Function_In_Namespace, pName, goto exit);
 		ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Method_Definition_Illegal, pName, goto exit);
 		ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pName, goto exit);
 		ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pName, goto exit);
 		// make this the current class
+		SetCurrentNamespace(_this, pToken);
 		SetCompileContext(_this, pClass->miType, 0);
-		// expecting an identifier, this time function name
-		err = pFile->GetToken(pFile, pName, &classToken);
-		ERROR_IF(err, err, pName, goto exit);
-		if( !IsClassToken(classToken) && classToken != tk_convertor )
-			ERROR(JCL_ERR_Unexpected_Token, pName, goto exit);
-		errorNamePos = pFile->GetLocator(pFile);
-		// get what comes next...
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
 	}
 	else if( IsGlobalScope(_this, _this->miClass) && (fnKind & kMethod) )
 	{
 		ERROR(JCL_ERR_Method_Outside_Class, pName, goto exit);
 	}
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
 	ERROR_IF(tokenID != tk_round_open, JCL_ERR_Unexpected_Token, pToken, goto exit);
 
 	// add a new empty function
@@ -4661,7 +4708,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		// check for cofunction in native type
 		ERROR_IF((fnKind & kCofunction) && IsClassNative(pClass), JCL_ERR_Cofunction_In_NTL, pName, goto exit);
 		// compare function name with class name (constructor?)
-		if( JCLCompare(pFunc->mipName, pClass->mipName) )
+		if( CompareUnqualified(_this, pClass->mipName, pFunc->mipName) )
 		{
 			// this is a constructor, it must be declared "void"
 			if( pFunc->mipResult->miMode != kModeUnused )
@@ -4674,7 +4721,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			pClass->miHasCtor = JILTrue;
 		}
 		// check for the convertor keyword
-		else if( classToken == tk_convertor )
+		else if( strcmp(JCLGetString(pName), "convertor") == 0 )
 		{
 			// this is a convertor, it must have a return type
 			if( pFunc->mipResult->miMode == kModeUnused )
@@ -4815,13 +4862,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		if( _this->miPass == kPassPrecompile )
 		{
 			// if cofunction is class member, mangle cofunction type name
-			JCLClear(pToken);
-			if( !IsGlobalScope(_this, _this->miClass) )
-			{
-				JCLSetString(pToken, JCLGetString(GetClass(_this, _this->miClass)->mipName));
-				JCLAppend(pToken, "::");
-			}
-			JCLAppend(pToken, JCLGetString(pName));
+			MakeFullQualified(_this, pToken, pName);
 			// check if we already defined an alias for this
 			FindClass(_this, pToken, &pClass);
 			if( pClass && pClass->miType != classIdx )
@@ -4852,7 +4893,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		ERROR_IF(forceDecl, JCL_ERR_Incomplete_Arg_List, pFunc->mipName, goto exit);
 		ERROR_IF(isPure, JCL_ERR_Method_Definition_Illegal, pFunc->mipName, goto exit);
 		pClass = CurrentClass(_this);
-		// check if this is a native type lib declaration
+		// check if class is a native type (we NEED this so native types can't specify script code in their class declaration)
 		if( IsClassNative(pClass) )
 			ERROR(JCL_ERR_Cannot_Reimplement_NTL, pClass->mipName, goto exit);
 		// try to find the prototype (it MUST exist, cos pre-compile should have created it!)
@@ -4981,9 +5022,11 @@ exit:
 	argNum = kSimStackSize - _this->miStackPos;	// number of items on stack
 	SimStackPop(_this, argNum);
 	SetCompileContext(_this, initialScope, 0);
+	SetCurrentNamespace(_this, pOldNamespace);
 
 	DELETE( pResVar );
 	DELETE( pToken );
+	DELETE( pFullName );
 	DELETE( pName );
 	return err;
 }
@@ -5711,12 +5754,9 @@ static JILError p_member_decl(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 		JILLong curArgClass = _this->miArgClass;
 		JILLong curClass = _this->miClass;
 		JILLong curFunc = _this->miFunc;
-		pPrefix = NEW(JCLString);
-		JCLSetString(pPrefix, JCLGetString(pClass->mipName));
-		JCLAppend(pPrefix, "::");
 		SetCompileContext(_this, type_global, 0);
 		_this->miArgClass = curClass; // HACK: Make sure FindAnyVar() also looks in current class
-		err = p_global_decl(_this, pVar, pPrefix);
+		err = p_global_decl(_this, pVar);
 		SetCompileContext(_this, curClass, curFunc);
 		_this->miArgClass = curArgClass;
 	}
@@ -6208,41 +6248,75 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 		case tk_method:
 			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kMethod);
 			break;
+		case tk_scope:
+			err = JCL_ERR_Unexpected_Token; // TODO implement ::identifier
+			break;
+		case tk_this:
+			err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, JILFalse);
+			break;
 		case tk_string:
 		case tk_array:
 		case tk_identifier:
-		case tk_scope:
-		case tk_this:
 		{
-			JILBool bThis = JILFalse;
-			if( tokenID == tk_scope )
+			pFile->SetLocator(pFile, savePos);
+			err = p_full_qualified(_this, pToken);
+			ERROR_IF(err, err, pToken, goto exit);
+			if( IsFullQualified(_this, pToken) )
 			{
-				pFile->SetLocator(pFile, savePos);
-				JCLSetString(pToken, kNameGlobalNameSpace);
-			}
-			else if( tokenID == tk_this )
-			{
-				// is there a "."?
-				err = pFile->PeekToken(pFile, pToken2, &tokenID2);
+				// static function call
+				GetParentNamespace(_this, pToken2, pToken);
+				RemoveParentNamespace(_this, pToken, pToken);
+				FindInNamespace(_this, pToken2, &pClass);
+				ERROR_IF(pClass == NULL, JCL_ERR_Undefined_Identifier, pToken, goto exit);
+				ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
+				ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
+				ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
+				// check for function call
+				err = pFile->PeekToken(pFile, pToken2, &tokenID);
 				ERROR_IF(err, err, pToken2, goto exit);
-				if( tokenID2 == tk_point )
+				if( tokenID == tk_round_open )
 				{
-					// skip "."
-					err = pFile->GetToken(pFile, pToken2, &tokenID2);
-					ERROR_IF(err, err, pToken2, goto exit);
-					ERROR_IF(tokenID2 != tk_point, JCL_ERR_Unexpected_Token, pToken2, goto exit);
-					// expect an identifier name
-					err = pFile->GetToken(pFile, pToken, &tokenID2);
-					ERROR_IF(err, err, pToken, goto exit);
-					ERROR_IF(tokenID2 != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
-					bThis = JILTrue;
+					// call static function
+					err = p_member_call(_this, pLocals, pClass->miType, pToken, NULL, pLVar, &outType, 0);
+					if( err )
+						goto exit;
+					// fill out result type info
+					JCLTypeInfoToVar(&outType, pVarOut);
+					if( outType.miType != type_null )
+					{
+						pVarOut->miMode = kModeRegister;
+						pVarOut->miUsage = kUsageResult;
+						pVarOut->miIndex = 1;
+						pVarOut->miInited = JILTrue;
+					}
+				}
+				else
+				{
+					// try to find it as a global var
+					pWorkVar = FindGlobalVar(_this, pClass->miType, pToken);
+					if( pWorkVar )
+					{
+						*ppVarOut = pWorkVar;
+					}
+					else
+					{
+						JCLFunc* pFunc;
+						err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
+						ERROR_IF(err, err, NULL, goto exit);
+						pVarOut = *ppVarOut;
+						err = FindFuncRef(_this, pToken, pClass->miType, kFunction, pVarOut, &pFunc);
+						ERROR_IF(err, err, NULL, goto exit);
+						err = cg_new_delegate(_this, pFunc->miHandle, NULL, pVarOut);
+						ERROR_IF(err, err, NULL, goto exit);
+					}
 				}
 			}
-			err = pFile->PeekToken(pFile, pToken2, &tokenID);
-			ERROR_IF(err, err, pToken2, goto exit);
-			switch( tokenID )
+			else
 			{
-				case tk_round_open:
+				err = pFile->PeekToken(pFile, pToken2, &tokenID);
+				ERROR_IF(err, err, pToken2, goto exit);
+				// check for function call
+				if( tokenID == tk_round_open )
 				{
 					// parse function call
 					err = p_function_call(_this, pLocals, pToken, pLVar, &outType);
@@ -6258,71 +6332,12 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 						pVarOut->miIndex = 1;
 						pVarOut->miInited = JILTrue;
 					}
-					break;
 				}
-				case tk_scope:
+				else
 				{
-					// static class function call
-					ERROR_IF(bThis, JCL_ERR_Unexpected_Token, pToken2, goto exit);
-					FindClass(_this, pToken, &pClass);
-					ERROR_IF(pClass == NULL, JCL_ERR_Undefined_Identifier, pToken, goto exit);
-					ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
-					ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-					ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
-					// skip "::"
-					err = pFile->GetToken(pFile, pToken, &tokenID);
-					ERROR_IF(err, err, pToken, goto exit);
-					// expecting function / variable name
-					err = pFile->GetToken(pFile, pToken, &tokenID);
-					ERROR_IF(err, err, pToken, goto exit);
-					ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
-					// check for parenthese
-					err = pFile->PeekToken(pFile, pToken2, &tokenID);
-					ERROR_IF(err, err, pToken2, goto exit);
-					if( tokenID == tk_round_open )
-					{
-						// call static function
-						err = p_member_call(_this, pLocals, pClass->miType, pToken, NULL, pLVar, &outType, 0);
-						if( err )
-							goto exit;
-						// fill out result type info
-						JCLTypeInfoToVar(&outType, pVarOut);
-						if( outType.miType != type_null )
-						{
-							pVarOut->miMode = kModeRegister;
-							pVarOut->miUsage = kUsageResult;
-							pVarOut->miIndex = 1;
-							pVarOut->miInited = JILTrue;
-						}
-					}
-					else
-					{
-						// try to find it as a global var
-						pWorkVar = FindGlobalVar(_this, pClass->miType, pToken);
-						if( pWorkVar )
-						{
-							*ppVarOut = pWorkVar;
-						}
-						else
-						{
-							JCLFunc* pFunc;
-							err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
-							ERROR_IF(err, err, NULL, goto exit);
-							pVarOut = *ppVarOut;
-							err = FindFuncRef(_this, pToken, pClass->miType, kFunction, pVarOut, &pFunc);
-							ERROR_IF(err, err, NULL, goto exit);
-							err = cg_new_delegate(_this, pFunc->miHandle, NULL, pVarOut);
-							ERROR_IF(err, err, NULL, goto exit);
-						}
-					}
-					break;
-				}
-				default:
-				{
-					err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, bThis);
+					err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, JILFalse);
 					if( err )
 						goto exit;
-					break;
 				}
 			}
 			break;
@@ -8631,30 +8646,34 @@ static JILError p_import(JCLState* _this)
 	pFile = _this->mipFile;
 
 	// expecting class name
-	err = pFile->GetToken(pFile, pClassName, &tokenID);
-	ERROR_IF(err, err, pToken, goto exit);
-	ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pClassName, goto exit);
-
-	for(;;)
+	err = p_full_qualified(_this, pClassName);
+	ERROR_IF(err, err, pClassName, goto exit);
+	if( IsFullQualified(_this, pClassName) )
 	{
-		// expecting to see a ";" or "."
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
-		if( tokenID == tk_semicolon )
-			break;
-		ERROR_IF(tokenID != tk_point, JCL_ERR_Missing_Semicolon, pToken, goto exit);
-		JCLAppend(pClassName, ".");
-		// expecting to see an identifier
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
-		ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
-		JCLAppend(pClassName, JCLGetString(pToken));
-	}
-
-	if( strcmp(JCLGetString(pClassName), "all") == 0 )
-		err = p_import_all(_this);
-	else
 		err = p_import_class(_this, pClassName);
+	}
+	else
+	{
+		for(;;)
+		{
+			// expecting to see a ";" or "."
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			if( tokenID == tk_semicolon )
+				break;
+			ERROR_IF(tokenID != tk_point, JCL_ERR_Missing_Semicolon, pToken, goto exit);
+			JCLAppend(pClassName, ".");
+			// expecting to see an identifier
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
+			JCLAppend(pClassName, JCLGetString(pToken));
+		}
+		if( strcmp(JCLGetString(pClassName), "all") == 0 )
+			err = p_import_all(_this);
+		else
+			err = p_import_class(_this, pClassName);
+	}
 
 exit:
 	DELETE( pClassName );
@@ -8732,7 +8751,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 		else
 		{
 			#if JIL_USE_LOCAL_FILESYS
-			if( GetOptions(_this)->miAllowFileImport )
+			if( GetOptions(_this)->miAllowFileImport && !IsFullQualified(_this, pClassName) )
 			{
 				JCLPair* pPair;
 				// see if a file with the class name exists...
@@ -9003,21 +9022,21 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 			goto exit;
 	}
 
-	err = pFile->GetToken(pFile, pToken, &tokenID);
+	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( tokenID == tk_array )
+	// try to find class
+	typeID = StringToType(_this, pToken);
+	ERROR_IF(typeID == type_null, JCL_ERR_Undefined_Identifier, pToken, goto exit);
+	if( typeID == type_array )
 	{
 		err = p_new_array(_this, pLocals, pLVar, ppVarOut, ppTempVar);
 	}
-	else if( IsBasicType(tokenID) )
+	else if( typeID == type_string || typeID == type_float || typeID ==  type_int )
 	{
-		err = p_new_basic_type(_this, pLocals, pLVar, ppVarOut, ppTempVar, tokenID);
+		err = p_new_basic_type(_this, pLocals, pLVar, ppVarOut, ppTempVar, typeID);
 	}
-	else if( tokenID == tk_identifier )
+	else
 	{
-		// try to find class
-		typeID = StringToType(_this, pToken, tokenID);
-		ERROR_IF(!typeID, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 		pClass = GetClass(_this, typeID);
 		ERROR_IF(pClass->miFamily != tf_class && pClass->miFamily != tf_interface && pClass->miFamily != tf_thread, JCL_ERR_Type_Not_Class, pToken, goto exit);
 		ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
@@ -9058,6 +9077,9 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 		if( tokenID == tk_round_open )
 		{
 			// call constructor
+			if( pClass->miFamily != tf_thread )
+				JCLSetString(pToken, JCLGetString(pClass->mipName)); // makes aliases work as constructor name
+			RemoveParentNamespace(_this, pToken, pToken);
 			err = p_member_call(_this, pLocals, pClass->miType, pToken, pWorkVar, NULL, &outType, kOnlyCtor);
 			if( err )
 				goto exit;
@@ -9066,10 +9088,6 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 		{
 			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 		}
-	}
-	else
-	{
-		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	}
 
 initblock:
@@ -10127,9 +10145,9 @@ exit:
 // p_new_basic_type
 //------------------------------------------------------------------------------
 // Parse a new expression where the given type is a basic type.
-// For example: string& b = new string("hello");
+// For example: string b = new string("hello");
 
-static JILError p_new_basic_type(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar, JILLong typeToken)
+static JILError p_new_basic_type(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar, JILLong typeID)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
@@ -10137,7 +10155,6 @@ static JILError p_new_basic_type(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 	JCLString* pToken;
 	JILLong tokenID;
 	JILBool hasArg;
-	JILLong theType = type_null;
 	TypeInfo outType;
 	const JILChar* pLiteral;
 
@@ -10174,24 +10191,21 @@ static JILError p_new_basic_type(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 		*ppVarOut = *ppTempVar;
 		pWorkVar = *ppTempVar;
 	}
-	switch( typeToken )
+	switch( typeID )
 	{
-		case tk_int:
-			theType = type_int;
+		case type_int:
 			pLiteral = "0";
 			break;
-		case tk_float:
-			theType = type_float;
+		case type_float:
 			pLiteral = "0.0";
 			break;
-		case tk_string:
-			theType = type_string;
+		case type_string:
 			pLiteral = "";
 			break;
 		default:
 			ERROR(JCL_ERR_Unexpected_Token, NULL, goto exit);
 	}
-	pWorkVar->miType = theType;
+	pWorkVar->miType = typeID;
 	pWorkVar->miRef = JILFalse;
 	pWorkVar->miInited = JILFalse;
 	// do we have an expression to compile?
@@ -10209,7 +10223,7 @@ static JILError p_new_basic_type(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 	else
 	{
 		// replace this internally by a long, float or string literal
-		err = cg_load_literal(_this, theType, pLiteral, pWorkVar, JILFalse, &outType);
+		err = cg_load_literal(_this, typeID, pLiteral, pWorkVar, JILFalse, &outType);
 		ERROR_IF(err, err, NULL, goto exit);
 	}
 	// this will work in most cases, but...
@@ -10262,7 +10276,7 @@ static JILError p_new_copy_ctor(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 	ERROR_IF(err, err, pToken, goto exit);
 	if( !IsClassToken(tokenID) )
 		goto _continue;
-	theType = StringToType(_this, pToken, tokenID);
+	theType = StringToType(_this, pToken);
 	if (theType == type_null || theType == type_int || theType == type_float)
 		goto _continue;
 
@@ -10429,7 +10443,7 @@ exit:
 //------------------------------------------------------------------------------
 // Parse declaration of one or more global variables.
 
-static JILError p_global_decl(JCLState* _this, JCLVar* pVar, JCLString* pPrefix)
+static JILError p_global_decl(JCLState* _this, JCLVar* pVar)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
@@ -10445,9 +10459,8 @@ static JILError p_global_decl(JCLState* _this, JCLVar* pVar, JCLString* pPrefix)
 
 	for(;;)
 	{
-		// mangle var name if we have a prefix
-		if( pPrefix )
-			JCLInsert(pVar->mipName, pPrefix, 0);
+		// mangle var name
+		MakeFullQualified(_this, pVar->mipName, pVar->mipName);
 		err = AddGlobalVar(_this, pVar);
 		ERROR_IF(err, err, pVar->mipName, goto exit);
 		// peek if we have an assignment
@@ -10501,21 +10514,25 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	JCLClass* pClass;
 	JCLString* pToken;
 	JCLString* pClassName;
+	JCLString* pOldNS;
 	JILLong tokenID;
-	JILLong classToken;
 	JILLong classIdx;
 	JILLong savePos;
 	JILLong strict;
 
 	pClassName = NEW(JCLString);
 	pToken = NEW(JCLString);
+	pOldNS = GetCurrentNamespace(_this);
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
 
 	// we expect to find a class name
-	err = pFile->GetToken(pFile, pClassName, &classToken);
-	ERROR_IF(err, err, pClassName, goto exit);
-	ERROR_IF(classToken != tk_identifier, err = JCL_ERR_Unexpected_Token, pClassName, goto exit);
+	err = p_full_qualified(_this, pToken);
+	ERROR_IF(err, err, pToken, goto exit);
+	// don't allow full qualified name inside namespace
+	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
+		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
+	MakeFullQualified(_this, pClassName, pToken);
 
 	// peek for ';'
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
@@ -10559,6 +10576,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 
 	// make this the "current class"
 	SetCompileContext(_this, classIdx, 0);
+	SetCurrentNamespace(_this, pClassName);
 	pClass = CurrentClass(_this);
 	pClass->miModifier = modifier;
 
@@ -10602,6 +10620,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 exit:
 	// go back to "global" class
 	SetCompileContext(_this, type_global, 0);
+	SetCurrentNamespace(_this, pOldNS);
 	DELETE( pToken );
 	DELETE( pClassName );
 	return err;
@@ -11134,10 +11153,8 @@ static JILError p_using(JCLState* _this)
 	do
 	{
 		// get next token
-		err = pFile->GetToken(pFile, pToken, &tokenID);
+		err = p_full_qualified(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
-		// expect an identifier
-		ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
 		// find the given class
 		FindClass(_this, pToken, &pClass);
 		ERROR_IF(pClass == NULL, JCL_ERR_Undefined_Identifier, pToken, goto exit);
@@ -11221,17 +11238,7 @@ static JILError p_delegate(JCLState* _this)
 	ERROR_IF(err, err, pToken, goto exit);
 	ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
 	// mangle delegate name
-	if( IsGlobalScope(_this, _this->miClass) )
-	{
-		JCLSetString(pName, JCLGetString(pToken));
-	}
-	else
-	{
-		pClass = CurrentClass(_this);
-		JCLSetString(pName, JCLGetString(pClass->mipName));
-		JCLAppend(pName, "::");
-		JCLAppend(pName, JCLGetString(pToken));
-	}
+	MakeFullQualified(_this, pName, pToken);
 
 	// expecting parenthese
 	err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -11313,16 +11320,12 @@ static JILError p_alias(JCLState* _this)
 	JCLFile* pFile;
 	JCLString* pToken;
 	JCLString* pToken2;
-	JCLString* pName;
-	JCLClass* pClass;
 	JILLong type;
 	JILLong tokenID;
-	JILLong tokenID2;
 
 	pFile = _this->mipFile;
 	pToken = NEW(JCLString);
 	pToken2 = NEW(JCLString);
-	pName = NEW(JCLString);
 
 	// only do this during precompile
 	if( _this->miPass == kPassCompile )
@@ -11332,28 +11335,11 @@ static JILError p_alias(JCLState* _this)
 	}
 
 	// get next token
-	err = pFile->GetToken(pFile, pToken, &tokenID);
+	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	ERROR_IF(!IsClassToken(tokenID) && !IsBasicType(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
-	// peek for scope operator
-	err = pFile->PeekToken(pFile, pToken2, &tokenID2);
-	ERROR_IF(err, err, pToken2, goto exit);
-	if( tokenID2 == tk_scope )
-	{
-		// skip "::"
-		err = pFile->GetToken(pFile, pToken2, &tokenID2);
-		ERROR_IF(err, err, pToken2, goto exit);
-		// expecting identifier name
-		err = pFile->GetToken(pFile, pToken2, &tokenID2);
-		ERROR_IF(err, err, pToken2, goto exit);
-		ERROR_IF(!IsClassToken(tokenID2), JCL_ERR_Unexpected_Token, pToken2, goto exit);
-		JCLAppend(pToken, "::");
-		JCLAppend(pToken, JCLGetString(pToken2));
-		tokenID = tk_identifier;
-	}
-
+	MakeFullQualified(_this, pToken, pToken);
 	// check for existing type name
-	type = StringToType(_this, pToken, tokenID);
+	type = StringToType(_this, pToken);
 	ERROR_IF(type == type_null, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 	// get next token
 	err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -11362,21 +11348,10 @@ static JILError p_alias(JCLState* _this)
 	ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
 
 	// mangle alias name
-	if( IsGlobalScope(_this, _this->miClass) )
-	{
-		JCLSetString(pName, JCLGetString(pToken));
-	}
-	else
-	{
-		pClass = CurrentClass(_this);
-		JCLSetString(pName, JCLGetString(pClass->mipName));
-		JCLAppend(pName, "::");
-		JCLAppend(pName, JCLGetString(pToken));
-	}
-
+	MakeFullQualified(_this, pToken, pToken);
 	// add the alias
-	err = AddAlias(_this, pName, type);
-	ERROR_IF(err, err, pName, goto exit);
+	err = AddAlias(_this, pToken, type);
+	ERROR_IF(err, err, pToken, goto exit);
 
 	// expecting semicolon
 	err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -11386,7 +11361,6 @@ static JILError p_alias(JCLState* _this)
 exit:
 	DELETE( pToken );
 	DELETE( pToken2 );
-	DELETE( pName );
 	return err;
 }
 
@@ -12224,7 +12198,8 @@ exit:
 //------------------------------------------------------------------------------
 // p_full_qualified
 //------------------------------------------------------------------------------
-// Parse a full qualified identifier name.
+// Parse a full qualified identifier name. This function MUST NOT emit errors,
+// the caller must take care of that.
 
 static JILError p_full_qualified(JCLState* _this, JCLString* pIdentifier)
 {
@@ -12242,14 +12217,19 @@ static JILError p_full_qualified(JCLState* _this, JCLString* pIdentifier)
 	{
 		// get identifier
 		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
-		ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
+		if( err )
+			goto exit;
+		if( !IsTypeToken(tokenID) )
+		{
+			err = JCL_ERR_Unexpected_Token;
+			goto exit;
+		}
 		JCLAppend(pIdentifier, JCLGetString(pToken));
-
 		// expect ::
 		savePos = pFile->GetLocator(pFile);
 		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
+		if( err )
+			goto exit;
 		if( tokenID == tk_scope )
 			JCLAppend(pIdentifier, "::");
 	}
@@ -12271,31 +12251,91 @@ static JILError p_namespace(JCLState* _this)
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
 	JCLString* pToken;
-	JCLString* pOldNS = _this->mipNamespace;
+	JCLString* pOldNS;
+	JCLString* pNamespace;
 	JILLong tokenID;
+	JILLong savePos;
 
 	pToken = NEW(JCLString);
-	_this->mipNamespace = NEW(JCLString);
+	pOldNS = GetCurrentNamespace(_this);
+	pNamespace = NEW(JCLString);
 	pFile = _this->mipFile;
-	JCLClear(_this->mipNamespace);
 
-	err = p_full_qualified(_this, _this->mipNamespace);
-	if( err )
-		goto exit;
+	err = p_full_qualified(_this, pToken);
+	ERROR_IF(err, err, pToken, goto exit);
+	// don't allow full qualified namespace inside namespace
+	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
+		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
+	MakeFullQualified(_this, pNamespace, pToken);
+	SetCurrentNamespace(_this, pNamespace);
 
 	// check for {
-	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
 	ERROR_IF(tokenID != tk_curly_open, JCL_ERR_Unexpected_Token, pToken, goto exit);
 
-	err = p_root(_this);
-	if( err )
-		goto exit;
+	// parse namespace body
+	while( err == JCL_No_Error )
+	{
+		savePos = pFile->GetLocator(pFile);
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+		if( tokenID == tk_curly_close )
+			break;
+		switch( tokenID )
+		{
+			case tk_namespace:
+				err = p_namespace( _this );
+				break;
+			case tk_class:
+				err = p_class( _this, 0 );
+				break;
+			case tk_interface:
+				err = p_interface( _this, 0 );
+				break;
+			case tk_function:
+				err = p_function( _this, kFunction, JILFalse );
+				break;
+			case tk_cofunction:
+				err = p_function( _this, kFunction | kCofunction, JILFalse );
+				break;
+			case tk_method:
+				err = p_function( _this, kMethod, JILFalse );
+				break;
+			case tk_accessor:
+				err = p_function( _this, kMethod | kAccessor, JILFalse );
+				break;
+			case tk_explicit:
+				err = p_function( _this, kMethod | kExplicit, JILFalse );
+				break;
+			case tk_extern:
+				err = p_class_modifier( _this, kModiExtern );
+				break;
+			case tk_native:
+				err = p_class_modifier( _this, kModiNativeBinding );
+				break;
+			case tk_delegate:
+				err = p_delegate( _this );
+				break;
+			case tk_alias:
+				err = p_alias( _this );
+				break;
+			case tk_strict:
+				err = p_strict( _this );
+				break;
+			case tk__selftest:
+				err = p_selftest( _this, NULL );
+				break;
+			default:
+				ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
+				break;
+		}
+	}
 
 exit:
+	SetCurrentNamespace(_this, pOldNS);
 	DELETE( pToken );
-	DELETE( _this->mipNamespace );
-	_this->mipNamespace = pOldNS;
+	DELETE( pNamespace );
 	return err;
 }
 

@@ -67,23 +67,25 @@ JILError JILDestroyTypeList(JILState* pState)
 // JILCheckClassName
 //------------------------------------------------------------------------------
 
-JILError JILCheckClassName(JILState* pState, const char* pName)
+JILError JILCheckClassName(JILState* pState, const JILChar* name)
 {
-	int i;
-	int l;
-	if( !pName[0] )
+	JILChar c;
+	c = *name++;
+	if( !c )
 		return JIL_ERR_Illegal_Type_Name;
-	if(  pName[0] != '_'
-	&&	(pName[0] < 'A' || pName[0] > 'Z')
-	&&	(pName[0] < 'a' || pName[0] > 'z') )
+	if(  c != '_'
+	&&	(c < 'A' || c > 'Z')
+	&&	(c < 'a' || c > 'z') )
 		return JIL_ERR_Illegal_Type_Name;
-	l = strlen(pName);
-	for( i = 1; i < l; i++ )
+	for(;;)
 	{
-		if(  pName[0] != '_'
-		&&	(pName[0] < 'A' || pName[0] > 'Z')
-		&&	(pName[0] < 'a' || pName[0] > 'z')
-		&&	(pName[0] < '0' || pName[0] > '9') )
+		c = *name++;
+		if( !c )
+			break;
+		if(  c != '_' && c != ':'
+		&&	(c < 'A' || c > 'Z')
+		&&	(c < 'a' || c > 'z')
+		&&	(c < '0' || c > '9') )
 			return JIL_ERR_Illegal_Type_Name;
 	}
 	return JIL_No_Exception;
@@ -93,7 +95,7 @@ JILError JILCheckClassName(JILState* pState, const char* pName)
 // JILNewNativeType
 //------------------------------------------------------------------------------
 
-JILTypeListItem* JILNewNativeType(JILState* pState, const char* pClassName, JILTypeProc proc)
+JILTypeListItem* JILNewNativeType(JILState* pState, const JILChar* pClassName, JILTypeProc proc)
 {
 	JILTypeListItem* pItem = NULL;
 	JILLong nLength;
@@ -123,7 +125,7 @@ JILTypeListItem* JILNewNativeType(JILState* pState, const char* pClassName, JILT
 		// initialize identifier
 		nLength = strlen(pClassName);
 		pItem->typeProc = proc;
-		pItem->pClassName = (char*) malloc( nLength + 1 );
+		pItem->pClassName = (JILChar*) malloc( nLength + 1 );
 		JILStrcpy( pItem->pClassName, nLength + 1, pClassName );
 
 		// one up!
@@ -136,9 +138,9 @@ JILTypeListItem* JILNewNativeType(JILState* pState, const char* pClassName, JILT
 // JILGetNativeType
 //------------------------------------------------------------------------------
 
-JILTypeListItem* JILGetNativeType(JILState* pState, const char* pClassName)
+JILTypeListItem* JILGetNativeType(JILState* pState, const JILChar* pClassName)
 {
-	int i;
+	JILLong i;
 	JILTypeListItem* result = NULL;
 	for( i = 0; i < pState->vmUsedNativeTypes; i++ )
 	{

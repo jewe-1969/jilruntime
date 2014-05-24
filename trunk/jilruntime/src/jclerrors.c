@@ -71,7 +71,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Invalid_Char_Literal,		"Invalid character literal",
 	0,	JCL_ERR_Not_An_Array,				"Identifier is not an array",
 	0,	JCL_ERR_Missing_Semicolon,			"Missing ';' at end of statement",
-	0,	JCL_ERR_No_Constructor_Defined,		"Class does not define any constructor",
+	0,	JCL_ERR_No_Constructor_Defined,		"Class defines no constructor",
 	0,	JCL_ERR_Mixing_Class_And_Interface,	"Mixing usage of 'class' and 'interface' keywords",
 	0,	JCL_ERR_Interface_Not_Complete,		"Inherited method not implemented",
 	0,	JCL_ERR_Method_Definition_Illegal,	"Method definition not allowed for this type",
@@ -116,6 +116,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Class_Modifier_Conflict,	"Type redefined; inconsistent use of modifiers",
 	0,	JCL_ERR_Character_Value_Too_Large,	"Character value too large in string literal",
 	0,	JCL_ERR_Goto_Without_Context,		"Goto without clause",
+	0,	JCL_ERR_Function_In_Namespace,		"Function in namespace not supported",
 
 	// Compiler warnings
 	2,	JCL_WARN_Imp_Conv_From_Var,			"Conversion from typeless to type",

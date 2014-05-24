@@ -38,7 +38,6 @@ const JCLToken kKeywordList[] =
 	tk_cofunction,	"cofunction",
 	tk_const,		"const",
 	tk_continue,	"continue",
-	tk_convertor,	"convertor",
 	tk_default,		"default",
 	tk_delegate,	"delegate",
 	tk_do,			"do",

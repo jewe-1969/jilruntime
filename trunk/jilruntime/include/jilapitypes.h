@@ -123,25 +123,25 @@ typedef enum
 {
 	// predefined type identifiers
 	type_null			= 0,		///< Type ID of type 'null'
-	type_int			= 1,		///< Type ID of an int value (C++ int32)
-	type_float			= 2,		///< Type ID of a float value (C++ double)
-	type_global			= 3,		///< Type ID of the global class, which is the root of all other user-defined types
-	type_exception		= 4,		///< Type ID of the exception interface
-	type_rt_exception	= 5,		///< Type ID of the runtime_exception class
-	type_string			= 6,		///< Type ID of the built-in string class
-	// reserved			= 7,		//   Type ID used by internal 'stringMatch' class
-	// reserved			= 8,		//   Type ID used by delegate defined in string class
-	type_array			= 9,		///< Type ID of the built-in array class
+	type_var			= 1,		///< Type ID used for typeless variables
+	type_int			= 2,		///< Type ID of an int value (C++ int32)
+	type_float			= 3,		///< Type ID of a float value (C++ double)
+	type_global			= 4,		///< Type ID of the global class, which is the root of all other user-defined types
+	type_string			= 5,		///< Type ID of the built-in string class
+	// reserved			= 6,		//   Type ID used by internal 'stringMatch' class
+	// reserved			= 7,		//   Type ID used by delegate defined in string class
+	type_array			= 8,		///< Type ID of the built-in array class
+	// reserved			= 9,		//   Type ID used by delegate defined in array class
 	// reserved			= 10,		//   Type ID used by delegate defined in array class
 	// reserved			= 11,		//   Type ID used by delegate defined in array class
-	// reserved			= 12,		//   Type ID used by delegate defined in array class
-	type_list			= 13,		///< Type ID of the built-in list class
-	// reserved			= 14,		//   Type ID used by delegate defined in list class
-	type_iterator		= 15,		///< Type ID of the built-in iterator class
-	type_table			= 16,		///< Type ID of the built-in table class
-	// reserved			= 17,		//   Type ID used by delegate defined in table class
-	type_delegate		= 18,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
-	type_var			= 19,		///< Pseudo type used by the compiler for typeless variables
+	type_list			= 12,		///< Type ID of the built-in list class
+	// reserved			= 13,		//   Type ID used by delegate defined in list class
+	type_iterator		= 14,		///< Type ID of the built-in iterator class
+	type_table			= 15,		///< Type ID of the built-in table class
+	// reserved			= 16,		//   Type ID used by delegate defined in table class
+	type_exception		= 17,		///< Type ID of the exception interface
+	type_rt_exception	= 18,		///< Type ID of the runtime_exception class
+	type_delegate		= 19,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
 
 	// additional constants
 	kNumPredefTypes				///< This and every following value is a type ID for a user defined type

@@ -46,8 +46,8 @@ static JILLong			JCLGetLength		(const JCLString* _this)			{ return _this->m_Leng
 static const JILChar*	JCLGetString		(const JCLString* _this)			{ return (_this->m_Length > 0) ? _this->m_String : ""; }
 static JILLong			JCLGetChar			(JCLString* _this, JILLong index)	{ return (index < _this->m_Length) ? (JILByte) _this->m_String[index] : 0; }
 static JILLong			JCLGetLastChar		(JCLString* _this)					{ return (_this->m_Length > 0) ? (JILByte) _this->m_String[_this->m_Length - 1] : 0; }
-JILLong					JCLCompare			(const JCLString* _this, const JCLString* Other);
-JILLong					JCLCompareNoCase	(const JCLString* _this, const JCLString* Other);
+JILBool					JCLCompare			(const JCLString* _this, const JCLString* Other);
+JILBool					JCLCompareNoCase	(const JCLString* _this, const JCLString* Other);
 void					JCLClear			(JCLString* _this);
 void					JCLAppend			(JCLString* _this, const JILChar* source);
 void					JCLAppendChar		(JCLString* _this, JILLong chr);
