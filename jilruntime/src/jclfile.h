@@ -110,7 +110,6 @@ typedef enum
 	tk_cofunction,
 	tk_const,
 	tk_continue,
-	tk_convertor,
 	tk_default,
 	tk_delegate,
 	tk_do,

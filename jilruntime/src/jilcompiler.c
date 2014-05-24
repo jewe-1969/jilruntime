@@ -57,7 +57,7 @@ JILEXTERN JILError JCLAnalyzeParameters(JCLState* _this, const JILChar* pParams,
 //------------------------------------------------------------------------------
 
 static const char* kAnonFunction	= "function %s %s(%s){%s}";
-static const char* kDefaultImports	= "import runtime_exception; import string; import array; import list; import iterator; import table; ";
+static const char* kDefaultImports	= "import string; import array; import list; import iterator; import table; ";
 static const char* kDefaultAlias	= "alias int bool; alias int char; ";
 static const char* kInterfaceException =
 	"strict interface exception {"
@@ -65,6 +65,7 @@ static const char* kInterfaceException =
 	"    method int    getError   ();" TAG("Returns the error code for this exception. This can be any non-zero value. Implementing script classes can just return <code>typeof(this)</code> here.")
 	"    method string getMessage ();" TAG("Returns the error message for this exception. Implementing classes should return an empty string rather than null when no message is available.")
 	"}"
+	"class runtime_exception; "
 ;
 const JILLong kInterfaceExceptionGetError   = 0;	// method index of the getError() method
 const JILLong kInterfaceExceptionGetMessage = 1;	// method index of the getMessage() method
@@ -831,6 +832,9 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 	err = JCLCreateType(_this, "null", 0, tf_undefined, JILFalse, &type);
 	if( err )
 		goto error;
+	err = JCLCreateType(_this, "var", 0, tf_undefined, JILFalse, &type);
+	if( err )
+		goto error;
 	err = JCLCreateType(_this, "int", 0, tf_integral, JILFalse, &type);
 	if( err )
 		goto error;
@@ -841,13 +845,13 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 	if( err )
 		goto error;
 
-	// compile 'exception' interface declaration
-	err = JCLCompile(pMachine, NULL, kInterfaceException);
+	// import built-in types
+	err = JCLCompile(pMachine, NULL, kDefaultImports);
 	if( err )
 		goto error;
 
-	// import built-in types
-	err = JCLCompile(pMachine, NULL, kDefaultImports);
+	// compile 'exception' interface declaration
+	err = JCLCompile(pMachine, NULL, kInterfaceException);
 	if( err )
 		goto error;
 
@@ -855,12 +859,7 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 	err = JCLCreateType(_this, "__delegate", 0, tf_delegate, JILFalse, &type);
 	if( err )
 		goto error;
-
-	// create pseudo type 'var'
-	err = JCLCreateType(_this, "var", 0, tf_undefined, JILFalse, &type);
-	if( err )
-		goto error;
-	if( type != type_var )
+	if( type != type_delegate )
 	{
 		FatalError(_this, __FILE__, __LINE__, "Type constants and runtime type-IDs are not in sync!", "JILInitializeCompiler");
 		err = JIL_ERR_Initialize_Failed;
