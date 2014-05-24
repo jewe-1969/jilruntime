@@ -155,7 +155,7 @@ static void TypeToString(JCLVar* _this, JCLState* pCompiler, JCLString* outStrin
 					// because all delegates that have the SAME FUNCTION SIGNATURE share the same type-id and are actually just aliases of the same type.
 					// Since we don't know the class context for which this delegate shall be converted to string, we can just do a lucky guess and use
 					// the first alias to the delegate.
-					if( pClass->mipAlias->count )
+					if( pClass->mipAlias->Count(pClass->mipAlias) )
 						JCLAppend(outString, JCLGetString(pClass->mipAlias->Get(pClass->mipAlias, 0)));
 					else
 						JCLAppend(outString, JCLGetString(pClass->mipName));
@@ -242,7 +242,6 @@ static JCLString* toXml_JCLVar(JCLVar* _this, JCLState* pState, JCLString* pOut)
 // Implement array templates
 //------------------------------------------------------------------------------
 
-IMPL_ARRAY( JCLVar )
 IMPL_DATA_ARRAY( JILLong )
 
 //------------------------------------------------------------------------------

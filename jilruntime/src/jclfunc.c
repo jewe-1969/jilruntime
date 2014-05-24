@@ -76,8 +76,6 @@ void copy_JCLLiteral( JCLLiteral* _this, const JCLLiteral* src )
 	_this->miMethod = src->miMethod;
 }
 
-IMPL_ARRAY( JCLLiteral )
-
 /******************************************************************************/
 /**************************** class JCLFuncType *******************************/
 /******************************************************************************/
@@ -161,13 +159,13 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 		JCLAppend(outString, " (");
 	// write function arguments
 	pArgs = _this->mipArgs;
-	for( i = 0; i < pArgs->count; i++ )
+	for( i = 0; i < pArgs->Count(pArgs); i++ )
 	{
 		// write argument
 		pVar = pArgs->Get(pArgs, i);
 		pVar->ToString(pVar, pCompiler, outString, flags);
 		// write comma if this wasn't the last arg
-		if( (i + 1) < pArgs->count )
+		if( (i + 1) < pArgs->Count(pArgs) )
 		{
 			if( flags & kCompact )
 				JCLAppend(outString, ",");
@@ -196,7 +194,7 @@ static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLStr
 	JCLAppend(pOut, "</result>\n");
 
 	JCLAppend(pOut, "<args>\n");
-	for( i = 0; i < _this->mipArgs->count; i++ )
+	for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 	{
 		pVar = _this->mipArgs->Get(_this->mipArgs, i);
 		pVar->ToXml(pVar, pState, pOut);
@@ -205,12 +203,6 @@ static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLStr
 	JCLAppend(pOut, "</signature>\n");
 	return pOut;
 }
-
-//------------------------------------------------------------------------------
-// Implement array template
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLFuncType )
 
 /******************************************************************************/
 /******************************* class JCLFunc ********************************/
@@ -363,21 +355,21 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 				int i;
 				pCode->Set(pCode, n++, op_push_r);
 				pCode->Set(pCode, n++, 0);
-				if( _this->mipArgs->count )
+				if( _this->mipArgs->Count(_this->mipArgs) )
 				{
-					if( _this->mipArgs->count > 1 )
+					if( _this->mipArgs->Count(_this->mipArgs) > 1 )
 					{
 						pCode->Set(pCode, n++, op_pushm);
-						pCode->Set(pCode, n++, _this->mipArgs->count);
+						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
 					}
 					else
 					{
 						pCode->Set(pCode, n++, op_push);
 					}
-					for( i = 0; i < _this->mipArgs->count; i++ )
+					for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 					{
 						pCode->Set(pCode, n++, op_move_ss);
-						pCode->Set(pCode, n++, _this->mipArgs->count + 1 + i);
+						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs) + 1 + i);
 						pCode->Set(pCode, n++, i);
 					}
 				}
@@ -400,12 +392,12 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 					pCode->Set(pCode, n++, 0);
 					pCode->Set(pCode, n++, _this->miLnkDelegate);
 				}
-				if( _this->mipArgs->count )
+				if( _this->mipArgs->Count(_this->mipArgs) )
 				{
-					if( _this->mipArgs->count > 1 )
+					if( _this->mipArgs->Count(_this->mipArgs) > 1 )
 					{
 						pCode->Set(pCode, n++, op_popm);
-						pCode->Set(pCode, n++, _this->mipArgs->count);
+						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
 					}
 					else
 					{
@@ -504,13 +496,13 @@ static JCLString* toString_JCLFunc(JCLFunc* _this, JCLState* pCompiler, JCLStrin
 
 	// write function arguments
 	pArgs = _this->mipArgs;
-	for( i = 0; i < pArgs->count; i++ )
+	for( i = 0; i < pArgs->Count(pArgs); i++ )
 	{
 		// write argument
 		pVar = pArgs->Get(pArgs, i);
 		pVar->ToString(pVar, pCompiler, outString, flags);
 		// write comma if this wasn't the last arg
-		if( (i + 1) < pArgs->count )
+		if( (i + 1) < pArgs->Count(pArgs) )
 		{
 			if( flags & kCompact )
 				JCLAppend(outString, ",");
@@ -567,7 +559,7 @@ static JCLString* toXml_JCLFunc(JCLFunc* _this, JCLState* pState, JCLString* pOu
 	JCLAppend(pOut, "</result>\n");
 
 	JCLAppend(pOut, "<args>\n");
-	for( i = 0; i < _this->mipArgs->count; i++ )
+	for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 	{
 		pVar = _this->mipArgs->Get(_this->mipArgs, i);
 		pVar->ToXml(pVar, pState, pOut);
@@ -601,12 +593,6 @@ JILLong GetFuncInfoFlags(JCLFunc* func)
 	if( func->miStrict )	flags |= fi_strict;
 	return flags;
 }
-
-//------------------------------------------------------------------------------
-// Implement array template
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLFunc )
 
 /******************************************************************************/
 /*********************** Code optimization functions **************************/
@@ -3142,7 +3128,7 @@ static JILError createLiterals_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 
 	pCode = _this->mipCode;
 	pLiterals = _this->mipLiterals;
-	for( j = 0; j < pLiterals->count; j++ )
+	for( j = 0; j < pLiterals->Count(pLiterals); j++ )
 	{
 		pLit = pLiterals->Get(pLiterals, j);
 		hObj = pLit->miHandle;

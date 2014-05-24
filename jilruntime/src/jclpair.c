@@ -56,12 +56,6 @@ void copy_JCLPair(JCLPair* _this, const JCLPair* src)
 }
 
 //------------------------------------------------------------------------------
-// Implement array template for JCLPair
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLPair )
-
-//------------------------------------------------------------------------------
 // Add()
 //------------------------------------------------------------------------------
 
@@ -74,30 +68,13 @@ JCLPair* Add_JCLCollection(JCLCollection* _this, const JCLString* pKey, JILUnkno
 }
 
 //------------------------------------------------------------------------------
-// Remove()
-//------------------------------------------------------------------------------
-
-void Remove_JCLCollection(JCLCollection* _this, const JCLString* pKey)
-{
-	JILLong index = IndexOf_JCLCollection(_this, pKey);
-	if( index >= 0 )
-	{
-		JCLPair* pp = _this->Get(_this, index);
-		DELETE(pp);
-		if( (index + 1) < _this->count )
-			memcpy(_this->array + index, _this->array + index + 1, (_this->count - index) * sizeof(JCLPair*));
-		_this->count -= 1;
-	}
-}
-
-//------------------------------------------------------------------------------
 // Get()
 //------------------------------------------------------------------------------
 
 JCLPair* Get_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 {
 	JILLong index;
-	for( index = 0; index < _this->count; index++ )
+	for( index = 0; index < _this->Count(_this); index++ )
 	{
 		JCLPair* pp = _this->Get(_this, index);
 		if( strcmp(JCLGetString(pp->mipKey), JCLGetString(pKey)) == 0 )
@@ -114,7 +91,7 @@ JCLPair* Get_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 
 JCLPair* GetAt_JCLCollection(JCLCollection* _this, JILLong index)
 {
-	if( index >= 0 && index < _this->count )
+	if( index >= 0 && index < _this->Count(_this) )
 		return _this->Get(_this, index);
 	else
 		return NULL;
@@ -153,7 +130,7 @@ JCLString* GetKey_JCLCollection(JCLCollection* _this, JILLong index)
 JILLong IndexOf_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 {
 	JILLong index;
-	for( index = 0; index < _this->count; index++ )
+	for( index = 0; index < _this->Count(_this); index++ )
 	{
 		JCLPair* pp = _this->Get(_this, index);
 		if( strcmp(JCLGetString(pp->mipKey), JCLGetString(pKey)) == 0 )
@@ -168,5 +145,5 @@ JILLong IndexOf_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 
 JILLong Count_JCLCollection(JCLCollection* _this)
 {
-	return _this->count;
+	return _this->Count(_this);
 }

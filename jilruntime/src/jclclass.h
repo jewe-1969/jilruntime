@@ -28,6 +28,7 @@
 
 #include "jiltypes.h"
 #include "jcltools.h"
+#include "jclpair.h"
 
 //------------------------------------------------------------------------------
 // class modifier flags
@@ -52,6 +53,7 @@ DECL_ARRAY( JCLString )
 //------------------------------------------------------------------------------
 
 FORWARD_CLASS( JCLClass )
+DECL_UARRAY( JCLClass )
 DECL_CLASS( JCLClass )
 
 	JCLString*			(*ToXml)		(JCLClass*, JCLState*, JCLString*);
@@ -61,7 +63,7 @@ DECL_CLASS( JCLClass )
 	JILLong				miType;			// type identifier
 	JILLong				miBaseType;		// base interface typeID, if this class is inherited, otherwise 0
 	JILLong				miHybridBase;	// typeID of base class if class is "hybrid", otherwise 0
-	JILLong				miParentType;	// typeID of parent class of this type
+	JILLong				miParentType;	// typeID of parent class / namespace of this type
 	JILLong				miFamily;		// type family, see enum JILTypeFamily
 	JILLong				miModifier;		// modifiers, such as "extern" or "native"
 	JILBool				miNative;		// is a native type
@@ -71,7 +73,7 @@ DECL_CLASS( JCLClass )
 	JILBool				miHasMethod;	// class has at least one method
 	Array_JCLFunc*		mipFuncs;		// member functions
 	Array_JCLVar*		mipVars;		// member variables
-	Array_JCLString*	mipAlias;		// alias names
+	Array_JCLString*	mipAlias;		// aliases for this type
 	JCLFuncType*		mipFuncType;	// signature of a delegate or cofunction type
 	JILMethodInfo		miMethodInfo;	// info about special methods like ctor, copy-ctor and dtor
 

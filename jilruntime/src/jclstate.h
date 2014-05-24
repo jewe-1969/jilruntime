@@ -51,6 +51,7 @@ DECL_CLASS( JCLState )
 
 	JILState*			mipMachine;					///< The JIL virtual machine instance to program
 	JCLFile*			mipFile;					///< Points to current file context
+	JCLString*			mipNamespace;				///< Currently parsed namespace
 	JILLong				miClass;					///< Currently parsed class index
 	JILLong				miArgClass;					///< For parsing function arguments: Class index of class being called, else 0
 	JILLong				miOutputClass;				///< Class to which bytecode is output (usually same as miClass)

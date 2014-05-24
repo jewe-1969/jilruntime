@@ -254,7 +254,7 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 	FunctionsToDict(pDict, pClass, htmlfile, OnlyProperties, &Anchor);
 
 	// add aliases
-	for( i = 0; i < pClass->mipAlias->count; i++ )
+	for( i = 0; i < pClass->mipAlias->Count(pClass->mipAlias); i++ )
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
 		ToDict(pDict, pAlias, htmlfile);
@@ -370,7 +370,7 @@ static JILBool HasTags(JCLClass* pClass)
 	int i;
 	if( JCLFindString(pClass->mipTag, "@ignore", 0) >= 0 )
 		return JILFalse;
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		if (JCLGetLength(pFunc->mipTag) > 0)
@@ -392,7 +392,7 @@ static JCLFunc** SortFunctions(JCLClass* pClass)
 	JCLFunc* swap;
 	JILLong i, j, l;
 
-	l = pClass->mipFuncs->count;
+	l = pClass->mipFuncs->Count(pClass->mipFuncs);
 	ppRes = (JCLFunc**)malloc(l * sizeof(JCLFunc*));
 	for( i = 0; i < l; i++ )
 	{
@@ -432,7 +432,7 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 
 	// first check if there is anything to document in this section
 	JILBool skip = JILTrue;
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		if (pFn(pFunc))
@@ -446,7 +446,7 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 		sortedFuncs = SortFunctions(pClass);
 		fprintf(pFile, "<h3>%s</h3>\n", pText);
 		fprintf(pFile, "<table id='table1'>\n<tbody>\n");
-		for( i = 0; i < pClass->mipFuncs->count; i++ )
+		for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 		{
 			JCLFunc* pFunc = sortedFuncs[i];
 			if (pFn(pFunc))
@@ -509,7 +509,7 @@ static void WriteFunctionDesc(JCLState* _this, JCLClass* pClass, FILE* pFile, Fn
 
 	// first check if there is anything to document in this section
 	JILBool skip = JILTrue;
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		if (pFn(pFunc))
@@ -521,7 +521,7 @@ static void WriteFunctionDesc(JCLState* _this, JCLClass* pClass, FILE* pFile, Fn
 	if (!skip)
 	{
 		sortedFuncs = SortFunctions(pClass);
-		for( i = 0; i < pClass->mipFuncs->count; i++ )
+		for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 		{
 			JCLFunc* pFunc = sortedFuncs[i];
 			if (pFn(pFunc))
@@ -548,12 +548,12 @@ static void WriteAliasTable(JCLState* _this, JCLClass* pClass, FILE* pFile, cons
 	int i;
 
 	// first check if there is anything to document in this section
-	if( !pClass->mipAlias->count )
+	if( !pClass->mipAlias->Count(pClass->mipAlias) )
 		goto exit;
 
 	fprintf(pFile, "<h3>%s</h3>\n", pText);
 	fprintf(pFile, "<table id='table1'>\n<tbody>\n");
-	for( i = 0; i < pClass->mipAlias->count; i++ )
+	for( i = 0; i < pClass->mipAlias->Count(pClass->mipAlias); i++ )
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
 		GetFamilyAndTypeName(_this, pClass, tagstr, workstr, kClearFirst|kFullDecl|kIdentNames);
@@ -633,7 +633,7 @@ static void FunctionsToDict(JILTable* pDict, JCLClass* pClass, JCLString* pFileN
 
 	// first check if there is anything to document in this section
 	JILBool skip = JILTrue;
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		if (pFn(pFunc))
@@ -645,7 +645,7 @@ static void FunctionsToDict(JILTable* pDict, JCLClass* pClass, JCLString* pFileN
 	if (!skip)
 	{
 		sortedFuncs = SortFunctions(pClass);
-		for( i = 0; i < pClass->mipFuncs->count; i++ )
+		for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 		{
 			JCLFunc* pFunc = sortedFuncs[i];
 			if (pFn(pFunc))

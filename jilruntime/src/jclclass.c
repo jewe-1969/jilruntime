@@ -24,8 +24,6 @@
 // Implement array for JCLString
 //------------------------------------------------------------------------------
 
-IMPL_ARRAY( JCLString )
-
 static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* pOut);
 
 //------------------------------------------------------------------------------
@@ -174,7 +172,7 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	JCLAppend(pOut, "\">\n");
 
 	JCLAppend(pOut, "<functions>\n");
-	for(i = 0; i < _this->mipFuncs->count; i++)
+	for(i = 0; i < _this->mipFuncs->Count(_this->mipFuncs); i++)
 	{
 		pFunc = _this->mipFuncs->Get(_this->mipFuncs, i);
 		pFunc->ToXml(pFunc, pState, pOut);
@@ -182,7 +180,7 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	JCLAppend(pOut, "</functions>\n");
 	
 	JCLAppend(pOut, "<variables>\n");
-	for(i = 0; i < _this->mipVars->count; i++)
+	for(i = 0; i < _this->mipVars->Count(_this->mipVars); i++)
 	{
 		pVar = _this->mipVars->Get(_this->mipVars, i);
 		pVar->ToXml(pVar, pState, pOut);
@@ -190,10 +188,10 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	JCLAppend(pOut, "</variables>\n");
 
 	JCLAppend(pOut, "<aliases>\n");
-	for(i = 0; i < _this->mipAlias->count; i++)
+	for(i = 0; i < _this->mipAlias->Count(_this->mipAlias); i++)
 	{
 		JCLAppend(pOut, "<alias name=\"");
-		JCLAppend(pOut, JCLGetString(_this->mipAlias->array[i]));
+		JCLAppend(pOut, JCLGetString(_this->mipAlias->Get(_this->mipAlias, i)));
 		JCLAppend(pOut, "\" />\n");
 	}
 	JCLAppend(pOut, "</aliases>\n");
@@ -209,9 +207,3 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	DELETE(workstr);
 	return pOut;
 }
-
-//------------------------------------------------------------------------------
-// Implement array template
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLClass )

@@ -114,10 +114,6 @@ JILError		JILRemoveSymbolTable		(JILState* pState);
 // JILTruncateSymbolTable
 //------------------------------------------------------------------------------
 // Discards all entries that exceed the specified number of entries to keep.
-// If "itemsToKeep" is for example 5, and there are 7 entries in the symbol
-// table, the last two entries would be discarded.
-// However, if there would be only 5 entries in the symbol table, then no
-// entries would be discarded.
 
 JILError		JILTruncateSymbolTable		(JILState* pState, JILLong itemsToKeep);
 

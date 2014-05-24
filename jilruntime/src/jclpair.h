@@ -45,7 +45,6 @@ typedef Array_JCLPair	JCLCollection;
 //------------------------------------------------------------------------------
 
 JCLPair*	Add_JCLCollection		(JCLCollection* _this, const JCLString* pKey, JILUnknown* pData);
-void		Remove_JCLCollection	(JCLCollection* _this, const JCLString* pKey);
 JCLPair*	Get_JCLCollection		(JCLCollection* _this, const JCLString* pKey);
 JCLPair*	GetAt_JCLCollection		(JCLCollection* _this, JILLong index);
 JILUnknown*	GetData_JCLCollection	(JCLCollection* _this, JILLong index);

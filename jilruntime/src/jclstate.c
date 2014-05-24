@@ -271,6 +271,12 @@ static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
+static JILBool		IsFullQualified		(JCLState*, const JCLString*);
+static void			MakeFullQualified	(JCLState*, JCLString*, const JCLString*);
+static void			MakeUnqualified		(JCLState*, JCLString*, const JCLString*);
+static void			GetParentNamespace	(JCLState*, JCLString*, const JCLString*);
+static void			SetCurrentNamespace	(JCLState*, JCLString*);
+static JCLString*	GetCurrentNamespace	(JCLState*);
 static void			PushOptions			(JCLState*);
 static void			PopOptions			(JCLState*);
 static JILLong		StringToType		(JCLState*, const JCLString*, JILLong);
@@ -436,13 +442,8 @@ static JILError		p_selftest			(JCLState*, Array_JCLVar*);
 static JILError		p_tag				(JCLState*, JCLString*);
 static JILError		p_clause			(JCLState*, Array_JCLVar*, JCLClause*);
 static JILError		p_goto				(JCLState*, Array_JCLVar*);
-
-//------------------------------------------------------------------------------
-// Implement array template for JCLFile and JCLOption
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLOption )
-IMPL_ARRAY( JCLFile )
+static JILError		p_full_qualified	(JCLState*, JCLString*);
+static JILError		p_namespace			(JCLState*);
 
 //------------------------------------------------------------------------------
 // JCLState
@@ -455,6 +456,7 @@ void create_JCLState( JCLState* _this )
 	// init all our members
 	_this->mipMachine = NULL;
 	_this->mipFile = NULL;
+	_this->mipNamespace = NEW(JCLString);
 	_this->miClass = 0;
 	_this->miArgClass = 0;
 	_this->miOutputClass = 0;
@@ -507,6 +509,7 @@ void create_JCLState( JCLState* _this )
 
 void destroy_JCLState( JCLState* _this )
 {
+	DELETE( _this->mipNamespace );
 	// free objects in our struct
 	DELETE( _this->mipClasses );
 	// free stack
@@ -682,9 +685,9 @@ JILError FlushErrorsAndWarnings(JCLState* _this)
 	JILLong i;
 	JILState* ps = _this->mipMachine;
 	Array_JCLString* pErrors = _this->mipErrors;
-	for( i = _this->miFlushedError; i < pErrors->count; i++ )
+	for( i = _this->miFlushedError; i < pErrors->Count(pErrors); i++ )
 		JILMessageLog(ps, "%s", JCLGetString(pErrors->Get(pErrors, i)));
-	_this->miFlushedError = pErrors->count;
+	_this->miFlushedError = pErrors->Count(pErrors);
 	return err;
 }
 
@@ -866,7 +869,7 @@ JILLong FindClass( JCLState* _this, const JCLString* pName, JCLClass** ppClass )
 			*ppClass = pClass;
 			return i;
 		}
-		for( j = 0; j < pClass->mipAlias->count; j++ )
+		for( j = 0; j < pClass->mipAlias->Count(pClass->mipAlias); j++ )
 		{
 			pAlias = pClass->mipAlias->Get(pClass->mipAlias, j);
 			if( JCLCompare(pAlias, pName) )
@@ -915,17 +918,17 @@ JILLong FindDiscreteFunction( JCLState* _this, JILLong typeID, const JCLString* 
 	{
 		pFunc = GetFunc(_this, typeID, i);
 		if( JCLCompare(pFunc->mipName, pName)
-		&&	pFunc->mipArgs->count == pArgs->count 
+		&&	pFunc->mipArgs->Count(pFunc->mipArgs) == pArgs->Count(pArgs)
 		&&	EqualTypes(pFunc->mipResult, pResult) )
 		{
-			for( j = 0; j < pFunc->mipArgs->count; j++ )
+			for( j = 0; j < pFunc->mipArgs->Count(pFunc->mipArgs); j++ )
 			{
 				vsrc = pFunc->mipArgs->Get(pFunc->mipArgs, j);
 				vdst = pArgs->Get(pArgs, j);
 				if( !EqualTypes(vsrc, vdst) )
 					break;
 			}
-			if( j == pFunc->mipArgs->count )
+			if( j == pFunc->mipArgs->Count(pFunc->mipArgs) )
 				break;
 		}
 		pFunc = NULL;
@@ -955,11 +958,11 @@ static JILError FindPrototype( JCLState* _this, const JCLFunc* src, JCLFunc** pp
 		if( dst != src										// not same object
 		&&	JCLCompare(dst->mipName, src->mipName)			// same name
 		&&	dst->miClassID == src->miClassID				// same class membership
-		&&	dst->mipArgs->count == src->mipArgs->count		// same number of arguments
+		&&	dst->mipArgs->Count(dst->mipArgs) == src->mipArgs->Count(src->mipArgs)		// same number of arguments
 		&&	ImpConvertible(_this, src->mipResult, dst->mipResult) )	// same result type, or one of them var
 		{
 			// check argument types
-			for( j = 0; j < dst->mipArgs->count; j++ )
+			for( j = 0; j < dst->mipArgs->Count(dst->mipArgs); j++ )
 			{
 				vsrc = src->mipArgs->Get(src->mipArgs, j);
 				vdst = dst->mipArgs->Get(dst->mipArgs, j);
@@ -970,7 +973,7 @@ static JILError FindPrototype( JCLState* _this, const JCLFunc* src, JCLFunc** pp
 				}
 			}
 			// all seem to be equal
-			if( j == dst->mipArgs->count )
+			if( j == dst->mipArgs->Count(dst->mipArgs) )
 			{
 				JILError result;
 				// check for function class mismatches
@@ -988,7 +991,7 @@ static JILError FindPrototype( JCLState* _this, const JCLFunc* src, JCLFunc** pp
 				if( result )
 					return result;
 				// check arguments for type conflicts
-				for( j = 0; j < dst->mipArgs->count; j++ )
+				for( j = 0; j < dst->mipArgs->Count(dst->mipArgs); j++ )
 				{
 					vsrc = src->mipArgs->Get(src->mipArgs, j);
 					vdst = dst->mipArgs->Get(dst->mipArgs, j);
@@ -1031,7 +1034,7 @@ static JILLong FindBestPrototype( JCLState* _this, JILLong classIdx, const JCLFu
 	{
 		dst = GetFunc(_this, classIdx, i);
 		if( JCLCompare(dst->mipName, src->mipName)				// same name
-		&&	dst->mipArgs->count == src->mipArgs->count )		// same number of arguments
+		&&	dst->mipArgs->Count(dst->mipArgs) == src->mipArgs->Count(src->mipArgs) )		// same number of arguments
 		{
 			score = 0;
 			// if src result is not "void"
@@ -1054,7 +1057,7 @@ static JILLong FindBestPrototype( JCLState* _this, JILLong classIdx, const JCLFu
 					score++;
 			}
 			// calculate score from arguments
-			for( j = 0; j < dst->mipArgs->count; j++ )
+			for( j = 0; j < dst->mipArgs->Count(dst->mipArgs); j++ )
 			{
 				vsrc = src->mipArgs->Get(src->mipArgs, j);
 				vdst = dst->mipArgs->Get(dst->mipArgs, j);
@@ -1139,7 +1142,7 @@ static JILError FindConstructor(JCLState* _this, JCLVar* src, JCLVar* dst, JCLFu
 		for( i = 0; i < NumFuncs(_this, dst->miType); i++ )
 		{
 			pFunc = GetFunc(_this, dst->miType, i);
-			if( pFunc->miCtor && pFunc->mipArgs->count == 1 )
+			if( pFunc->miCtor && pFunc->mipArgs->Count(pFunc->mipArgs) == 1 )
 			{
 				pArg = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
 				if( ImpConvertible(_this, src, pArg) )
@@ -1173,7 +1176,7 @@ static JILError FindDefaultCtor(JCLState* _this, JCLVar* pVar, JCLFunc** ppFunc)
 		for( i = 0; i < NumFuncs(_this, pVar->miType); i++ )
 		{
 			pFunc = GetFunc(_this, pVar->miType, i);
-			if( pFunc->miCtor && pFunc->mipArgs->count == 0 )
+			if( pFunc->miCtor && pFunc->mipArgs->Count(pFunc->mipArgs) == 0 )
 			{
 				// all is fine, return function
 				*ppFunc = pFunc;
@@ -1254,7 +1257,7 @@ static JILBool FindGetAccessor(JCLState* _this, JILLong classIdx, const JCLStrin
 		if( !pFunc )
 			break;
 		// check if we have the correct prototype
-		if( pFunc->mipArgs->count == 0 )
+		if( pFunc->mipArgs->Count(pFunc->mipArgs) == 0 )
 		{
 			if( DynConvertible(_this, pFunc->mipResult, dst) ) // Fix: take type conversion into account so accessor methods support automatic type conversion
 			{
@@ -1555,7 +1558,7 @@ static void FreeLocalVars(JCLState* _this, Array_JCLVar* pLocals)
 	JCLVar* pVar;
 	// find highest position on stack
 	JILLong numStack = -1;
-	for( i = 0; i < pLocals->count; i++ )
+	for( i = 0; i < pLocals->Count(pLocals); i++ )
 	{
 		pVar = pLocals->Get(pLocals, i);
 		if( pVar->miOnStack && pVar->miIndex > numStack )
@@ -1569,7 +1572,7 @@ static void FreeLocalVars(JCLState* _this, Array_JCLVar* pLocals)
 		SimStackPop(_this, numStack);
 	}
 	// now unset all register vars
-	for( i = 0; i < pLocals->count; i++ )
+	for( i = 0; i < pLocals->Count(pLocals); i++ )
 	{
 		pVar = pLocals->Get(pLocals, i);
 		if( pVar->miMode == kModeRegister )
@@ -1624,7 +1627,7 @@ static JCLVar* FindFuncArg(JCLState* _this, const JCLString* pName)
 	int i;
 	JCLVar* pVar;
 	JCLFunc* pFunc = CurrentFunc(_this);
-	for( i = 0; i < pFunc->mipArgs->count; i++ )
+	for( i = 0; i < pFunc->mipArgs->Count(pFunc->mipArgs); i++ )
 	{
 		pVar = pFunc->mipArgs->Get(pFunc->mipArgs, i);
 		if( pVar && JCLCompare(pVar->mipName, pName) )
@@ -1772,9 +1775,9 @@ static void SetMarker(JCLState* _this, SMarker* pMarker)
 {
 	pMarker->mipFunc = CurrentOutFunc(_this);
 	pMarker->miCodePos = pMarker->mipFunc->mipCode->count;
-	pMarker->miLiteralPos = pMarker->mipFunc->mipLiterals->count;
+	pMarker->miLiteralPos = pMarker->mipFunc->mipLiterals->Count(pMarker->mipFunc->mipLiterals);
 	pMarker->miStackPos = _this->miStackPos;
-	pMarker->miErrorPos = _this->mipErrors->count;
+	pMarker->miErrorPos = _this->mipErrors->Count(_this->mipErrors);
 	pMarker->miNumErr = _this->miNumErrors;
 	pMarker->miNumWarn = _this->miNumWarnings;
 }
@@ -1805,7 +1808,7 @@ static void RestoreMarker(JCLState* _this, SMarker* pMarker)
 
 JILLong NumClasses(JCLState* _this)
 {
-	return _this->mipClasses->count;
+	return _this->mipClasses->Count(_this->mipClasses);
 }
 
 //------------------------------------------------------------------------------
@@ -1815,7 +1818,12 @@ JILLong NumClasses(JCLState* _this)
 
 JILLong NumFuncs(JCLState* _this, JILLong typeID)
 {
-	return ClassDefined(_this, typeID) ? GetClass(_this, typeID)->mipFuncs->count : 0;
+	if( ClassDefined(_this, typeID) )
+	{
+		Array_JCLFunc* p = GetClass(_this, typeID)->mipFuncs;
+		return p->Count(p);
+	}
+	return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -1826,7 +1834,7 @@ JILLong NumFuncs(JCLState* _this, JILLong typeID)
 JCLClass* GetClass(JCLState* _this, JILLong typeID)
 {
 	JILError err;
-	if( typeID < 0 || typeID >= _this->mipClasses->count )
+	if( typeID < 0 || typeID >= _this->mipClasses->Count(_this->mipClasses) )
 		FATALERROREXIT("GetClass", "Access to invalid type id");
 exit:
 	return _this->mipClasses->Get(_this->mipClasses, typeID);
@@ -1860,7 +1868,7 @@ JILBool HasParentType(JCLState* _this, JILLong typeID)
 
 JILBool ClassDefined(JCLState* _this, JILLong typeID)
 {
-	return (typeID >= 0 && typeID < _this->mipClasses->count);
+	return (typeID >= 0 && typeID < _this->mipClasses->Count(_this->mipClasses));
 }
 
 //------------------------------------------------------------------------------
@@ -1872,7 +1880,7 @@ JCLFunc* GetFunc(JCLState* _this, JILLong typeID, JILLong funcIdx)
 {
 	JILError err;
 	JCLClass* pClass = GetClass(_this, typeID);
-	if( funcIdx < 0 || funcIdx >= pClass->mipFuncs->count )
+	if( funcIdx < 0 || funcIdx >= pClass->mipFuncs->Count(pClass->mipFuncs) )
 		FATALERROREXIT("GetFunc", "Access to invalid function index");
 exit:
 	return pClass->mipFuncs->Get(pClass->mipFuncs, funcIdx);
@@ -2126,7 +2134,7 @@ static JCLVar* FindGlobalVar(JCLState* _this, JILLong typeID, const JCLString* p
 		{
 			pClass = GetClass(_this, type_global);
 			// first look for a global class member constant
-			for( i = 0; i < pClass->mipVars->count; i++ )
+			for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 			{
 				pVar = pClass->mipVars->Get(pClass->mipVars, i);
 				if( JCLCompare(pVar->mipName, pMangledName) )
@@ -2136,7 +2144,7 @@ static JCLVar* FindGlobalVar(JCLState* _this, JILLong typeID, const JCLString* p
 			if( pVar == NULL )
 			{
 				// no success - then look for the global variable
-				for( i = 0; i < pClass->mipVars->count; i++ )
+				for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 				{
 					pVar = pClass->mipVars->Get(pClass->mipVars, i);
 					if( JCLCompare(pVar->mipName, pName) )
@@ -2164,7 +2172,7 @@ static JCLVar* FindMemberVar(JCLState* _this, JILLong typeID, const JCLString* p
 	pClass = GetClass(_this, typeID);
 	if( pClass )
 	{
-		for( i = 0; i < pClass->mipVars->count; i++ )
+		for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 		{
 			pVar = pClass->mipVars->Get(pClass->mipVars, i);
 			if( JCLCompare(pVar->mipName, pName) )
@@ -2367,7 +2375,7 @@ static JILError AddMemberVarEx(JCLState* _this, JILLong whatIsDefined, JILLong c
 		return JCL_ERR_Illegal_NTL_Variable;
 	pVar->miMode = kModeMember;
 	pVar->miIndex = 0;
-	pVar->miMember = pClass->mipVars->count;
+	pVar->miMember = pClass->mipVars->Count(pClass->mipVars);
 	pVar->miInited = JILTrue;
 	pNewVar = pClass->mipVars->New(pClass->mipVars);
 	pNewVar->Copy(pNewVar, pVar);
@@ -2425,7 +2433,7 @@ static void InitMemberVars(JCLState* _this, JILLong typeID, JILBool value)
 {
 	int i;
 	JCLClass* pClass = GetClass(_this, typeID);
-	for( i = 0; i < pClass->mipVars->count; i++ )
+	for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 		pClass->mipVars->Get(pClass->mipVars, i)->miInited = value;
 }
 
@@ -2782,7 +2790,7 @@ static JILError AddGlobalVar(JCLState* _this, JCLVar* pVar)
 		return JCL_ERR_Illegal_NTL_Variable;
 	pVar->miMode = kModeMember;
 	pVar->miIndex = 2;
-	pVar->miMember = pClass->mipVars->count;
+	pVar->miMember = pClass->mipVars->Count(pClass->mipVars);
 	pVar->miInited = JILFalse;
 	pNewVar = pClass->mipVars->New(pClass->mipVars);
 	pNewVar->Copy(pNewVar, pVar);
@@ -2939,7 +2947,7 @@ static JILBool AllMembersInited(JCLState* _this, JILLong typeID, JCLString* pArg
 	int i;
 	JCLVar* pVar;
 	Array_JCLVar* pVars = GetClass(_this, typeID)->mipVars;
-	for( i = 0; i < pVars->count; i++ )
+	for( i = 0; i < pVars->Count(pVars); i++ )
 	{
 		if( !pVars->Get(pVars, i)->miInited )
 		{
@@ -2971,7 +2979,7 @@ static JCLFile* PushImport(JCLState* _this, const JCLString* pClassName, const J
 
 static void PopImport(JCLState* _this)
 {
-	long num = _this->mipImportStack->count;
+	long num = _this->mipImportStack->Count(_this->mipImportStack);
 	if( num )
 		_this->mipImportStack->Trunc(_this->mipImportStack, num - 1);
 }
@@ -2997,7 +3005,7 @@ static JCLFile* FindImport(JCLState* _this, const JCLString* pString)
 {
 	int i;
 	JCLFile* pImport;
-	for( i = 0; i < _this->mipImportStack->count; i++ )
+	for( i = 0; i < _this->mipImportStack->Count(_this->mipImportStack); i++ )
 	{
 		pImport = _this->mipImportStack->Get(_this->mipImportStack, i);
 		if( JCLCompare(pImport->mipName, pString) )
@@ -3270,6 +3278,94 @@ static JILBool IsClassNative(JCLClass* pClass)
 }
 
 //------------------------------------------------------------------------------
+// IsFullQualified
+//------------------------------------------------------------------------------
+// Returns true if the given identifier name is a full qualified identifier.
+
+static JILBool IsFullQualified(JCLState* _this, const JCLString* pIdentifier)
+{
+	return (JCLFindString(pIdentifier, "::", 0) >= 0);
+}
+
+//------------------------------------------------------------------------------
+// MakeFullQualified
+//------------------------------------------------------------------------------
+// Makes the given identifier full qualified, if it is unqualified. The compiler's
+// current namespace is used.
+
+static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
+{
+	if( IsFullQualified(_this, pIdentifier) || !JCLGetLength(_this->mipNamespace) )
+	{
+		JCLSetString(pResult, JCLGetString(pIdentifier));
+	}
+	else
+	{
+		JCLSetString(pResult, JCLGetString(_this->mipNamespace));
+		JCLAppend(pResult, "::");
+		JCLAppend(pResult, JCLGetString(pIdentifier));
+	}
+}
+
+//------------------------------------------------------------------------------
+// MakeUnqualified
+//------------------------------------------------------------------------------
+// Returns the unqualified identifier from a full qualified identifier,
+// if it is part of the compiler's current namespace.
+
+static void MakeUnqualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
+{
+	if( IsFullQualified(_this, pIdentifier) && JCLBeginsWith(pIdentifier, JCLGetString(_this->mipNamespace)) )
+	{
+		JILLong pos = JCLGetLength(_this->mipNamespace) + 2; // + 2 because "::"
+		JCLSubString(pResult, pIdentifier, pos, JCLGetLength(_this->mipNamespace) - pos);
+	}
+	else
+	{
+		JCLSetString(pResult, JCLGetString(pIdentifier));
+	}
+}
+
+//------------------------------------------------------------------------------
+// GetParentNamespace
+//------------------------------------------------------------------------------
+// Returns the full qualified name of the parent namespace of the given identifier.
+
+static void GetParentNamespace(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
+{
+	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
+	if( pos >= 0 )
+	{
+		JCLSubString(pResult, pIdentifier, 0, pos - 1);
+	}
+	else
+	{
+		JCLClear(pResult);
+	}
+}
+
+//------------------------------------------------------------------------------
+// SetCurrentNamespace
+//------------------------------------------------------------------------------
+// Set the compiler to a new namespace. Functions calling this should save the
+// old namespace string onto the stack, and restore it when done.
+
+static void SetCurrentNamespace(JCLState* _this, JCLString* pIdentifier)
+{
+	_this->mipNamespace = pIdentifier;
+}
+
+//------------------------------------------------------------------------------
+// GetCurrentNamespace
+//------------------------------------------------------------------------------
+// Returns the current namespace string.
+
+static JCLString* GetCurrentNamespace(JCLState* _this)
+{
+	return _this->mipNamespace;
+}
+
+//------------------------------------------------------------------------------
 // TypeFamily
 //------------------------------------------------------------------------------
 // Return the type family of a given type.
@@ -3301,7 +3397,7 @@ JCLOption* GetGlobalOptions(JCLState* _this)
 
 JCLOption* GetOptions(JCLState* _this)
 {
-	JILLong index = _this->mipOptionStack->count - 1;
+	JILLong index = _this->mipOptionStack->Count(_this->mipOptionStack) - 1;
 	if( index < 0 )
 		return NULL;
 	return _this->mipOptionStack->Get(_this->mipOptionStack, index);
@@ -3326,7 +3422,7 @@ static void PushOptions(JCLState* _this)
 
 static void PopOptions(JCLState* _this)
 {
-	JILLong count = _this->mipOptionStack->count;
+	JILLong count = _this->mipOptionStack->Count(_this->mipOptionStack);
 	if( count > 1 )
 	{
 		_this->mipOptionStack->Trunc(_this->mipOptionStack, count - 1);
@@ -3716,7 +3812,7 @@ static JILError GetSignature(JCLState* _this, const JILChar* prefix, JCLVar* pRe
 
 	JCLSetString(pResult, prefix);
 	GetSignatureFromVar(pResVar, pResult);
-	for( i = 0; i < pArgs->count; i++ )
+	for( i = 0; i < pArgs->Count(pArgs); i++ )
 	{
 		GetSignatureFromVar(pArgs->Get(pArgs, i), pResult);
 	}
@@ -3737,8 +3833,8 @@ static void CreateInitState(SInitState* _this, JCLState* pCompiler)
 	{
 		_this->miType = typeID;
 		pClass = GetClass(pCompiler, typeID);
-		_this->mipInited = (JILBool*) malloc(pClass->mipVars->count * sizeof(JILBool));
-		memset(_this->mipInited, 0, pClass->mipVars->count * sizeof(JILBool));
+		_this->mipInited = (JILBool*) malloc(pClass->mipVars->Count(pClass->mipVars) * sizeof(JILBool));
+		memset(_this->mipInited, 0, pClass->mipVars->Count(pClass->mipVars) * sizeof(JILBool));
 	}
 	else
 	{
@@ -3762,7 +3858,7 @@ static void SaveInitState(SInitState* _this)
 	if( _this->miType )
 	{
 		pClass = GetClass(_this->mipCompiler, _this->miType);
-		for( i = 0; i < pClass->mipVars->count; i++ )
+		for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 			_this->mipInited[i] = pClass->mipVars->Get(pClass->mipVars, i)->miInited;
 	}
 	_this->miRetFlag = CurrentFunc(_this->mipCompiler)->miRetFlag;
@@ -3781,7 +3877,7 @@ static void RestoreInitState(const SInitState* _this)
 	if( _this->miType )
 	{
 		pClass = GetClass(_this->mipCompiler, _this->miType);
-		for( i = 0; i < pClass->mipVars->count; i++ )
+		for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 			pClass->mipVars->Get(pClass->mipVars, i)->miInited = _this->mipInited[i];
 	}
 	CurrentFunc(_this->mipCompiler)->miRetFlag = _this->miRetFlag;
@@ -3800,7 +3896,7 @@ static void AndInitState(const SInitState* _this)
 	if( _this->miType )
 	{
 		pClass = GetClass(_this->mipCompiler, _this->miType);
-		for( i = 0; i < pClass->mipVars->count; i++ )
+		for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 			pClass->mipVars->Get(pClass->mipVars, i)->miInited &= _this->mipInited[i];
 	}
 	CurrentFunc(_this->mipCompiler)->miRetFlag &= _this->miRetFlag;
@@ -3818,7 +3914,7 @@ static void SetInitState(SInitState* _this, JILBool flag)
 	if( _this->miType )
 	{
 		pClass = GetClass(_this->mipCompiler, _this->miType);
-		for( i = 0; i < pClass->mipVars->count; i++ )
+		for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 			_this->mipInited[i] = flag;
 	}
 	_this->miRetFlag = flag;
@@ -3850,12 +3946,12 @@ static void FreeInitState(SInitState* _this)
 JILBool IsMethodInherited(JCLState* _this, JILLong typeID, JILLong fn)
 {
 	JCLClass* pClass = GetClass(_this, typeID);
-	if( pClass && fn < pClass->mipFuncs->count )
+	if( pClass && fn < pClass->mipFuncs->Count(pClass->mipFuncs) )
 	{
 		if( pClass->miBaseType )
 		{
 			pClass = GetClass(_this, pClass->miBaseType);
-			if( pClass && fn < pClass->mipFuncs->count )
+			if( pClass && fn < pClass->mipFuncs->Count(pClass->mipFuncs) )
 				return JILTrue;
 		}
 	}
@@ -3935,6 +4031,18 @@ static JILError p_root(JCLState* _this)
 		// at root level, we expect to find a function or class keyword
 		switch( tokenID )
 		{
+			case tk_import:
+				ERROR_IF(isCompound, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				err = p_import( _this );
+				break;
+			case tk_option:
+				ERROR_IF(isCompound, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				err = p_option( _this );
+				break;
+			case tk_namespace:
+				ERROR_IF(isCompound, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				err = p_namespace( _this );
+				break;
 			case tk_class:
 				err = p_class( _this, 0 );
 				break;
@@ -3955,12 +4063,6 @@ static JILError p_root(JCLState* _this)
 				break;
 			case tk_explicit:
 				err = p_function( _this, kMethod | kExplicit, JILFalse );
-				break;
-			case tk_import:
-				err = p_import( _this );
-				break;
-			case tk_option:
-				err = p_option( _this );
 				break;
 			case tk_using:
 				err = p_using( _this );
@@ -4030,8 +4132,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	JCLString* pToken;
 	JCLString* pClassName;
 	JCLString* pIfaceName;
+	JCLString* pOldNamespace;
 	JILLong tokenID;
-	JILLong classToken;
+//	JILLong classToken;
 	JILLong classIdx;
 	JILLong savePos;
 	JILLong strict;
@@ -4039,14 +4142,16 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	pVar = NEW(JCLVar);
 	pClassName = NEW(JCLString);
 	pIfaceName = NEW(JCLString);
+	pOldNamespace = GetCurrentNamespace(_this);
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
 
 	// we expect to find a class name
-	err = pFile->GetToken(pFile, pClassName, &classToken);
-	ERROR_IF(err, err, pClassName, goto exit);
-	ERROR_IF(!IsClassToken(classToken), JCL_ERR_Unexpected_Token, pClassName, goto exit);
+	err = p_full_qualified(_this, pToken);
+	ERROR_IF(err, err, pToken, goto exit);
+//	ERROR_IF(!IsClassToken(classToken), JCL_ERR_Unexpected_Token, pToken, goto exit);
+	MakeFullQualified(_this, pClassName, pToken);
 
 	// peek for ';'
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
@@ -4117,6 +4222,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	pClass->miHasBody = JILTrue;
+	SetCurrentNamespace(_this, pClassName);
 	// check for tag
 	err = p_tag(_this, CurrentClass(_this)->mipTag);
 	if( err )
@@ -4180,12 +4286,13 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		ERROR_IF(err, err, pToken, goto exit);
 	}
 	// done with class
-	if (pClass->miHasMethod || pClass->mipVars->count > 0)
+	if (pClass->miHasMethod || pClass->mipVars->Count(pClass->mipVars) > 0)
 		ERROR_IF(!pClass->miHasCtor && !IsClassNative(pClass), JCL_ERR_No_Constructor_Defined, pClass->mipName, goto exit);
 
 exit:
 	// MUST! go back to "global" class
 	SetCompileContext(_this, type_global, 0);
+	SetCurrentNamespace(_this, pOldNamespace);
 	DELETE( pToken );
 	DELETE( pClassName );
 	DELETE( pIfaceName );
@@ -4284,7 +4391,7 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 			{
 				pFunc->mipName->Copy(pFunc->mipName, pClassName);
 				// if method is copy-constructor, set source type to inheriting class
-				if (pFunc->mipArgs->count == 1)
+				if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
 				{
 					JCLVar* pArg1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
 					if (pArg1->miType == pClass->miBaseType)
@@ -4649,11 +4756,11 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		for(;;) // just so we can leave without using goto
 		{
 			fn = FindAccessor(_this, pClass->miType, pFunc->mipName, 0, &pAcc);
-			while( pAcc != NULL && pFunc->mipArgs->count == pAcc->mipArgs->count )			// found setter but need getter?
+			while( pAcc != NULL && pFunc->mipArgs->Count(pFunc->mipArgs) == pAcc->mipArgs->Count(pAcc->mipArgs) )			// found setter but need getter?
 				fn = FindAccessor(_this, pClass->miType, pFunc->mipName, fn + 1, &pAcc);	// search again
 			if( pAcc == NULL )
 				break;
-			if( pFunc->mipArgs->count )
+			if( pFunc->mipArgs->Count(pFunc->mipArgs) )
 			{
 				pVar1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
 				pVar2 = pAcc->mipResult;
@@ -4670,11 +4777,11 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	// check for ctor, cctor
 	if( pFunc->miCtor && !pFunc->miExplicit ) // TODO: disallow 'explicit' OK?
 	{
-		if (pFunc->mipArgs->count == 0 && pClass->miMethodInfo.ctor == -1)
+		if (pFunc->mipArgs->Count(pFunc->mipArgs) == 0 && pClass->miMethodInfo.ctor == -1)
 		{
 			pClass->miMethodInfo.ctor = pFunc->miFuncIdx;
 		}
-		else if (pFunc->mipArgs->count == 1 && pClass->miMethodInfo.cctor == -1)
+		else if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1 && pClass->miMethodInfo.cctor == -1)
 		{
 			pVar = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
 			if (pVar->miType == pClass->miType)
@@ -4700,7 +4807,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		pClass->miHasBody = JILTrue;
 		pFunc2 = pClass->mipFuncs->New(pClass->mipFuncs);
 		pFunc2->Copy(pFunc2, pFunc);
-		pFunc2->miFuncIdx = pClass->mipFuncs->count - 1;
+		pFunc2->miFuncIdx = pClass->mipFuncs->Count(pClass->mipFuncs) - 1;
 		// destroy original function
 		pClass = CurrentClass(_this);
 		pClass->mipFuncs->Trunc(pClass->mipFuncs, pFunc->miFuncIdx);
@@ -4754,7 +4861,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		// function already has a body?
 		ERROR_IF(pFunc2->mipCode->count, JCL_ERR_Function_Already_Defined, pFunc->mipName, goto exit);
 		// update and check argument names
-		for( i = 0; i < pFunc->mipArgs->count; i++ )
+		for( i = 0; i < pFunc->mipArgs->Count(pFunc->mipArgs); i++ )
 		{
 			src = pFunc->mipArgs->Get(pFunc->mipArgs, i);
 			dst = pFunc2->mipArgs->Get(pFunc2->mipArgs, i);
@@ -4975,7 +5082,7 @@ static JILError p_function_pass(JCLState* _this)
 	pFunc->miYieldFlag = JILFalse;
 	// push arguments in reverse order onto simulated stack
 	pArgs = pFunc->mipArgs;
-	for( i = pArgs->count - 1; i >= 0; i-- )
+	for( i = pArgs->Count(pArgs) - 1; i >= 0; i-- )
 		SimStackPush(_this, pArgs->Get(pArgs, i), JILFalse);
 	// un-init members in ctors
 	if( pFunc->miCtor )
@@ -5023,11 +5130,11 @@ static JILError p_function_pass(JCLState* _this)
 	{
 		// take function arguments from stack
 		pArgs = pFunc->mipArgs;
-		SimStackPop(_this, pArgs->count);
+		SimStackPop(_this, pArgs->Count(pArgs));
 		// check if we have compiled a yield statement
 		if( pFunc->miYieldFlag )
 		{
-			if( pArgs->count )
+			if( pArgs->Count(pArgs) )
 				cg_opcode(_this, op_yield);
 		}
 		else
@@ -5053,7 +5160,7 @@ static JILError p_function_pass(JCLState* _this)
 		{
 			// take function arguments from stack
 			pArgs = pFunc->mipArgs;
-			SimStackPop(_this, pArgs->count);
+			SimStackPop(_this, pArgs->Count(pArgs));
 		}
 		else
 		{
@@ -5062,7 +5169,7 @@ static JILError p_function_pass(JCLState* _this)
 			{
 				// Unroll entire stack
 				JILLong numStack = kSimStackSize - _this->miStackPos;	// number of items on stack
-				numStack -= pFunc->mipArgs->count;						// minus arguments
+				numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);						// minus arguments
 				if( numStack < 0 )
 					FATALERROREXIT("p_function_pass", "No. of items on stack is negative");
 				if( numStack )
@@ -5073,7 +5180,7 @@ static JILError p_function_pass(JCLState* _this)
 				}
 				// take function arguments from stack
 				pArgs = pFunc->mipArgs;
-				SimStackPop(_this, pArgs->count);
+				SimStackPop(_this, pArgs->Count(pArgs));
 				cg_return(_this);
 				pFunc->miRetFlag = JILTrue;
 			}
@@ -5124,7 +5231,7 @@ static JILError p_sub_functions(JCLState* _this)
 	pLiterals = pCurrentFunc->mipLiterals;
 	savePos = pFile->GetLocator(pFile);
 
-	for( i = 0; i < pLiterals->count; i++ )
+	for( i = 0; i < pLiterals->Count(pLiterals); i++ )
 	{
 		pLit = pLiterals->Get(pLiterals, i);
 		if( TypeFamily(_this, pLit->miType) == tf_delegate && pLit->miHandle == 0 )
@@ -5166,7 +5273,7 @@ static JILError p_sub_functions(JCLState* _this)
 					err = pFile->GetToken(pFile, pToken, &tokenID);
 					ERROR_IF(err, err, pToken, goto exit);
 					ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
-					ERROR_IF(argc >= pNewFunc->mipArgs->count, JCL_ERR_Unexpected_Token, pToken, goto exit);
+					ERROR_IF(argc >= pNewFunc->mipArgs->Count(pNewFunc->mipArgs), JCL_ERR_Unexpected_Token, pToken, goto exit);
 					pVar = pNewFunc->mipArgs->Get(pNewFunc->mipArgs, argc);
 					pVar->mipName->Copy(pVar->mipName, pToken);
 					argc++;
@@ -5179,7 +5286,7 @@ static JILError p_sub_functions(JCLState* _this)
 					else
 						ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 				}
-				ERROR_IF(argc < pNewFunc->mipArgs->count, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				ERROR_IF(argc < pNewFunc->mipArgs->Count(pNewFunc->mipArgs), JCL_ERR_Unexpected_Token, pToken, goto exit);
 			}
 			else
 			{
@@ -5686,7 +5793,7 @@ static JILError p_return(JCLState* _this, Array_JCLVar* pLocals)
 no_expr:
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
-	numStack -= pFunc->mipArgs->count;		// minus arguments
+	numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);		// minus arguments
 	if( numStack < 0 )
 		FATALERROREXIT("p_return", "Number of items on stack is negative");
 	if( numStack )
@@ -5753,7 +5860,7 @@ static JILError p_throw(JCLState* _this, Array_JCLVar* pLocals)
 
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
-	numStack -= pFunc->mipArgs->count;		// minus arguments
+	numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);		// minus arguments
 	if( numStack < 0 )
 		FATALERROREXIT("p_throw", "Number of items on stack is negative");
 	if( numStack )
@@ -8203,7 +8310,7 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 		}
 		else if( pFunc->miCofunc )
 		{
-			err = cg_newctx(_this, pObj, classIdx, pFunc->miHandle, pFunc->mipArgs->count);
+			err = cg_newctx(_this, pObj, classIdx, pFunc->miHandle, pFunc->mipArgs->Count(pFunc->mipArgs));
 			ERROR_IF(err, err, pName, goto exit);
 			JCLTypeInfoFromVar(&outType, pObj);
 		}
@@ -8213,10 +8320,10 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 		}
 	}
 	// pop arguments from stack
-	if( pFunc->mipArgs->count )
+	if( pFunc->mipArgs->Count(pFunc->mipArgs) )
 	{
-		cg_pop_multi(_this, pFunc->mipArgs->count);
-		SimStackPop(_this, pFunc->mipArgs->count );
+		cg_pop_multi(_this, pFunc->mipArgs->Count(pFunc->mipArgs));
+		SimStackPop(_this, pFunc->mipArgs->Count(pFunc->mipArgs) );
 	}
 	// restore r0
 	if( pObj && TypeFamily(_this, pObj->miType) != tf_thread )
@@ -8335,7 +8442,7 @@ static JILError p_match_function(JCLState* _this, Array_JCLVar* pLocals, JILLong
 	//
 	// STEP 2: Now really compile the function call, using the found function declaration
 	//
-	stModify = pFunc->mipArgs->count;
+	stModify = pFunc->mipArgs->Count(pFunc->mipArgs);
 	cg_push_multi(_this, stModify);
 	// copy argument vars, so we can modify them but get no problems in recursive calls
 	pArgs->Copy(pArgs, pFunc->mipArgs);
@@ -9298,9 +9405,9 @@ static JILError p_break(JCLState* _this, JILBool bContinue)
 
 	// add fixup position to the list
 	if( bContinue )
-		_this->mipContFixup->Set(_this->mipContFixup, _this->mipContFixup->count, fixupPos);
+		_this->mipContFixup->Add(_this->mipContFixup, fixupPos);
 	else
-		_this->mipBreakFixup->Set(_this->mipBreakFixup, _this->mipBreakFixup->count, fixupPos);
+		_this->mipBreakFixup->Add(_this->mipBreakFixup, fixupPos);
 
 exit:
 	DELETE( pToken );
@@ -9443,7 +9550,7 @@ static JILError p_switch(JCLState* _this, Array_JCLVar* pParentLocals)
 			// insert branch to next block
 			if( !haveBreak )
 			{
-				pBranchFixup->Set(pBranchFixup, pBranchFixup->count, GetCodeLocator(_this));
+				pBranchFixup->Add(pBranchFixup, GetCodeLocator(_this));
 				cg_opcode(_this, op_bra);
 				cg_opcode(_this, 0);
 				haveBreak = JILTrue;
@@ -9480,7 +9587,7 @@ static JILError p_switch(JCLState* _this, Array_JCLVar* pParentLocals)
 			err = cg_compare_var(_this, tk_equ, pTempVar, pSwitchVar, pDupVar);
 			ERROR_IF(err, err, NULL, goto exit);
 			// insert test and branch
-			pCaseFixup->Set(pCaseFixup, pCaseFixup->count, GetCodeLocator(_this));
+			pCaseFixup->Add(pCaseFixup, GetCodeLocator(_this));
 			branchFix = GetCodeLocator(_this);
 			cg_opcode(_this, op_tsteq_r);
 			cg_opcode(_this, pTempVar->miIndex);
@@ -9500,7 +9607,7 @@ static JILError p_switch(JCLState* _this, Array_JCLVar* pParentLocals)
 			if( !haveBreak )
 			{
 				// insert branch to next block
-				pBranchFixup->Set(pBranchFixup, pBranchFixup->count, GetCodeLocator(_this));
+				pBranchFixup->Add(pBranchFixup, GetCodeLocator(_this));
 				cg_opcode(_this, op_bra);
 				cg_opcode(_this, 0);
 				haveBreak = JILTrue;
@@ -10533,7 +10640,7 @@ static JILError p_accessor_call(JCLState* _this, Array_JCLVar* pLocals, JCLFunc*
 	if( tokenID == tk_assign )
 	{
 		// find setter variant
-		if( pFunc->mipArgs->count == 0 )
+		if( pFunc->mipArgs->Count(pFunc->mipArgs) == 0 )
 		{
 			FindAccessor(_this, classIdx, pName, pFunc->miFuncIdx + 1, &pFunc);
 			if( pFunc == NULL )
@@ -11522,7 +11629,7 @@ static JILError p_delegate_call(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 
 	// compile argument list
 	pFunc = GetClass(_this, pDelegateVar->miType)->mipFuncType;
-	stModify = pFunc->mipArgs->count;
+	stModify = pFunc->mipArgs->Count(pFunc->mipArgs);
 	cg_push_multi(_this, stModify);
 	// copy argument vars, so we can modify them but get no problems in recursive calls
 	pArgs->Copy(pArgs, pFunc->mipArgs);
@@ -11698,7 +11805,7 @@ static JILError p_function_literal(JCLState* _this, Array_JCLVar* pLocals, JCLVa
 	{
 		pClass = GetClass(_this, pLVar->miType);
 		pArgs = pClass->mipFuncType->mipArgs;
-		for( i = 0; i < pArgs->count; i++ )
+		for( i = 0; i < pArgs->Count(pArgs); i++ )
 		{
 			pVar = pArgs->Get(pArgs, i);
 			if( JCLGetLength(pVar->mipName) == 0 )
@@ -12114,6 +12221,84 @@ exit:
 	return err;
 }
 
+//------------------------------------------------------------------------------
+// p_full_qualified
+//------------------------------------------------------------------------------
+// Parse a full qualified identifier name.
+
+static JILError p_full_qualified(JCLState* _this, JCLString* pIdentifier)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLString* pToken;
+	JILLong tokenID;
+	JILLong savePos;
+
+	pToken = NEW(JCLString);
+	pFile = _this->mipFile;
+	JCLClear(pIdentifier);
+
+	do
+	{
+		// get identifier
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+		ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
+		JCLAppend(pIdentifier, JCLGetString(pToken));
+
+		// expect ::
+		savePos = pFile->GetLocator(pFile);
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+		if( tokenID == tk_scope )
+			JCLAppend(pIdentifier, "::");
+	}
+	while( tokenID == tk_scope );
+	pFile->SetLocator(pFile, savePos);
+
+exit:
+	DELETE( pToken );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_namespace
+//------------------------------------------------------------------------------
+// Parse a namespace statement.
+
+static JILError p_namespace(JCLState* _this)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLString* pToken;
+	JCLString* pOldNS = _this->mipNamespace;
+	JILLong tokenID;
+
+	pToken = NEW(JCLString);
+	_this->mipNamespace = NEW(JCLString);
+	pFile = _this->mipFile;
+	JCLClear(_this->mipNamespace);
+
+	err = p_full_qualified(_this, _this->mipNamespace);
+	if( err )
+		goto exit;
+
+	// check for {
+	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+	ERROR_IF(tokenID != tk_curly_open, JCL_ERR_Unexpected_Token, pToken, goto exit);
+
+	err = p_root(_this);
+	if( err )
+		goto exit;
+
+exit:
+	DELETE( pToken );
+	DELETE( _this->mipNamespace );
+	_this->mipNamespace = pOldNS;
+	return err;
+}
+
 /******************************************************************************/
 /*********************** Code Generator Functions *****************************/
 /******************************************************************************/
@@ -12126,7 +12311,7 @@ exit:
 static void cg_opcode(JCLState* _this, JILLong opcode)
 {
 	Array_JILLong* pCode = CurrentOutFunc(_this)->mipCode;
-	pCode->Set(pCode, pCode->count, opcode);
+	pCode->Add(pCode, opcode);
 }
 
 //------------------------------------------------------------------------------
@@ -14818,7 +15003,7 @@ JILError cg_finish_intro(JCLState* _this)
 	pClass = GetClass(_this, type_global);
 
 	// set / update global object size
-	err = JILSetGlobalObjectSize(pMachine, type_global, pClass->mipVars->count);
+	err = JILSetGlobalObjectSize(pMachine, type_global, pClass->mipVars->Count(pClass->mipVars));
 	if( err )
 		goto exit;
 
@@ -15515,7 +15700,7 @@ static JILError cg_accessor_call(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 	if( pFunc->miMethod && pObj && !IsSrcInited(pObj) )
 		ERROR(JCL_ERR_Var_Not_Initialized, pName, goto exit);
 	// check if calling set-accessor and object is const
-	if( pFunc->mipArgs->count && IsDstConst(pObj) )
+	if( pFunc->mipArgs->Count(pFunc->mipArgs) && IsDstConst(pObj) )
 		ERROR(JCL_ERR_LValue_Is_Const, pName, goto exit);
 	// generate code for function call
 	if( pClass->miNative )
@@ -15536,10 +15721,10 @@ static JILError cg_accessor_call(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 
 exit:
 	// pop arguments from stack
-	if( pFunc->mipArgs->count )
+	if( pFunc->mipArgs->Count(pFunc->mipArgs) )
 	{
-		cg_pop_multi(_this, pFunc->mipArgs->count);
-		SimStackPop(_this, pFunc->mipArgs->count );
+		cg_pop_multi(_this, pFunc->mipArgs->Count(pFunc->mipArgs));
+		SimStackPop(_this, pFunc->mipArgs->Count(pFunc->mipArgs) );
 	}
 	return err;
 }
