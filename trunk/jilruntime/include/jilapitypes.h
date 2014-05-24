@@ -159,6 +159,7 @@ typedef enum
 	tf_integral,				///< Type is an integral type (int or float)
 	tf_class,					///< Type is a class (native or script)
 	tf_interface,				///< Type is an interface
+	tf_namespace,				///< Type is a namespace
 	tf_thread,					///< Type is a cooperative thread (cofunction)
 	tf_delegate,				///< Type is a delegate (reference to a function or method)
 

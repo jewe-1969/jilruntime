@@ -218,6 +218,10 @@
 			Name="header"
 			>
 			<File
+				RelativePath="..\src\jclarray.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\jclclass.h"
 				>
 			</File>
@@ -367,6 +371,10 @@
 			</File>
 			<File
 				RelativePath="..\src\bind_stringMatch.c"
+				>
+			</File>
+			<File
+				RelativePath="..\src\jclarray.c"
 				>
 			</File>
 			<File

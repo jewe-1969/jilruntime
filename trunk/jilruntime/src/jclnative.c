@@ -162,14 +162,14 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "//-----------------------------------------------------------------------------------\n");
 	fprintf(outStream, "\n");
 	fprintf(outStream, "enum {\n");
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		JCLSetString(workstr, "fn_");
 		JCLAppend(workstr, JCLGetString(pFunc->mipName));
 		AddToEnum(enumeration, workstr);
 		fprintf(outStream, "\t%s", JCLGetString(workstr));
-		if( i < (pClass->mipFuncs->count - 1) )
+		if( i < (pClass->mipFuncs->Count(pClass->mipFuncs) - 1) )
 			fprintf(outStream, ",");
 		fprintf(outStream, "\n");
 	}
@@ -189,7 +189,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	else
 		fprintf(outStream, "\tTAG(\"TODO: You can fill these tags with documentation. They will be used by the HTML documentation engine.\")\n");
 	SearchClassDelegates(_this, pClass, outStream);
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
@@ -298,7 +298,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "{\n");
 	fprintf(outStream, "	// Dynamically build the class declaration\n");
 	fprintf(outStream, "	NTLDeclareVerbatim(pDataIn, kClassDeclaration); // add the static part of the class declaration\n");
-	for( i = 0; i < pClass->mipVars->count; i++ )
+	for( i = 0; i < pClass->mipVars->Count(pClass->mipVars); i++ )
 	{
 		JCLVar* pVar = pClass->mipVars->Get(pClass->mipVars, i);
 		if (pVar->miConst)
@@ -326,7 +326,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	if( GetNumFuncs(pClass, JILTrue) )
 	{
 		fprintf(outStream, "	// Allocate memory and write the pointer to ppObject\n");
-		fprintf(outStream, "	*ppObject = (%s*)malloc(sizeof(%s));\n", sObjectName, sObjectName);
+		fprintf(outStream, "	*ppObject = (%s*)operator new(sizeof(%s));\n", sObjectName, sObjectName);
 	}
 	else
 	{
@@ -346,8 +346,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	if( GetNumFuncs(pClass, JILTrue) )
 	{
 		fprintf(outStream, "	// Destroy native instance\n");
-		fprintf(outStream, "	_this->~%s();\n", sObjectName);
-		fprintf(outStream, "	free(_this);\n");
+		fprintf(outStream, "	delete _this;\n");
 	}
 	else
 	{
@@ -387,7 +386,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 		fprintf(outStream, "	JILLong thisID = NTLInstanceTypeID(pInst);	// get the type-id of this class\n");
 		fprintf(outStream, "	switch( funcID )\n");
 		fprintf(outStream, "	{\n");
-		for( i = 0; i < pClass->mipFuncs->count; i++ )
+		for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 		{
 			JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 			if (!pFunc->miMethod)
@@ -431,7 +430,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 		fprintf(outStream, "	JILLong thisID = NTLInstanceTypeID(pInst);	// get the type-id of this class\n");
 		fprintf(outStream, "	switch( funcID )\n");
 		fprintf(outStream, "	{\n");
-		for( i = 0; i < pClass->mipFuncs->count; i++ )
+		for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 		{
 			JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 			if (pFunc->miMethod)
@@ -489,7 +488,7 @@ static void AddToEnum(Array_JCLString* pArr, JCLString* workstr)
 	for( idx = 2; ; idx++ )
 	{
 		exists = JILFalse;
-		for( i = 0; i < pArr->count; i++ )
+		for( i = 0; i < pArr->Count(pArr); i++ )
 		{
 			if( JCLCompare(pArr->Get(pArr, i), workstr) )
 			{
@@ -516,7 +515,7 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 	JILError err = JCL_No_Error;
 	JILLong i;
 	Array_JCLVar* pArgs = pFunc->mipArgs;
-	JILLong numArg = pArgs->count;
+	JILLong numArg = pArgs->Count(pArgs);
 	JCLVar* pArg;
 	JCLString* workstr = NULL;
 	JCLString* callPrefix = NULL;
@@ -783,7 +782,7 @@ static JILLong GetNumFuncs(JCLClass* pClass, JILBool bMethods)
 {
 	JILLong i;
 	JILLong num = 0;
-	for( i = 0; i < pClass->mipFuncs->count; i++ )
+	for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		if ((pFunc->miMethod && bMethods) || (!pFunc->miMethod && !bMethods))
@@ -811,10 +810,10 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 	pList = NEW(Array_JCLString);
 	JCLClear(outstr);
 
-	for( fn = 0; fn < pClass->mipFuncs->count; fn++)
+	for( fn = 0; fn < pClass->mipFuncs->Count(pClass->mipFuncs); fn++)
 	{
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, fn);
-		for( p = -1; p < pFunc->mipArgs->count; p++)
+		for( p = -1; p < pFunc->mipArgs->Count(pFunc->mipArgs); p++)
 		{
 			JCLVar* pArg;
 			if( p >= 0)
@@ -830,13 +829,13 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 			{
 				JILLong i;
 				// check if we already have this type in the list
-				for( i = 0; i < pList->count; i++ )
+				for( i = 0; i < pList->Count(pList); i++ )
 				{
 					if( JCLCompare(pType->mipName, pList->Get(pList, i)) )
 						break;
 				}
 				// if not found, add to list
-				if( i == pList->count )
+				if( i == pList->Count(pList) )
 				{
 					JCLString* str = pList->New(pList);
 					JCLSetString(str, JCLGetString(pType->mipName));
@@ -845,13 +844,13 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 		}
 	}
 	// build package string from list
-	if( pList->count )
+	if( pList->Count(pList) )
 	{
 		JILLong i;
-		for( i = 0; i < pList->count; i++ )
+		for( i = 0; i < pList->Count(pList); i++ )
 		{
 			JCLAppend(outstr, JCLGetString(pList->Get(pList, i)));
-			if ( i < (pList->count - 1))
+			if ( i < (pList->Count(pList) - 1))
 				JCLAppend(outstr, ", ");
 		}
 	}
@@ -886,13 +885,13 @@ static void DelegateToString(JCLState* _this, JCLFuncType* pFuncType, const JILC
 
 	// write delegate arguments
 	pArgs = pFuncType->mipArgs;
-	for( i = 0; i < pArgs->count; i++ )
+	for( i = 0; i < pArgs->Count(pArgs); i++ )
 	{
 		// write argument
 		pVar = pArgs->Get(pArgs, i);
 		pVar->ToString(pVar, _this, outString, kIdentNames);
 		// write comma if this wasn't the last arg
-		if( i < (pArgs->count - 1) )
+		if( i < (pArgs->Count(pArgs) - 1) )
 			JCLAppend(outString, ", ");
 	}
 	// write end
@@ -916,12 +915,12 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 	JCLSetString(classtr, JCLGetString(pClass->mipName));
 	JCLAppend(classtr, "::");
 
-	for( cl = 0; cl < _this->mipClasses->count; cl++ )
+	for( cl = 0; cl < _this->mipClasses->Count(_this->mipClasses); cl++ )
 	{
 		pType = GetClass(_this, cl);
 		if( pType->miFamily == tf_delegate )
 		{
-			for( al = 0; al < pType->mipAlias->count; al++ )
+			for( al = 0; al < pType->mipAlias->Count(pType->mipAlias); al++ )
 			{
 				JCLString* alias = pType->mipAlias->Get(pType->mipAlias, al);
 				if( JCLFindString(alias, JCLGetString(classtr), 0) == 0 )

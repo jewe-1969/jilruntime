@@ -222,7 +222,7 @@ JILError JCLLink(JILState* pVM)
 				else if( pClass->miFamily == tf_class )
 				{
 					// Set class instance size
-					err = JILSetClassInstanceSize(pVM, pClass->miType, pClass->mipVars->count);
+					err = JILSetClassInstanceSize(pVM, pClass->miType, pClass->mipVars->Count(pClass->mipVars));
 					if( err )
 						goto exit;
 					// generate v-table
@@ -312,7 +312,7 @@ const char* JCLGetErrorText(JILState* pVM)
 {
 	const char* pStr = NULL;
 	JCLState* _this = pVM->vmpCompiler;
-	if( _this && _this->miLastError < _this->mipErrors->count )
+	if( _this && _this->miLastError < _this->mipErrors->Count(_this->mipErrors) )
 	{
 		pStr = JCLGetString(_this->mipErrors->Get(_this->mipErrors, _this->miLastError++));
 	}

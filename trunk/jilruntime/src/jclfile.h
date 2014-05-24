@@ -128,6 +128,7 @@ typedef enum
 	tk_interface,
 	tk_int,
 	tk_method,
+	tk_namespace,
 	tk_native,
 	tk_new,
 	tk_not,

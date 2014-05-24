@@ -56,6 +56,7 @@ const JCLToken kKeywordList[] =
 	tk_int,			"int",
 	tk_interface,	"interface",
 	tk_method,		"method",
+	tk_namespace,	"namespace",
 	tk_native,		"native",
 	tk_new,			"new",
 	tk_not,			"not",
@@ -304,9 +305,9 @@ static JILError peekToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pT
 	JILError err = JCL_ERR_End_Of_File;
 	*pTokenID = tk_unknown;
 	JCLClear(pToken);
-	if( _this->miLocator < _this->mipTokens->count )
+	if( _this->miLocator < _this->mipTokens->Count(_this->mipTokens) )
 	{
-		JCLFileToken* pft = _this->mipTokens->array[_this->miLocator];
+		JCLFileToken* pft = _this->mipTokens->Get(_this->mipTokens, _this->miLocator);
 		*pTokenID = pft->miTokenID;
 		if( pft->mipToken )
 			pToken->Copy(pToken, pft->mipToken);
@@ -551,8 +552,8 @@ void GetCurrentPosition(JCLFile* _this, JILLong* pColumn, JILLong* pLine)
 	loc = _this->miLocator - 1; // because GetToken() advances BEFORE we examine the token
 	if( loc < 0 )
 		loc = 0;
-	if( loc < _this->mipTokens->count )
-		length = _this->mipTokens->array[loc]->miLocation;
+	if( loc < _this->mipTokens->Count(_this->mipTokens) )
+		length = _this->mipTokens->Get(_this->mipTokens, loc)->miLocation;
 	else
 		length = JCLGetLength(str);
 	for( i = 0; i < length; i++ )
@@ -846,9 +847,3 @@ void destroy_JCLFileToken(JCLFileToken* _this)
 {
 	DELETE(_this->mipToken);
 }
-
-//------------------------------------------------------------------------------
-// Array_JCLFileToken
-//------------------------------------------------------------------------------
-
-IMPL_ARRAY( JCLFileToken )
