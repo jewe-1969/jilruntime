@@ -33,7 +33,7 @@ static const JILLong kFormatWorstCaseBufferSize = 16384;
 
 static void Reallocate(JCLString* _this, JILLong newSize, JILLong keepData);
 static void Deallocate(JCLString* _this);
-static int StrEquNoCase(const char* str1, const char* str2);
+static int StrEquNoCase(const JILChar* str1, const JILChar* str2);
 
 //------------------------------------------------------------------------------
 // JCLString
@@ -111,7 +111,7 @@ void JCLSetString(JCLString* _this, const JILChar* string)
 //------------------------------------------------------------------------------
 // Returns true (1) if the strings are equal, false (0) if they are not.
 
-JILLong JCLCompare(JCLString* _this, const JCLString* Other)
+JILLong JCLCompare(const JCLString* _this, const JCLString* Other)
 {
 	return (strcmp(JCLGetString(_this), JCLGetString( (JCLString*) Other )) == 0);
 }
@@ -121,7 +121,7 @@ JILLong JCLCompare(JCLString* _this, const JCLString* Other)
 //------------------------------------------------------------------------------
 // JCLCompare strings ignoring the case.
 
-JILLong JCLCompareNoCase(JCLString* _this, const JCLString* Other)
+JILLong JCLCompareNoCase(const JCLString* _this, const JCLString* Other)
 {
 	return StrEquNoCase(JCLGetString(_this), JCLGetString( (JCLString*) Other ));
 }
@@ -176,7 +176,7 @@ void JCLInsert(JCLString* _this, const JCLString* source, JILLong index)
 	if( source->m_Length )
 	{
 		JILLong oldLen;
-		char* pOldStr;
+		JILChar* pOldStr;
 		// clone, if given object is this
 		const JCLString* pSrc = source;
 		int bThis = (pSrc == _this);
@@ -245,7 +245,7 @@ JILLong JCLReplace(JCLString* _this, const JILChar* search, const JILChar* repla
 	JILLong count = 0;
 	JILLong searchLength;
 	JILLong pos = 0;
-	char* pPos;
+	JILChar* pPos;
 	JCLString* pReplace = NEW(JCLString);
 	if( search && _this->m_String )
 	{
@@ -328,8 +328,8 @@ void JCLTrim(JCLString* _this)
 	if( _this->m_Length )
 	{
 		// trim start
-		long start;
-		long end;
+		JILLong start;
+		JILLong end;
 		JILByte* pString = (JILByte*) _this->m_String;
 		for( start = 0; start < _this->m_Length; start++ )
 		{
@@ -450,18 +450,18 @@ JILLong JCLFormatTime(JCLString* _this, const JILChar* pFormat, time_t time)
 //------------------------------------------------------------------------------
 // JCLFindChar
 //------------------------------------------------------------------------------
-// Find the given char in the string from an index. The index is zero based.
+// Find the given JILChar in the string from an index. The index is zero based.
 // Returns the zero based index of the character if found. Returns -1 if not
 // found.
 
-JILLong JCLFindChar(JCLString* _this, JILLong chr, JILLong index)
+JILLong JCLFindChar(const JCLString* _this, JILLong chr, JILLong index)
 {
 	JILLong result = -1;
 	if( index < 0 )
 		index = 0;
 	if( index < _this->m_Length )
 	{
-		char* pos = strchr( _this->m_String + index, chr );
+		JILChar* pos = strchr( _this->m_String + index, chr );
 		if( pos )
 		{
 			result = (JILLong) (pos - _this->m_String);
@@ -475,12 +475,12 @@ JILLong JCLFindChar(JCLString* _this, JILLong chr, JILLong index)
 //------------------------------------------------------------------------------
 // Like JCLFindChar but searches the string reverse, from end to beginning.
 
-JILLong JCLFindCharReverse(JCLString* _this, JILLong chr, JILLong index)
+JILLong JCLFindCharReverse(const JCLString* _this, JILLong chr, JILLong index)
 {
 	JILLong result = -1;
 	if( _this->m_Length && index >= 0 )
 	{
-		char* pos;
+		JILChar* pos;
 		if( index >= _this->m_Length )
 			index = _this->m_Length - 1;
 		for( pos = _this->m_String + index; pos >= _this->m_String; pos-- )
@@ -500,14 +500,14 @@ JILLong JCLFindCharReverse(JCLString* _this, JILLong chr, JILLong index)
 //------------------------------------------------------------------------------
 // Find substring and return position as zero based index.
 
-JILLong JCLFindString(JCLString* _this, const JILChar* src, JILLong index)
+JILLong JCLFindString(const JCLString* _this, const JILChar* src, JILLong index)
 {
 	JILLong result = -1;
 	if( index < 0 )
 		index = 0;
 	if( index < _this->m_Length )
 	{
-		char* pos = strstr( _this->m_String + index, src );
+		JILChar* pos = strstr( _this->m_String + index, src );
 		if( pos )
 		{
 			result = (JILLong) (pos - _this->m_String);
@@ -562,7 +562,7 @@ exit:
 // checks if the string from the current position begins with the given
 // substring and returns true if so.
 
-JILLong JCLBeginsWith(JCLString* _this, const JILChar* string)
+JILLong JCLBeginsWith(const JCLString* _this, const JILChar* string)
 {
 	JILLong result = JILFalse;
 	if( _this->m_Locator < _this->m_Length )
@@ -655,12 +655,12 @@ JILLong JCLSpanExcluding(JCLString* _this, const JILChar* charSet, JCLString* re
 JILLong JCLSpanBetween(JCLString* _this, JILChar startChr, JILChar endChr, JCLString* result)
 {
 	JILLong length = 0;
-	long hier = 0;
-	long size = JCLGetLength(_this);
-	long startPos = 0;
-	long endPos = 0;
-	long i;
-	char chr;
+	JILLong hier = 0;
+	JILLong size = JCLGetLength(_this);
+	JILLong startPos = 0;
+	JILLong endPos = 0;
+	JILLong i;
+	JILChar chr;
 	for( i = _this->m_Locator; i < size; i++ )
 	{
 		chr = _this->m_String[i];
@@ -723,11 +723,13 @@ JILLong JCLSpanNumber(JCLString* _this, JCLString* result, JILLong* type)
 
 	if( _this->m_Locator < _this->m_Length )
 	{
-		char* endptr;
-		char* str;
-		long l;
-		char* startptr = _this->m_String + _this->m_Locator;
-		int radix = 0;
+		JILChar* endptr;
+		JILChar* endptrf;
+		JILChar* str;
+		JILLong l;
+		JILFloat f;
+		JILChar* startptr = _this->m_String + _this->m_Locator;
+		JILLong radix = 0;
 		// ignore leading whitespace
 		str = startptr + strspn(startptr, " \t");
 		// detect hex/oct/bin number
@@ -750,14 +752,15 @@ JILLong JCLSpanNumber(JCLString* _this, JCLString* result, JILLong* type)
 		}
 		else
 		{
+			// to avoid overflows with huge numbers, try strtod() AND strtol()
+			f = strtod( str, &endptrf );
 			l = strtol( str, &endptr, 10 );
-			// test if we stopped at a point or 'e'
-			if( *endptr == '.' || *endptr == 'e' || *endptr == 'E' )
+			// must use float if values differ or stopped at '.' or 'e'
+			if( ((JILFloat)l != f) || *endptr == '.' || *endptr == 'e' || *endptr == 'E' )
 			{
 				*type = 1;
-				strtod( str, &endptr );
 				// calculate length
-				length = (JILLong) (endptr - startptr);
+				length = (JILLong) (endptrf - startptr);
 				// extract sub string
 				JCLSubString(result, _this, _this->m_Locator, length);
 				// skip extracted portion
@@ -891,7 +894,7 @@ static void Reallocate(JCLString* _this, JILLong newSize, JILLong keepData)
 	// first we check, if reallocation is necessary
 	if( newAllocatedLength != _this->m_AllocatedLength )
 	{
-		char* pNewBuffer = NULL;
+		JILChar* pNewBuffer = NULL;
 		pNewBuffer = malloc( newAllocatedLength );
 		if( pNewBuffer )
 		{
@@ -934,7 +937,7 @@ static void Deallocate(JCLString* _this)
 //------------------------------------------------------------------------------
 // Compares two strings, but ignores the case of characters "A" to "Z".
 
-static int StrEquNoCase(const char* str1, const char* str2)
+static int StrEquNoCase(const JILChar* str1, const JILChar* str2)
 {
 	register int c1;
 	register int c2;

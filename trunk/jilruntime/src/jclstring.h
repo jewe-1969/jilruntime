@@ -46,8 +46,8 @@ static JILLong			JCLGetLength		(const JCLString* _this)			{ return _this->m_Leng
 static const JILChar*	JCLGetString		(const JCLString* _this)			{ return (_this->m_Length > 0) ? _this->m_String : ""; }
 static JILLong			JCLGetChar			(JCLString* _this, JILLong index)	{ return (index < _this->m_Length) ? (JILByte) _this->m_String[index] : 0; }
 static JILLong			JCLGetLastChar		(JCLString* _this)					{ return (_this->m_Length > 0) ? (JILByte) _this->m_String[_this->m_Length - 1] : 0; }
-JILLong					JCLCompare			(JCLString* _this, const JCLString* Other);
-JILLong					JCLCompareNoCase	(JCLString* _this, const JCLString* Other);
+JILLong					JCLCompare			(const JCLString* _this, const JCLString* Other);
+JILLong					JCLCompareNoCase	(const JCLString* _this, const JCLString* Other);
 void					JCLClear			(JCLString* _this);
 void					JCLAppend			(JCLString* _this, const JILChar* source);
 void					JCLAppendChar		(JCLString* _this, JILLong chr);
@@ -60,20 +60,20 @@ void					JCLTrim				(JCLString* _this);
 void					JCLRandomIdentifier	(JCLString* _this, JILLong length);
 JILLong					JCLFormat			(JCLString* _this, const JILChar* pFormat, ...);
 JILLong					JCLFormatTime		(JCLString* _this, const JILChar* pFormat, time_t time);
-JILLong					JCLFindChar			(JCLString* _this, JILLong chr, JILLong index);
-JILLong					JCLFindCharReverse	(JCLString* _this, JILLong chr, JILLong index);
-JILLong					JCLFindString		(JCLString* _this, const JILChar* src, JILLong index);
+JILLong					JCLFindChar			(const JCLString* _this, JILLong chr, JILLong index);
+JILLong					JCLFindCharReverse	(const JCLString* _this, JILLong chr, JILLong index);
+JILLong					JCLFindString		(const JCLString* _this, const JILChar* src, JILLong index);
 JILLong					JCLReadTextFile		(JCLString* _this, const JILChar* pFile, JILState* pVM);
-JILLong					JCLBeginsWith		(JCLString* _this, const JILChar* string);
+JILLong					JCLBeginsWith		(const JCLString* _this, const JILChar* string);
 void					JCLEscapeXml		(JCLString* _this, const JCLString* pString);
 
 //------------------------------------------------------------------------------
 // advanced string parsing functions (locator based)
 //------------------------------------------------------------------------------
 
-static JILLong			JCLAtEnd			(JCLString* _this)	{ return (_this->m_Locator == _this->m_Length); }
-static JILLong			JCLGetLocator		(JCLString* _this)	{ return _this->m_Locator; }
-static JILLong			JCLGetCurrentChar	(JCLString* _this)	{ return (_this->m_Locator < _this->m_Length) ? (JILByte) _this->m_String[_this->m_Locator] : 0; }
+static JILLong			JCLAtEnd			(const JCLString* _this)	{ return (_this->m_Locator == _this->m_Length); }
+static JILLong			JCLGetLocator		(const JCLString* _this)	{ return _this->m_Locator; }
+static JILLong			JCLGetCurrentChar	(const JCLString* _this)	{ return (_this->m_Locator < _this->m_Length) ? (JILByte) _this->m_String[_this->m_Locator] : 0; }
 void					JCLSetLocator		(JCLString* _this, JILLong position);
 JILLong					JCLSpanIncluding	(JCLString* _this, const JILChar* charSet, JCLString* result);
 JILLong					JCLSpanExcluding	(JCLString* _this, const JILChar* charSet, JCLString* result);
