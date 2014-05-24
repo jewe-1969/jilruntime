@@ -1,0 +1,149 @@
+/*
+ *  In this file we're going to test using nested objects
+ */
+
+import stdlib;
+using stdlib;   // get rid of stdlib namespace
+
+/*
+ *  class Point
+ *
+ *  - A class must have at least ONE constructor
+ *  - A constructor must DIRECTLY (not by calling another method) initialize ALL member variables
+ */
+
+class Point
+{
+    // construct a zero Point
+    method Point()
+    {
+        x = 0;
+        y = 0;
+    }
+
+    // constructor with coords
+    method Point( int X, int Y )
+    {
+        x = X;
+        y = Y;
+    }
+
+    // output members
+    method out()
+    {
+        printf("Point members are %d, %d\n", {x, y});
+    }
+
+    // coords
+    int x;
+    int y;
+}
+
+/*
+ *  class Rect
+ *
+ *  a Rect consists of two Points
+ */
+
+class Rect
+{
+    // construct a zero Rect
+    method Rect()
+    {
+        tl = new Point();   // assign new (zero-) Points
+        br = new Point();
+    }
+
+    // construct a Rect with two points
+    method Rect( const Point topLeft, const Point bottomRight )
+    {
+        tl = topLeft;       // copy the given Points
+        br = bottomRight;
+    }
+
+    // construct a Rect with four coords
+    method Rect( int left, int top, int right, int bottom )
+    {
+        tl = new Point(left, top);
+        br = new Point(right, bottom);
+    }
+
+    // check if a Point is inside this Rect
+    method int isInside( const Point p )
+    {
+        return (p.x >= tl.x && p.x < br.x && p.y >= tl.y && p.y < br.y);
+    }
+
+    // output members
+    method out()
+    {
+        printf("Rect members are %d, %d, %d, %d\n", {tl.x, tl.y, br.x, br.y});
+    }
+
+    // data
+    Point tl;   // top left
+    Point br;   // bottom right
+}
+
+/*
+ *  function main
+ */
+
+function string main(const string[] args)
+{
+    print("* Creating a Rect with coords 0,0,100,100\n");
+    Rect aRect = new Rect(0, 0, 100, 100);
+    aRect.out();
+
+    print("* Creating another Rect with coords 50,50,200,200 using initializer block\n");
+    aRect = new Rect()
+    {
+        tl = new Point()
+        {
+            x = 50;
+            y = 50;
+        };
+        br = new Point()
+        {
+            x = 200;
+            y = 200;
+        };
+    };
+    aRect.out();
+
+    print("* Setting Rect members to coords 60,40,150,250\n");
+    aRect.tl.x = 60;
+    aRect.tl.y = 40;
+    aRect.br.x = 150;
+    aRect.br.y = 250;
+    aRect.out();
+
+    print("* Creating Point A with coords 32,48\n");
+    Point A = new Point(32, 48);
+    A.out();
+
+    print("* Creating Point B with coords 64,96\n");
+    Point B = new Point(64, 96);
+    B.out();
+
+    if( aRect.isInside(A) )
+        print("Point A is inside the Rect.\n");
+    else
+        print("Point A is NOT inside the Rect.\n");
+
+    if( aRect.isInside(B) )
+        print("Point B is inside the Rect.\n");
+    else
+        print("Point B is NOT inside the Rect.\n");
+
+    print("* Assigning Point A to B.\n");
+    B = A;
+    B.out();
+
+    if( aRect.isInside(B) )
+        print("Point B is inside the Rect.\n");
+    else
+        print("Point B is NOT inside the Rect.\n");
+
+    return "Done.";
+}

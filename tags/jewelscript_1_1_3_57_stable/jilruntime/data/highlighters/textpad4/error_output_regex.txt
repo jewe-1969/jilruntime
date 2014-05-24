@@ -1,0 +1,24 @@
+Here is how you can set up a such a tool, using the JILRunOnly  program to compile, test and run your scripts:
+
+    * In TextPad, click on "Preferences" in the "Configure" menu.
+    * In the left pane of the dialog, click on "Tools".
+    * On the right, click on the "Add" button and select "Program..."
+    * Browse to the folder that contains the "JILRunOnly.exe" program. A new entry, named after the name of the program you selected, will now appear in the middle pane.
+    * Single click on the tool's name in the list so that it gets selected, then single click again and enter "Run JewelScript" as a name. (Or whatever you prefer.)
+    * In the left pane, where you selected "Tools", you should now have a "+" button left from the "Tools" item. Click it to expand the list of tools. You should now see your "Run JewelScript" item as a child menu item under the "Tools" item.
+    * Click on the "Run JewelScript" item in the left pane. The options page on the right of the dialog should now show something like this:
+
+      Command: (The name and path of the program you selected)
+      Parameters: $File
+      Initial Folder: $FileDir
+    * Select the check boxes "Capture output" and "Save all documents first"
+    * Copy and paste the following regular expression into the text field:
+
+      [a-z ]+[0-9()]+: .+ in \(.+\) (\([0-9]+\),\([0-9]+\))
+
+    * In the "registers" section select:
+
+      File: 1
+      Line: 2
+      Column: 3
+    * Click "OK" to close the preferences dialog.

@@ -1,0 +1,109 @@
+/*
+ *  weakref.jc
+ *
+ *  Demonstrates using weak references in JewelScript.
+ */
+
+import stdlib;
+using stdlib;
+
+option "log-garbage=yes";
+
+/*
+ *  class BadBuddy
+ *
+ *  This small class is a bad buddy, because it creates a "reference cycle",
+ *  which is in essence, a memory leak. JewelScript uses reference counting to
+ *  automatically free dynamically allocated objects.
+ *  However, in every reference counted system, there is the possibility of
+ *  creating reference cycles. Such a cycle is created when an object directly
+ *  or indirectly references itself. It cannot be automatically freed.
+ *  You should see this object listed when the garbage collector detects leaked
+ *  objects during shutdown of the runtime.
+ */
+
+class BadBuddy
+{
+    method BadBuddy( const string name )
+    {
+        this.buddy = null;
+        this.name = name;
+    }
+
+    method SetBuddy( BadBuddy buddy )
+    {
+        this.buddy = buddy;
+    }
+
+    method PrintBuddy()
+    {
+        print({ this.name, " says: My buddy is ", buddy.name, "\n" });
+    }
+
+    BadBuddy    buddy;
+    string      name;
+}
+
+/*
+ *  class GoodBuddy
+ *
+ *  This is a good buddy, because it knows it would create a reference cycle
+ *  and therefore uses a weak reference to link to it's buddy. Weak references
+ *  help avoid reference cycles. However, when used wrong, they can also create
+ *  memory leaks or produce crashes. Therefore they should be used with caution
+ *  and a good understanding of the reference counting mechanism of the runtime.
+ *  This object should not be listed as leaked by the garbage collector.
+ */
+
+class GoodBuddy
+{
+    method GoodBuddy( const string name )
+    {
+        this.buddy = null;
+        this.name = name;
+    }
+
+    method SetBuddy( GoodBuddy buddy )
+    {
+        this.buddy = buddy;
+    }
+
+    method PrintBuddy()
+    {
+        print({ this.name, " says: My buddy is ", buddy.name, "\n" });
+    }
+
+    weak GoodBuddy  buddy;
+    string          name;
+}
+
+/*
+ *  function main
+ *
+ *  This is the main entry-point function of the script.
+ *  We create two buddies here and have them reference
+ *  each other.
+ */
+
+function string main(const string[] args)
+{
+    GoodBuddy a = new GoodBuddy( "Buddy A" );
+    GoodBuddy b = new GoodBuddy( "Buddy B" );
+
+    a.SetBuddy( b );
+    b.SetBuddy( a );
+
+    a.PrintBuddy();
+    b.PrintBuddy();
+
+    BadBuddy c = new BadBuddy( "Buddy C" );
+    BadBuddy d = new BadBuddy( "Buddy D" );
+
+    c.SetBuddy( d );
+    d.SetBuddy( c );
+
+    c.PrintBuddy();
+    d.PrintBuddy();
+
+    return "";
+}
