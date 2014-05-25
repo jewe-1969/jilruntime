@@ -6248,19 +6248,56 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 		case tk_method:
 			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kMethod);
 			break;
-		case tk_scope:
-			err = JCL_ERR_Unexpected_Token; // TODO implement ::identifier
-			break;
 		case tk_this:
-			err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, JILFalse);
+		{
+			// skip '.'
+			savePos = pFile->GetLocator(pFile);
+			err = pFile->GetToken(pFile, pToken2, &tokenID2);
+			ERROR_IF(err, err, pToken2, goto exit);
+			if( tokenID2 == tk_point )
+			{
+				// get identifier
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				// check for function call
+				err = pFile->PeekToken(pFile, pToken2, &tokenID);
+				ERROR_IF(err, err, pToken2, goto exit);
+			}
+			if( tokenID2 != tk_point || tokenID == tk_round_open )
+			{
+				// just return 'this'
+				pFile->SetLocator(pFile, savePos);
+				JCLSetString(pToken, "this");
+				err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, JILFalse);
+			}
+			else
+			{
+				// return member var
+				err = p_expr_get_variable(_this, pToken, pLVar, ppVarOut, ppTempVar, JILTrue);
+			}
 			break;
+		}
+		case tk_scope:
 		case tk_string:
 		case tk_array:
 		case tk_identifier:
 		{
-			pFile->SetLocator(pFile, savePos);
-			err = p_full_qualified(_this, pToken);
-			ERROR_IF(err, err, pToken, goto exit);
+			if( tokenID == tk_scope )
+			{
+				// handle leading ::
+				err = p_full_qualified(_this, pToken);
+				ERROR_IF(err, err, pToken, goto exit);
+				JCLSetString(pToken2, kNameGlobalNameSpace);
+				JCLAppend(pToken2, "::");
+				JCLInsert(pToken, pToken2, 0);
+			}
+			else
+			{
+				pFile->SetLocator(pFile, savePos);
+				err = p_full_qualified(_this, pToken);
+				ERROR_IF(err, err, pToken, goto exit);
+			}
 			if( IsFullQualified(_this, pToken) )
 			{
 				// static function call
