@@ -42,7 +42,7 @@ COMPILER TODO:
 	* enum
 	* ternary operator <exp1> ? <exp2> : <exp3>
 
-	Feature ideas:
+	Future ideas:
 	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 	* Indexer function: object[index] is compiled as call to method <type> indexer (int i);
 	* Lambda expressions: (arg1, arg2) => <expr> (compiles <expr> into a function with a single return statement)
@@ -267,7 +267,6 @@ static JILBool		IsTypeCopyable		(JCLState*, JILLong);
 static JILBool		IsGlobalScope		(JCLState*, JILLong);
 static JILBool		IsClassToken		(JILLong);
 static JILBool		IsTypeToken			(JILLong);
-static JILBool		IsTypeName			(JCLState*, JILLong, const JCLString*, TypeInfo*);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
@@ -3232,48 +3231,6 @@ static JILBool IsTypeToken(JILLong token)
 }
 
 //------------------------------------------------------------------------------
-// IsTypeName
-//------------------------------------------------------------------------------
-// Writes the type info from the given token into pOut and returns JILTrue.
-// If the given token is not a known type name returns JILFalse.
-
-static JILBool IsTypeName(JCLState* _this, JILLong token, const JCLString* pName, TypeInfo* pOut)
-{
-	JILBool success = JILTrue;
-	switch( token )
-	{
-		case tk_null:
-			JCLSetTypeInfo(pOut, type_null, JILFalse, JILFalse, JILFalse, type_null, JILFalse);
-			break;
-		case tk_int:
-			JCLSetTypeInfo(pOut, type_int, JILFalse, JILFalse, JILFalse, type_var, JILFalse);
-			break;
-		case tk_float:
-			JCLSetTypeInfo(pOut, type_float, JILFalse, JILFalse, JILFalse, type_var, JILFalse);
-			break;
-		case tk_string:
-		case tk_array:
-		case tk_identifier:
-		{
-			// check name
-			JILLong type = StringToType(_this, pName);
-			if( type != type_null )
-				JCLSetTypeInfo(pOut, type, JILFalse, JILFalse, JILFalse, type_var, JILFalse);
-			else
-				success = JILFalse;
-			break;
-		}
-		case tk_var:
-			JCLSetTypeInfo(pOut, type_var, JILFalse, JILFalse, JILFalse, type_var, JILFalse);
-			break;
-		default:
-			success = JILFalse;
-			break;
-	}
-	return success;
-}
-
-//------------------------------------------------------------------------------
 // IsSuperClass
 //------------------------------------------------------------------------------
 // Checks if type1 is a super-class of type2. In other words, checks if type2
@@ -6128,9 +6085,10 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			JCLClrTypeInfo(&destType);
 			// parentheses - first check for "cast operator"
 			savePos = pFile->GetLocator(pFile);
-			err = pFile->GetToken(pFile, pToken2, &tokenID2);
+			err = p_full_qualified(_this, pToken2);
 			ERROR_IF(err, err, pToken2, goto exit);
-			if( IsTypeName(_this, tokenID2, pToken2, &destType) )
+			destType.miType = StringToType(_this, pToken2);
+			if( destType.miType != type_null )
 			{
 				err = pFile->GetToken(pFile, pToken2, &tokenID2);
 				ERROR_IF(err, err, pToken2, goto exit);
@@ -6522,10 +6480,12 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	JCLFile* pFile;
 	JCLString* pToken;
 	JCLString* pToken2;
+	JCLClass* pClass;
 	JCLVar* pVar;
 	JCLVar* pVarOut;
 	JCLVar* pTempVar;
 	JILLong tokenID;
+	JILLong savePos;
 	TypeInfo outType;
 
 	pToken = NEW(JCLString);
@@ -6569,6 +6529,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	ERROR_IF(err, err, pToken, goto exit);
 
 	// we expect to see a member (or class) identifier
+	savePos = pFile->GetLocator(pFile);
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
 	ERROR_IF(!IsClassToken(tokenID), JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -6623,8 +6584,12 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	}
 	else if( tokenID == tk_scope )
 	{
+		pFile->SetLocator(pFile, savePos);
+		err = p_full_qualified(_this, pToken);
+		ERROR_IF(err, err, pToken, goto exit);
+		GetParentNamespace(_this, pToken, pToken);
+		pFile->SetLocator(pFile, pFile->GetLocator(pFile) - 2); // TODO: This is the first time we step back 2 tokens. This wouldnt work without the new precompile feature. If we ever go back to the old way, this will no longer work.
 		// search for class
-		JCLClass* pClass = NULL;
 		FindClass(_this, pToken, &pClass);
 		ERROR_IF(!pClass, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 		if( pVarOut->miIniType != type_array && pVarOut->miType != type_var )
