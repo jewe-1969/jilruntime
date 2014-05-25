@@ -4568,7 +4568,8 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	JCLString* pToken;
 	JCLString* pFullName;
 	JCLString* pName;
-	JCLString* pOldNamespace;
+	JCLString* pOldNS;
+	JCLString* pNamespace;
 	JILLong tokenID;
 	JILLong savePos;
 	JILLong errorNamePos;
@@ -4579,12 +4580,13 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	JILBool removeFunc = JILFalse;
 	JILLong i, j;
 
-	pOldNamespace = GetCurrentNamespace(_this);
-	pResVar = NEW(JCLVar);
-	pToken = NEW(JCLString);
+	pFile = _this->mipFile;
+	pOldNS = GetCurrentNamespace(_this);
+	pNamespace = NEW(JCLString);
 	pFullName = NEW(JCLString);
 	pName = NEW(JCLString);
-	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+	pResVar = NEW(JCLVar);
 
 	// clear sim stack and sim regs
 	if(_this->miStackPos != kSimStackSize)
@@ -4626,15 +4628,15 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	// handle function implementation from global space
 	if( IsGlobalScope(_this, _this->miClass) && IsFullQualified(_this, pFullName) )
 	{
-		GetParentNamespace(_this, pToken, pFullName);
-		FindInNamespace(_this, pToken, &pClass);
+		GetParentNamespace(_this, pNamespace, pFullName);
+		FindInNamespace(_this, pNamespace, &pClass);
 		// TODO: This will currently fail if we define a global function directly in a namespace. Currently we only support one global object!
 		ERROR_IF(!pClass, JCL_ERR_Function_In_Namespace, pName, goto exit);
 		ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Method_Definition_Illegal, pName, goto exit);
 		ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pName, goto exit);
 		ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pName, goto exit);
 		// make this the current class
-		SetCurrentNamespace(_this, pToken);
+		SetCurrentNamespace(_this, pNamespace);
 		SetCompileContext(_this, pClass->miType, 0);
 	}
 	else if( IsGlobalScope(_this, _this->miClass) && (fnKind & kMethod) )
@@ -4984,10 +4986,11 @@ exit:
 	argNum = kSimStackSize - _this->miStackPos;	// number of items on stack
 	SimStackPop(_this, argNum);
 	SetCompileContext(_this, initialScope, 0);
-	SetCurrentNamespace(_this, pOldNamespace);
+	SetCurrentNamespace(_this, pOldNS);
 
 	DELETE( pResVar );
 	DELETE( pToken );
+	DELETE( pNamespace );
 	DELETE( pFullName );
 	DELETE( pName );
 	return err;
