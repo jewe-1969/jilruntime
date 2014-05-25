@@ -111,9 +111,9 @@ void JCLSetString(JCLString* _this, const JILChar* string)
 //------------------------------------------------------------------------------
 // Returns true (1) if the strings are equal, false (0) if they are not.
 
-JILBool JCLCompare(const JCLString* _this, const JCLString* Other)
+JILBool JCLCompare(const JCLString* _this, const JCLString* other)
 {
-	return (strcmp(JCLGetString(_this), JCLGetString( (JCLString*) Other )) == 0);
+	return (strcmp(JCLGetString(_this), JCLGetString(other)) == 0);
 }
 
 //------------------------------------------------------------------------------
@@ -121,9 +121,19 @@ JILBool JCLCompare(const JCLString* _this, const JCLString* Other)
 //------------------------------------------------------------------------------
 // JCLCompare strings ignoring the case.
 
-JILBool JCLCompareNoCase(const JCLString* _this, const JCLString* Other)
+JILBool JCLCompareNoCase(const JCLString* _this, const JCLString* other)
 {
-	return StrEquNoCase(JCLGetString(_this), JCLGetString( (JCLString*) Other ));
+	return StrEquNoCase(JCLGetString(_this), JCLGetString(other));
+}
+
+//------------------------------------------------------------------------------
+// JCLEquals
+//------------------------------------------------------------------------------
+// Returns true (1) if the strings are equal, false (0) if they are not.
+
+JILBool JCLEquals(const JCLString* _this, const JILChar* other)
+{
+	return (strcmp(JCLGetString(_this), other) == 0);
 }
 
 //------------------------------------------------------------------------------

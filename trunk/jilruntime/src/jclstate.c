@@ -36,7 +36,6 @@
 COMPILER TODO:
 --------------------------------------------------------------------------------
 	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
-	* Remove all the "special checks" for type_string and type_array and let them be handled generically by the type-info!
 
 	Missing features:
 	* enum
@@ -266,7 +265,6 @@ static JILBool		IsValueType			(JCLState*, JILLong);
 static JILBool		IsTypeCopyable		(JCLState*, JILLong);
 static JILBool		IsGlobalScope		(JCLState*, JILLong);
 static JILBool		IsClassToken		(JILLong);
-static JILBool		IsTypeToken			(JILLong);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
@@ -280,6 +278,7 @@ static void			RemoveParentNamespace(JCLState*, JCLString*, const JCLString*);
 static JILBool		CompareUnqualified	(JCLState*, const JCLString*, const JCLString*);
 static void			SetCurrentNamespace	(JCLState*, JCLString*);
 static JCLString*	GetCurrentNamespace	(JCLState*);
+static JILLong		TypeInfoFromType	(JCLState*, TypeInfo*, JILLong);
 static void			PushOptions			(JCLState*);
 static void			PopOptions			(JCLState*);
 static JILLong		StringToType		(JCLState*, const JCLString*);
@@ -2674,14 +2673,14 @@ static JILBool IsRegisterAccess(const JCLVar* pVar, JILLong r)
 // Checks if the given token is one of the basic types of the language.
 // Basic types are the built-in types namely: long, float, string, array.
 
-static JILBool IsBasicType(JILLong tokenID)
+static JILBool IsBasicType(JILLong typeID)
 {
-	switch( tokenID )
+	switch( typeID )
 	{
-		case tk_int:
-		case tk_float:
-		case tk_string:
-		case tk_array:
+		case type_int:
+		case type_float:
+		case type_string:
+		case type_array:
 			return JILTrue;
 	}
 	return JILFalse;
@@ -3217,17 +3216,7 @@ static JILBool IsGlobalScope(JCLState* pState, JILLong typeID)
 
 static JILBool IsClassToken(JILLong token)
 {
-	return (token == tk_identifier || token == tk_string || token == tk_array);
-}
-
-//------------------------------------------------------------------------------
-// IsTypeToken
-//------------------------------------------------------------------------------
-// Checks if the given token is a type name.
-
-static JILBool IsTypeToken(JILLong token)
-{
-	return (IsClassToken(token) || token == tk_int || token == tk_float || token == tk_var);
+	return (token == tk_identifier);
 }
 
 //------------------------------------------------------------------------------
@@ -3419,6 +3408,22 @@ static JCLString* GetCurrentNamespace(JCLState* _this)
 }
 
 //------------------------------------------------------------------------------
+// TypeInfoFromType
+//------------------------------------------------------------------------------
+// Initializes a type info from a single type identifier.
+
+JILLong TypeInfoFromType(JCLState* _this, TypeInfo* typeInfo, JILLong type)
+{
+	typeInfo->miType = type;
+	typeInfo->miConst = JILFalse;
+	typeInfo->miRef = !IsValueType(_this, type);
+	typeInfo->miWeak = JILFalse;
+	typeInfo->miElemType = type_var;
+	typeInfo->miElemRef = JILTrue;
+	return type;
+}
+
+//------------------------------------------------------------------------------
 // TypeFamily
 //------------------------------------------------------------------------------
 // Return the type family of a given type.
@@ -3575,7 +3580,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 		goto exit;
 	}
 	// check for "array"
-	if( tokenID == tk_array )
+	if( JCLEquals(pToken, "array") )
 	{
 		type2 = type_array;
 		// skip the "array" and read ahead
@@ -4678,7 +4683,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			pClass->miHasCtor = JILTrue;
 		}
 		// check for the convertor keyword
-		else if( strcmp(JCLGetString(pName), "convertor") == 0 )
+		else if( JCLEquals(pName, "convertor") )
 		{
 			// this is a convertor, it must have a return type
 			if( pFunc->mipResult->miMode == kModeUnused )
@@ -6086,19 +6091,20 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			// parentheses - first check for "cast operator"
 			savePos = pFile->GetLocator(pFile);
 			err = p_full_qualified(_this, pToken2);
-			ERROR_IF(err, err, pToken2, goto exit);
-			destType.miType = StringToType(_this, pToken2);
-			if( destType.miType != type_null )
+			if( err == JCL_No_Error )
 			{
-				err = pFile->GetToken(pFile, pToken2, &tokenID2);
-				ERROR_IF(err, err, pToken2, goto exit);
-				// closing parenthese?
-				if( tokenID2 == tk_round_close )
+				if( TypeInfoFromType(_this, &destType, StringToType(_this, pToken2)) )
 				{
-					bFull = JILFalse;
-					err = p_cast_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar, &destType);
-					if( err )
-						goto exit;
+					err = pFile->GetToken(pFile, pToken2, &tokenID2);
+					ERROR_IF(err, err, pToken2, goto exit);
+					// closing parenthese?
+					if( tokenID2 == tk_round_close )
+					{
+						bFull = JILFalse;
+						err = p_cast_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar, &destType);
+						if( err )
+							goto exit;
+					}
 				}
 			}
 			// do expression in parentheses
@@ -6237,8 +6243,6 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			break;
 		}
 		case tk_scope:
-		case tk_string:
-		case tk_array:
 		case tk_identifier:
 		{
 			if( tokenID == tk_scope )
@@ -7164,13 +7168,13 @@ static JILError p_expr_add_sub(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 				if( IsTempVar(pRetVar) && !pRetVar->miUnique )	// don't do this if this would directly alter a variable!
 				{
 					pRetVar->miConst = JILFalse;
-					if( strcmp(JCLGetString(pToken), "1") == 0 )
+					if( JCLEquals(pToken, "1") )
 					{
 						err = cg_incdec_var(_this, pRetVar, (tokenID == tk_plus));
 						ERROR_IF(err, err, NULL, goto exit);
 						bOpt = JILTrue;
 					}
-					else if( strcmp(JCLGetString(pToken), "2") == 0 )
+					else if( JCLEquals(pToken, "2") )
 					{
 						err = cg_incdec_var(_this, pRetVar, (tokenID == tk_plus));
 						ERROR_IF(err, err, NULL, goto exit);
@@ -8671,7 +8675,7 @@ static JILError p_import(JCLState* _this)
 			ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
 			JCLAppend(pClassName, JCLGetString(pToken));
 		}
-		if( strcmp(JCLGetString(pClassName), "all") == 0 )
+		if( JCLEquals(pClassName, "all") )
 			err = p_import_all(_this);
 		else
 			err = p_import_class(_this, pClassName);
@@ -9765,6 +9769,7 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 	JCLString* pToken;
 	JILLong tokenID;
 	JILLong typeID;
+	JILLong savePos;
 	TypeInfo outType;
 
 	pToken = NEW(JCLString);
@@ -9777,42 +9782,35 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 	ERROR_IF(tokenID != tk_round_open, JCL_ERR_Unexpected_Token, pToken, goto exit);
 
 	// now we have either a type, or an expression
-	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
-
 	typeID = -1;
-	switch( tokenID )
+	if( tokenID == tk_this )
 	{
-		case tk_null:
-			typeID = type_null;
-			break;
-		case tk_int:
-			typeID = type_int;
-			break;
-		case tk_float:
-			typeID = type_float;
-			break;
-		case tk_string:
-		case tk_array:
-		case tk_identifier:
-			FindClass(_this, pToken, &pClass);
-			if( pClass )
-			{
-				ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
-				ERROR_IF(!pClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
-				ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
-				typeID = pClass->miType;
-			}
-			break;
-		case tk_this:
-			// don't error on 'this'
-			break;
-		case tk_var:
-			ERROR(JCL_ERR_Typeof_Var_Illegal, pToken, goto exit);
-			break;
-		default:
-			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
-			break;
+		// don't fail on 'this'
+	}
+	else if( tokenID == tk_null )
+	{
+		typeID = type_null;
+	}
+	else if( tokenID == tk_var )
+	{
+		ERROR(JCL_ERR_Typeof_Var_Illegal, pToken, goto exit);
+	}
+	else if( tokenID == tk_identifier )
+	{
+		pFile->SetLocator(pFile, savePos);
+		err = p_full_qualified(_this, pToken);
+		ERROR_IF(err, err, pToken, goto exit);
+		FindClass(_this, pToken, &pClass);
+		if( pClass )
+		{
+			if( (pClass->miFamily == tf_class || pClass->miFamily == tf_interface) && !pClass->miHasBody )
+				ERROR(JCL_ERR_Class_Only_Forwarded, pToken, goto exit);
+			ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_Modifier_Illegal, pToken, goto exit);
+			typeID = pClass->miType;
+		}
 	}
 	// did we find a type?
 	if( typeID != -1 )
@@ -9821,12 +9819,10 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 		JCLFormat(pToken, "%d", typeID);
 		err = cg_get_literal(_this, type_int, pToken, pLVar, ppVarOut, ppTempVar, JILFalse);
 		ERROR_IF(err, err, NULL, goto exit);
-		// skip token
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
 	}
 	else
 	{
+		pFile->SetLocator(pFile, savePos);
 		// have to evaluate expression and use runtime features
 		if( !pLVar || !IsTempVar(pLVar) )
 		{
@@ -12221,7 +12217,7 @@ static JILError p_full_qualified(JCLState* _this, JCLString* pIdentifier)
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		if( err )
 			goto exit;
-		if( !IsTypeToken(tokenID) )
+		if( !IsClassToken(tokenID) && tokenID != tk_var )
 		{
 			err = JCL_ERR_Unexpected_Token;
 			goto exit;
