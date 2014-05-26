@@ -3295,12 +3295,11 @@ static JILBool IsFullQualified(JCLState* _this, const JCLString* pIdentifier)
 //------------------------------------------------------------------------------
 // MakeFullQualified
 //------------------------------------------------------------------------------
-// Makes the given identifier full qualified, if it is unqualified. The compiler's
-// current namespace is used.
+// Makes the given identifier full qualified. The compiler's current namespace is used.
 
 static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
 {
-	if( IsFullQualified(_this, pIdentifier) || !JCLGetLength(_this->mipNamespace) )
+	if( !JCLGetLength(_this->mipNamespace) )
 	{
 		JCLSetString(pResult, JCLGetString(pIdentifier));
 	}
@@ -4163,9 +4162,6 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	// we expect to find a class name
 	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	// don't allow full qualified name inside namespace
-	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
-		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	MakeFullQualified(_this, pClassName, pToken);
 
 	// peek for ';'
@@ -6594,10 +6590,11 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 		pFile->SetLocator(pFile, savePos);
 		err = p_full_qualified(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
+//		MakeFullQualified(_this, pToken, pToken);
 		GetParentNamespace(_this, pToken, pToken);
 		pFile->SetLocator(pFile, pFile->GetLocator(pFile) - 2); // TODO: This is the first time we step back 2 tokens. This wouldnt work without the new precompile feature. If we ever go back to the old way, this will no longer work.
 		// search for class
-		FindClass(_this, pToken, &pClass);
+		FindInNamespace(_this, pToken, &pClass);
 		ERROR_IF(!pClass, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 		if( pVarOut->miIniType != type_array && pVarOut->miType != type_var )
 		{
@@ -9806,7 +9803,7 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 		pFile->SetLocator(pFile, savePos);
 		err = p_full_qualified(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
-		FindClass(_this, pToken, &pClass);
+		FindInNamespace(_this, pToken, &pClass);
 		if( pClass )
 		{
 			if( (pClass->miFamily == tf_class || pClass->miFamily == tf_interface) && !pClass->miHasBody )
@@ -10530,9 +10527,6 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	// we expect to find a class name
 	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	// don't allow full qualified name inside namespace
-	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
-		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	MakeFullQualified(_this, pClassName, pToken);
 
 	// peek for ';'
@@ -11338,7 +11332,7 @@ static JILError p_alias(JCLState* _this)
 	// get next token
 	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	MakeFullQualified(_this, pToken, pToken);
+	//MakeFullQualified(_this, pToken, pToken);
 	// check for existing type name
 	type = StringToType(_this, pToken);
 	ERROR_IF(type == type_null, JCL_ERR_Undefined_Identifier, pToken, goto exit);
@@ -12264,9 +12258,6 @@ static JILError p_namespace(JCLState* _this)
 
 	err = p_full_qualified(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
-	// don't allow full qualified namespace inside namespace
-	if( IsFullQualified(_this, pToken) && JCLGetLength(pOldNS) )
-		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	MakeFullQualified(_this, pNamespace, pToken);
 	SetCurrentNamespace(_this, pNamespace);
 
