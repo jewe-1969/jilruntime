@@ -74,6 +74,8 @@ DECL_CLASS( JCLState )
 	JILBool				miFatalState;				///< Compiler is in fatal error state
 	JILBool				miIntroFinished;			///< cg_finish_intro() has generated 'RET' instruction
 	Array_JCLString*	mipErrors;					///< Storage of emitted errors and warnings
+	Array_JCLString*	mipUseNamespace;			///< Array of alternate namespaces to search in
+	Array_JILLong*		mipUsing;					///< list for using statement
 	JILLong				miNumErrors;				///< Total number of errors
 	JILLong				miNumWarnings;				///< Total number of warnings
 	JILLong				miNumCompiles;				///< Total number of files compiled
@@ -114,5 +116,7 @@ JILBool		IsMethodInherited	(JCLState*, JILLong, JILLong);
 JILLong		TypeFamily			(JCLState*, JILLong);
 void		JCLGetAbsolutePath	(JCLState* _this, JCLString* pOut, const JCLString* pIn);
 JILError	p_import_class		(JCLState* _this, JCLString* pClassName);
+void		RemoveParentNamespace(JCLState*, JCLString*, const JCLString*);
+void		GetParentNamespace	(JCLState*, JCLString*, const JCLString*);
 
 #endif	// #ifndef JCLSTATE_H

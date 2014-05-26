@@ -98,7 +98,6 @@ void create_JCLOption( JCLOption* _this )
 	_this->miDefaultFloat = JILFalse;
 	_this->mipFileExt = NEW(JCLString);
 	JCLSetString(_this->mipFileExt, "jc");
-	_this->mipUsing = NEW( Array_JILLong );
 
 #ifdef _DEBUG
 	_this->miWarningLevel = 4;
@@ -121,7 +120,6 @@ void create_JCLOption( JCLOption* _this )
 void destroy_JCLOption( JCLOption* _this )
 {
 	DELETE(_this->mipFileExt);
-	DELETE(_this->mipUsing);
 }
 
 //------------------------------------------------------------------------------
@@ -140,7 +138,6 @@ void copy_JCLOption(JCLOption* _this, const JCLOption* src)
 	_this->miDefaultFloat = src->miDefaultFloat;
 	_this->miErrorFormat = src->miErrorFormat;
 	_this->mipFileExt->Copy(_this->mipFileExt, src->mipFileExt);
-	_this->mipUsing->Copy(_this->mipUsing, src->mipUsing);
 }
 
 //------------------------------------------------------------------------------

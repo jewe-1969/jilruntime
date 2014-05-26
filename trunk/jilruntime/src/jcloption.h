@@ -54,7 +54,6 @@ DECL_CLASS( JCLOption )
 	JILBool				miDefaultFloat;		///< interpret all numeric literals as float
 	JILLong				miErrorFormat;		///< error and warning output format
 	JCLString*			mipFileExt;			///< script file extension to use for import
-	Array_JILLong*		mipUsing;			///< list for using statement
 
 END_CLASS( JCLOption )
 
