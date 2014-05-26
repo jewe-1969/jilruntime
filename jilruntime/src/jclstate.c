@@ -893,40 +893,27 @@ JILLong FindClass( JCLState* _this, const JCLString* pName, JCLClass** ppClass )
 
 static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass** ppClass)
 {
-	/*
-	TODO: Support partial namespaces?
-	The commented out code ensures that the user can only use either a single type name, or a full qualified name, no partial names.
-	But this is inconvenient, since it will force us to always specify the full qualified name of a type that is not in our own class.
-	For now, we support partial namespaces. If this should prove too undeterministic, we should comment the code below back in.
-	*/
-	//if( IsFullQualified(_this, pName) )
-	//{
-	//	return FindClass(_this, pName, ppClass);
-	//}
-	//else
+	JILLong index = 0;
+	JCLString* pFullName = NEW(JCLString);
+	JCLString* pCurrentNamespace = NEW(JCLString);
+	pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
+	while( JCLGetLength(pCurrentNamespace) )
 	{
-		JILLong index = 0;
-		JCLString* pFullName = NEW(JCLString);
-		JCLString* pCurrentNamespace = NEW(JCLString);
-		pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
-		while( JCLGetLength(pCurrentNamespace) )
-		{
-			JCLSetString(pFullName, JCLGetString(pCurrentNamespace));
-			JCLAppend(pFullName, "::");
-			JCLAppend(pFullName, JCLGetString(pName));
-			index = FindClass(_this, pFullName, ppClass);
-			if( index )
-				break;
-			GetParentNamespace(_this, pCurrentNamespace, pCurrentNamespace);
-		}
-		if( index == 0 )
-		{
-			index = FindClass(_this, pName, ppClass);
-		}
-		DELETE(pFullName);
-		DELETE(pCurrentNamespace);
-		return index;
+		JCLSetString(pFullName, JCLGetString(pCurrentNamespace));
+		JCLAppend(pFullName, "::");
+		JCLAppend(pFullName, JCLGetString(pName));
+		index = FindClass(_this, pFullName, ppClass);
+		if( index )
+			break;
+		GetParentNamespace(_this, pCurrentNamespace, pCurrentNamespace);
 	}
+	if( index == 0 )
+	{
+		index = FindClass(_this, pName, ppClass);
+	}
+	DELETE(pFullName);
+	DELETE(pCurrentNamespace);
+	return index;
 }
 
 //------------------------------------------------------------------------------

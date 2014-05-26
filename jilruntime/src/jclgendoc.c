@@ -98,6 +98,7 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 static void ScanTag(JILTable* pDict, JCLString* pTag);
 static void SplitTag(JCLString* pTag, JCLString* pPart1, JCLString* pPart2);
 static void WriteTypeTable(JCLState* _this, FILE* pFile, ClFilter pFn, const JILChar* pText, JILTable* pDict, JILLong startClass, JILLong endClass);
+static void GetFileName(JCLString* result, const JCLClass* pClass);
 
 //------------------------------------------------------------------------------
 // filter functions
@@ -140,7 +141,7 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	tagstr2 = NEW(JCLString);
 	JCLSetString(workstr, pPath);
 	JCLAppend(workstr, "\\");
-	JCLAppend(workstr, JCLGetString(pClass->mipName));
+	GetFileName(workstr, pClass);
 	JCLAppend(workstr, ".html");
 
 	// open the file
@@ -238,7 +239,7 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 
 	// create the filename
 	htmlfile = NEW(JCLString);
-	JCLSetString(htmlfile, JCLGetString(pClass->mipName));
+	GetFileName(htmlfile, pClass);
 	JCLAppend(htmlfile, ".html");
 
 	// scan the class tag for special tokens
@@ -293,7 +294,7 @@ JILError JCLCreateClassIndex(JCLState* _this, JILTable* pDict, const JILChar* pP
 	fprintf(pFile, "</head>\n<body>\n<div id='content'>\n");
 	fprintf(pFile, "");
 	fprintf(pFile, "<h1>%s Class Documentation</h1>\n", JCLGetString(workstr));
-	fprintf(pFile, "<p>These are the documented interfaces, classes, delegates and cofunctions for this application.</p>\n");
+	fprintf(pFile, "<p>These are the documented interfaces, classes and delegates for this application.</p>\n");
 	// write type tables
 	WriteTypeTable(_this, pFile, OnlyInterfaces, "Interfaces", pDict, startClass, endClass);
 	WriteTypeTable(_this, pFile, OnlyClasses, "Classes", pDict, startClass, endClass);
@@ -951,6 +952,20 @@ static void WriteTypeTable(JCLState* _this, FILE* pFile, ClFilter pFn, const JIL
 	DELETE(workstr);
 	DELETE(tagstr);
 	DELETE(dummystr);
+}
+
+//------------------------------------------------------------------------------
+// GetFileName
+//------------------------------------------------------------------------------
+// Converts the class name to a file name and appends it to the given string.
+
+static void GetFileName(JCLString* result, const JCLClass* pClass)
+{
+	JCLString* str = NEW(JCLString);
+	str->Copy(str, pClass->mipName);
+	JCLReplace(str, "::", "_");
+	JCLAppend(result, JCLGetString(str));
+	DELETE(str);
 }
 
 #else	// JIL_USE_HTML_CODEGEN
