@@ -143,8 +143,8 @@ static const JILChar* kClassDeclaration =
 	"method string		clone();" TAG("Returns a true copy of this string.")
 	"method string[]	split(const string separators);" TAG("Splits this string into an array of tokens based on the given set of delimiter characters. The returned array will contain all text between delimiters, but not the delimiters itself. A delimiter directly following another delimiter will produce an empty string element. If this string does not match any delimiter, the resulting array will contain a single element, which is a copy of this string.")
 	"method string[]	split(const string separators, const int discard);" TAG("Splits this string into an array of tokens based on the given set of delimiter characters. The returned array will contain all text between delimiters, but not the delimiters itself. If 'discard' is 'false', a delimiter directly following another delimiter will produce an empty string element in the array. If set to 'true', empty strings will not be added to the array. If this string does not match any delimiter, the resulting array will contain a single element, which is a copy of this string.")
-	"method stringMatch[]	matchString(const string[] keywords);" TAG("Treats the given array as a list of keywords and searches this string for occurrences of these keywords. Any matches are returned as an array of stringMatch instances. If no match is found, an array with zero length is returned.")
-	"method stringMatch[]	matchArray(const string[] strings);" TAG("Treats this string as a keyword and searches the given array for occurrences of the keyword. Any matches are returned as an array of stringMatch instances. If no match is found, an array with zero length is returned.")
+	"method match[]		matchString(const string[] keywords);" TAG("Treats the given array as a list of keywords and searches this string for occurrences of these keywords. Any matches are returned as an array of match instances. If no match is found, an array with zero length is returned.")
+	"method match[]		matchArray(const string[] strings);" TAG("Treats this string as a keyword and searches the given array for occurrences of the keyword. Any matches are returned as an array of match instances. If no match is found, an array with zero length is returned.")
 	"function string	fill(const int chr, const int length);" TAG("Creates a string filled with the specified amount of the specified character.")
 	"function string	ascii(const int chr);" TAG("Returns a string containing the specified ANSI character.")
 	"function string	format(const string format, const var v);" TAG("Creates a formatted string using ANSI format specifiers. Multiple arguments may be passed to this function by directly passing an array expression:<pre>string str = string::format(\\\"%s, %d, %f\\\", {x, y, z})</pre>")
@@ -168,7 +168,7 @@ static const JILChar* kClassDeclaration =
 //------------------------------------------------------------------------------
 
 static const JILChar*	kClassName		=	"string";
-static const JILChar*	kPackageList	=	"stringMatch";
+static const JILChar*	kPackageList	=	"string::match";
 static const JILChar*	kAuthorName		=	"www.jewe.org";
 static const JILChar*	kAuthorString	=	"Built-in string class for JewelScript.";
 static const JILChar*	kTimeStamp		=	"08/30/2007";
@@ -1863,7 +1863,7 @@ JILArray* JILString_Split(const JILString* _this, const JILString* seperators, J
 //------------------------------------------------------------------------------
 /// Treats the given array as a list of substrings and searches this string for
 /// occurrences of these substrings. Any matches are returned as an array of
-/// stringMatch instances. If no match is found, an array with zero length is
+/// string::match instances. If no match is found, an array with zero length is
 /// returned.
 
 JILArray* JILString_MatchString(const JILString* _this, const JILArray* pArray)
@@ -1898,7 +1898,7 @@ JILArray* JILString_MatchString(const JILString* _this, const JILArray* pArray)
 //------------------------------------------------------------------------------
 /// Treats this string as a substring and searches the given array for
 /// occurrences of the substring. Any matches are returned as an array of
-/// stringMatch instances. If no match is found, an array with zero length is
+/// string::match instances. If no match is found, an array with zero length is
 /// returned.
 
 JILArray* JILString_MatchArray(const JILString* _this, const JILArray* pArray)

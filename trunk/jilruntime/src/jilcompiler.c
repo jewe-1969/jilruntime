@@ -65,7 +65,7 @@ static const char* kInterfaceException =
 	"    method int    getError   ();" TAG("Returns the error code for this exception. This can be any non-zero value. Implementing script classes can just return <code>typeof(this)</code> here.")
 	"    method string getMessage ();" TAG("Returns the error message for this exception. Implementing classes should return an empty string rather than null when no message is available.")
 	"}"
-	"class runtime_exception; "
+	"class runtime::exception; "
 ;
 const JILLong kInterfaceExceptionGetError   = 0;	// method index of the getError() method
 const JILLong kInterfaceExceptionGetMessage = 1;	// method index of the getMessage() method

@@ -39,10 +39,10 @@ static const char* kClassDeclaration =
 // class info constants
 //------------------------------------------------------------------------------
 
-static const char*	kClassName		=	"stringMatch"; // The class name that will be used in JewelScript.
+static const char*	kClassName		=	"string::match"; // The class name that will be used in JewelScript.
 static const char*	kPackageList	=	"";
 static const char*	kAuthorName		=	"www.jewe.org";
-static const char*	kAuthorString	=	"Describes the result of string matching operation as returned by the string::matchString() and string::matchArray() methods."; // TODO: You can enter a description of your native type here
+static const char*	kAuthorString	=	"Describes the result of string matching operation as returned by the string::matchString() and string::matchArray() methods.";
 static const char*	kTimeStamp		=	"05/19/13 17:07:38";
 
 //------------------------------------------------------------------------------
