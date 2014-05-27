@@ -271,7 +271,7 @@ static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
-static JILBool		IsFullQualified		(JCLState*, const JCLString*);
+static JILBool		PartiallyQualified	(JCLState*, const JCLString*);
 static void			MakeFullQualified	(JCLState*, JCLString*, const JCLString*);
 static void			MakeUnqualified		(JCLState*, JCLString*, const JCLString*);
 static JILBool		CompareUnqualified	(JCLState*, const JCLString*, const JCLString*);
@@ -443,7 +443,7 @@ static JILError		p_selftest			(JCLState*, Array_JCLVar*);
 static JILError		p_tag				(JCLState*, JCLString*);
 static JILError		p_clause			(JCLState*, Array_JCLVar*, JCLClause*);
 static JILError		p_goto				(JCLState*, Array_JCLVar*);
-static JILError		p_full_qualified	(JCLState*, JCLString*);
+static JILError		p_partial_identifier(JCLState*, JCLString*);
 static JILError		p_namespace			(JCLState*);
 
 //------------------------------------------------------------------------------
@@ -914,7 +914,7 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 		GetParentNamespace(_this, pCurrentNamespace, pCurrentNamespace);
 	}
 	// look in 'using' classes
-	if( index == 0 && !IsFullQualified(_this, pName) )
+	if( index == 0 && !PartiallyQualified(_this, pName) )
 	{
 		for( i = 0; i < _this->mipUsing->count; i++ )
 		{
@@ -3306,11 +3306,12 @@ static JILBool IsClassNative(JCLClass* pClass)
 }
 
 //------------------------------------------------------------------------------
-// IsFullQualified
+// PartiallyQualified
 //------------------------------------------------------------------------------
-// Returns true if the given identifier name is a full qualified identifier.
+// Returns true if the given identifier name contains at least one scope
+// operator. Which means the identifier is partially qualified.
 
-static JILBool IsFullQualified(JCLState* _this, const JCLString* pIdentifier)
+static JILBool PartiallyQualified(JCLState* _this, const JCLString* pIdentifier)
 {
 	return (JCLFindString(pIdentifier, "::", 0) >= 0);
 }
@@ -3318,7 +3319,14 @@ static JILBool IsFullQualified(JCLState* _this, const JCLString* pIdentifier)
 //------------------------------------------------------------------------------
 // MakeFullQualified
 //------------------------------------------------------------------------------
-// Makes the given identifier full qualified. The compiler's current namespace is used.
+// Makes the given identifier full qualified. The compiler's current namespace
+// is used. The general rule of thumb, whether to use this or not, is:
+// * If the language entity defines a *NEW* identifier, then this should be
+//   called with the partial namespace returned by p_partial_identifier() to
+//   make the identifier absolute.
+// * If the language entity references an identifier, then this should NOT be
+//   called. Instead, just call FindInNamespace() with the partial namespace
+//   returned by p_partial_identifier().
 
 static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
 {
@@ -3346,7 +3354,7 @@ static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLStri
 
 static void MakeUnqualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
 {
-	if( IsFullQualified(_this, pIdentifier) && JCLBeginsWith(pIdentifier, JCLGetString(_this->mipNamespace)) )
+	if( PartiallyQualified(_this, pIdentifier) && JCLBeginsWith(pIdentifier, JCLGetString(_this->mipNamespace)) )
 	{
 		JILLong pos = JCLGetLength(_this->mipNamespace) + 2; // + 2 because "::"
 		JCLSubString(pResult, pIdentifier, pos, JCLGetLength(_this->mipNamespace) - pos);
@@ -3576,7 +3584,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 		pFile->SetLocator(pFile, savePos);
 	}
 	// check for type identifier
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	if( err )
 	{
 		err = JCL_ERR_No_Type_Declaration;
@@ -4185,7 +4193,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	oldClass = _this->miClass;
 
 	// we expect to find a class name
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	MakeFullQualified(_this, pClassName, pToken);
 
@@ -4401,9 +4409,8 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 	bStrict = (pClass->miModifier & kModiStrict);
 
 	// we expect an identifier
-	err = p_full_qualified(_this, pIfaceName);
+	err = p_partial_identifier(_this, pIfaceName);
 	ERROR_IF(err, err, pIfaceName, goto exit);
-	MakeFullQualified(_this, pIfaceName, pIfaceName);
 	FindInNamespace(_this, pIfaceName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pIfaceName, goto exit);
 	ERROR_IF(pSrcClass->miFamily != tf_interface, JCL_ERR_Type_Not_Interface, pIfaceName, goto exit);
@@ -4485,9 +4492,8 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 	// not allowed with 'native' class declaration
 	ERROR_IF(IsModifierNativeBinding(pClass), JCL_ERR_Native_With_Hybrid, NULL, goto exit);
 	// we expect an identifier
-	err = p_full_qualified(_this, pBaseName);
+	err = p_partial_identifier(_this, pBaseName);
 	ERROR_IF(err, err, pBaseName, goto exit);
-	MakeFullQualified(_this, pBaseName, pBaseName);
 	FindInNamespace(_this, pBaseName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
 	srcType = pSrcClass->miType;
@@ -4645,14 +4651,14 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	}
 
 	// expecting an identifier
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	MakeFullQualified(_this, pFullName, pToken);
 	RemoveParentNamespace(_this, pName, pFullName);
 	errorNamePos = pFile->GetLocator(pFile);
 
 	// handle function implementation from global space
-	if( IsGlobalScope(_this, _this->miClass) && IsFullQualified(_this, pFullName) )
+	if( IsGlobalScope(_this, _this->miClass) && PartiallyQualified(_this, pFullName) )
 	{
 		GetParentNamespace(_this, pNamespace, pFullName);
 		FindInNamespace(_this, pNamespace, &pClass);
@@ -6119,7 +6125,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			JCLClrTypeInfo(&destType);
 			// parentheses - first check for "cast operator"
 			savePos = pFile->GetLocator(pFile);
-			err = p_full_qualified(_this, pToken2);
+			err = p_partial_identifier(_this, pToken2);
 			if( err == JCL_No_Error )
 			{
 				if( TypeInfoFromType(_this, &destType, StringToType(_this, pToken2)) )
@@ -6277,7 +6283,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			if( tokenID == tk_scope )
 			{
 				// handle leading ::
-				err = p_full_qualified(_this, pToken);
+				err = p_partial_identifier(_this, pToken);
 				ERROR_IF(err, err, pToken, goto exit);
 				JCLSetString(pToken2, kNameGlobalNameSpace);
 				JCLAppend(pToken2, "::");
@@ -6286,10 +6292,10 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			else
 			{
 				pFile->SetLocator(pFile, savePos);
-				err = p_full_qualified(_this, pToken);
+				err = p_partial_identifier(_this, pToken);
 				ERROR_IF(err, err, pToken, goto exit);
 			}
-			if( IsFullQualified(_this, pToken) )
+			if( PartiallyQualified(_this, pToken) )
 			{
 				// static function call
 				GetParentNamespace(_this, pToken2, pToken);
@@ -6618,9 +6624,8 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	else if( tokenID == tk_scope )
 	{
 		pFile->SetLocator(pFile, savePos);
-		err = p_full_qualified(_this, pToken);
+		err = p_partial_identifier(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
-//		MakeFullQualified(_this, pToken, pToken);
 		GetParentNamespace(_this, pToken, pToken);
 		pFile->SetLocator(pFile, pFile->GetLocator(pFile) - 2); // TODO: This is the first time we step back 2 tokens. This wouldnt work without the new precompile feature. If we ever go back to the old way, this will no longer work.
 		// search for class
@@ -8682,9 +8687,9 @@ static JILError p_import(JCLState* _this)
 	pFile = _this->mipFile;
 
 	// expecting class name
-	err = p_full_qualified(_this, pClassName);
+	err = p_partial_identifier(_this, pClassName);
 	ERROR_IF(err, err, pClassName, goto exit);
-	if( IsFullQualified(_this, pClassName) )
+	if( PartiallyQualified(_this, pClassName) )
 	{
 		err = p_import_class(_this, pClassName);
 		if( err )
@@ -8795,7 +8800,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 		else
 		{
 			#if JIL_USE_LOCAL_FILESYS
-			if( GetOptions(_this)->miAllowFileImport && !IsFullQualified(_this, pClassName) )
+			if( GetOptions(_this)->miAllowFileImport && !PartiallyQualified(_this, pClassName) )
 			{
 				JCLPair* pPair;
 				// see if a file with the class name exists...
@@ -9075,7 +9080,7 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 			goto exit;
 	}
 
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	// try to find class
 	typeID = StringToType(_this, pToken);
@@ -9848,7 +9853,7 @@ static JILError p_typeof(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, 
 	else if( tokenID == tk_identifier )
 	{
 		pFile->SetLocator(pFile, savePos);
-		err = p_full_qualified(_this, pToken);
+		err = p_partial_identifier(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
 		FindInNamespace(_this, pToken, &pClass);
 		if( pClass )
@@ -10574,7 +10579,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	oldClass = _this->miClass;
 
 	// we expect to find a class name
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	MakeFullQualified(_this, pClassName, pToken);
 
@@ -11198,7 +11203,7 @@ static JILError p_using(JCLState* _this)
 	do
 	{
 		// get identifier
-		err = p_full_qualified(_this, pToken);
+		err = p_partial_identifier(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
 		// find the given class
 		FindInNamespace(_this, pToken, &pClass);
@@ -11395,7 +11400,7 @@ static JILError p_alias(JCLState* _this)
 	}
 
 	// get next token
-	err = p_full_qualified(_this, pToken);
+	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	// check for existing type name
 	type = StringToType(_this, pToken);
@@ -12253,12 +12258,12 @@ exit:
 }
 
 //------------------------------------------------------------------------------
-// p_full_qualified
+// p_partial_identifier
 //------------------------------------------------------------------------------
-// Parse a full qualified identifier name. This function MUST NOT emit errors,
-// the caller must take care of that.
+// Parse a partially qualified identifier name. This function MUST NOT emit
+// errors, the caller must take care of that.
 
-static JILError p_full_qualified(JCLState* _this, JCLString* pIdentifier)
+static JILError p_partial_identifier(JCLState* _this, JCLString* pIdentifier)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
@@ -12326,7 +12331,7 @@ static JILError p_namespace(JCLState* _this)
 	pOldNameStack = _this->mipUseNamespace;
 	pOldUsing = _this->mipUsing;
 
-	err = p_full_qualified(_this, pNamespace);
+	err = p_partial_identifier(_this, pNamespace);
 	ERROR_IF(err, err, pNamespace, goto exit);
 	// check for {
 	err = pFile->GetToken(pFile, pToken, &tokenID);
