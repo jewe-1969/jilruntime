@@ -100,8 +100,8 @@ DECL_ARRAY( JCLFunc )
 FORWARD_CLASS( JCLFuncType )
 DECL_CLASS( JCLFuncType )
 
-	JCLString*			(*ToString)		(JCLFuncType*, JCLState*, JCLString*, JCLString*, JILLong);
-	JCLString*			(*ToXml)		(JCLFuncType*, JCLState*, JCLString*);
+	JCLString*			(*ToString)		(JCLFuncType*, JCLState*, JCLString*, JCLString*, JILLong, JILLong);
+	JCLString*			(*ToXml)		(JCLFuncType*, JCLState*, JCLString*, JILLong);
 
 	JCLVar*				mipResult;		// result type
 	Array_JCLVar*		mipArgs;		// argument list

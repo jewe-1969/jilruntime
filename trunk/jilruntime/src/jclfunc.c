@@ -80,8 +80,8 @@ void copy_JCLLiteral( JCLLiteral* _this, const JCLLiteral* src )
 /**************************** class JCLFuncType *******************************/
 /******************************************************************************/
 
-static JCLString* toString_JCLFuncType(JCLFuncType*, JCLState*, JCLString*, JCLString*, JILLong);
-static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLString* pOut);
+static JCLString* toString_JCLFuncType(JCLFuncType*, JCLState*, JCLString*, JCLString*, JILLong, JILLong);
+static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLString* pOut, JILLong);
 
 //------------------------------------------------------------------------------
 // JCLFuncType
@@ -125,7 +125,7 @@ void copy_JCLFuncType( JCLFuncType* _this, const JCLFuncType* src )
 // Create a string representation of the declaration of this delegate.
 // The resulting string is APPENDED to the given string.
 
-static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, JCLString* pName, JCLString* outString, JILLong flags)
+static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, JCLString* pName, JCLString* outString, JILLong flags, JILLong hint)
 {
 	JCLVar* pVar;
 	Array_JCLVar* pArgs;
@@ -143,7 +143,7 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 	pVar = _this->mipResult;
 	if( pVar->miType != type_null )
 	{
-		pVar->ToString(pVar, pCompiler, outString, (flags & ~kIdentNames) );
+		pVar->ToString(pVar, pCompiler, outString, (flags & ~kIdentNames), hint);
 		JCLAppend(outString, " ");
 	}
 	// write function name
@@ -163,7 +163,7 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 	{
 		// write argument
 		pVar = pArgs->Get(pArgs, i);
-		pVar->ToString(pVar, pCompiler, outString, flags);
+		pVar->ToString(pVar, pCompiler, outString, flags, hint);
 		// write comma if this wasn't the last arg
 		if( (i + 1) < pArgs->Count(pArgs) )
 		{
@@ -182,7 +182,7 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 // JCLFunc::ToXml
 //------------------------------------------------------------------------------
 
-static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLString* pOut)
+static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLString* pOut, JILLong hint)
 {
 	int i;
 	JCLVar* pVar;
@@ -190,14 +190,14 @@ static JCLString* toXml_JCLFuncType(JCLFuncType* _this, JCLState* pState, JCLStr
 	JCLAppend(pOut, "<signature>\n");
 	JCLAppend(pOut, "<result>\n");
 	if( _this->mipResult->miType != type_null )
-		_this->mipResult->ToXml(_this->mipResult, pState, pOut);
+		_this->mipResult->ToXml(_this->mipResult, pState, pOut, hint);
 	JCLAppend(pOut, "</result>\n");
 
 	JCLAppend(pOut, "<args>\n");
 	for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 	{
 		pVar = _this->mipArgs->Get(_this->mipArgs, i);
-		pVar->ToXml(pVar, pState, pOut);
+		pVar->ToXml(pVar, pState, pOut, hint);
 	}
 	JCLAppend(pOut, "</args>\n");
 	JCLAppend(pOut, "</signature>\n");
@@ -475,7 +475,7 @@ static JCLString* toString_JCLFunc(JCLFunc* _this, JCLState* pCompiler, JCLStrin
 	pVar = _this->mipResult;
 	if( pVar->miType != type_null )
 	{
-		pVar->ToString(pVar, pCompiler, outString, (flags & ~kIdentNames) );
+		pVar->ToString(pVar, pCompiler, outString, (flags & ~kIdentNames), _this->miClassID);
 		JCLAppend(outString, " ");
 	}
 
@@ -500,7 +500,7 @@ static JCLString* toString_JCLFunc(JCLFunc* _this, JCLState* pCompiler, JCLStrin
 	{
 		// write argument
 		pVar = pArgs->Get(pArgs, i);
-		pVar->ToString(pVar, pCompiler, outString, flags);
+		pVar->ToString(pVar, pCompiler, outString, flags, _this->miClassID);
 		// write comma if this wasn't the last arg
 		if( (i + 1) < pArgs->Count(pArgs) )
 		{
@@ -555,14 +555,14 @@ static JCLString* toXml_JCLFunc(JCLFunc* _this, JCLState* pState, JCLString* pOu
 
 	JCLAppend(pOut, "<result>\n");
 	if( _this->mipResult->miType != type_null )
-		_this->mipResult->ToXml(_this->mipResult, pState, pOut);
+		_this->mipResult->ToXml(_this->mipResult, pState, pOut, _this->miClassID);
 	JCLAppend(pOut, "</result>\n");
 
 	JCLAppend(pOut, "<args>\n");
 	for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 	{
 		pVar = _this->mipArgs->Get(_this->mipArgs, i);
-		pVar->ToXml(pVar, pState, pOut);
+		pVar->ToXml(pVar, pState, pOut, _this->miClassID);
 	}
 	JCLAppend(pOut, "</args>\n");
 

@@ -50,7 +50,7 @@ static JILError GenerateCallCode(JCLState*, JCLClass*, JCLFunc*, FILE*, const JI
 static JILBool NativeTypeNameFromTypeID(JCLState*, JCLString*, JILLong);
 static JILLong GetNumFuncs(JCLClass*, JILBool);
 static void DerivePackageString(JCLState*, JCLClass*, JCLString*);
-static void DelegateToString(JCLState*, JCLFuncType*, const JILChar*, JCLString*);
+static void DelegateToString(JCLState*, JCLFuncType*, const JILChar*, JCLString*, JILLong);
 static JILError SearchClassDelegates(JCLState*, JCLClass*, FILE*);
 static void AddToEnum(Array_JCLString* pArr, JCLString* workstr);
 
@@ -863,39 +863,12 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 //------------------------------------------------------------------------------
 // Create a string representation of this delegate.
 
-static void DelegateToString(JCLState* _this, JCLFuncType* pFuncType, const JILChar* pDelegateName, JCLString* outString)
+static void DelegateToString(JCLState* _this, JCLFuncType* pFuncType, const JILChar* pDelegateName, JCLString* outString, JILLong clas)
 {
-	JCLVar* pVar;
-	Array_JCLVar* pArgs;
-	JILLong i;
-
-	JCLSetString(outString, "delegate ");
-
-	// write delegate result
-	pVar = pFuncType->mipResult;
-	if( pVar->miType != type_null )
-	{
-		pVar->ToString(pVar, _this, outString, 0);
-		JCLAppend(outString, " ");
-	}
-
-	// write delegate name
-	JCLAppend(outString, pDelegateName);
-	JCLAppend(outString, " (");
-
-	// write delegate arguments
-	pArgs = pFuncType->mipArgs;
-	for( i = 0; i < pArgs->Count(pArgs); i++ )
-	{
-		// write argument
-		pVar = pArgs->Get(pArgs, i);
-		pVar->ToString(pVar, _this, outString, kIdentNames);
-		// write comma if this wasn't the last arg
-		if( i < (pArgs->Count(pArgs) - 1) )
-			JCLAppend(outString, ", ");
-	}
-	// write end
-	JCLAppend(outString, ")");
+	JCLString* str = NEW(JCLString);
+	JCLSetString(str, pDelegateName);
+	pFuncType->ToString(pFuncType, _this, str, outString, kIdentNames, clas);
+	DELETE(str);
 }
 
 //------------------------------------------------------------------------------
@@ -925,7 +898,7 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 				JCLString* alias = pType->mipAlias->Get(pType->mipAlias, al);
 				if( JCLFindString(alias, JCLGetString(classtr), 0) == 0 )
 				{
-					DelegateToString(_this, pType->mipFuncType, JCLGetString(alias), workstr);
+					DelegateToString(_this, pType->mipFuncType, JCLGetString(alias), workstr, cl);
 					JCLReplace(workstr, JCLGetString(classtr), "");
 					fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), JCLGetString(pType->mipTag));
 				}
