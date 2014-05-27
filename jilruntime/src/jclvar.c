@@ -32,8 +32,8 @@
 //------------------------------------------------------------------------------
 
 static void			copyType_JCLVar	(JCLVar*, const JCLVar*);
-static JCLString*	toString_JCLVar	(JCLVar*, JCLState*, JCLString*, JILLong);
-static JCLString*	toXml_JCLVar	(JCLVar*, JCLState*, JCLString*);
+static JCLString*	toString_JCLVar	(JCLVar*, JCLState*, JCLString*, JILLong, JILLong);
+static JCLString*	toXml_JCLVar	(JCLVar*, JCLState*, JCLString*, JILLong);
 
 //------------------------------------------------------------------------------
 // JCLVar
@@ -128,7 +128,7 @@ void copyType_JCLVar(JCLVar* _this, const JCLVar* src)
 // TypeToString
 //------------------------------------------------------------------------------
 
-static void TypeToString(JCLVar* _this, JCLState* pCompiler, JCLString* outString, JILLong type)
+static void TypeToString(JCLVar* _this, JCLState* pCompiler, JCLString* outString, JILLong type, JILLong hint)
 {
 	switch( type )
 	{
@@ -149,18 +149,28 @@ static void TypeToString(JCLVar* _this, JCLState* pCompiler, JCLString* outStrin
 			JCLClass* pClass = GetClass(pCompiler, type);
 			if( pClass )
 			{
-				if( pClass->miFamily == tf_delegate )
+				if( pClass->miFamily == tf_delegate || pClass->miFamily == tf_thread )
 				{
-					// TODO: PROBLEM: Right now there is no association from a delegate type to the class where it is defined
-					// because all delegates that have the SAME FUNCTION SIGNATURE share the same type-id and are actually just aliases of the same type.
-					// Since we don't know the class context for which this delegate shall be converted to string, we can just do a lucky guess and use
-					// the first alias to the delegate.
-					if( pClass->mipAlias->Count(pClass->mipAlias) )
-						JCLAppend(outString, JCLGetString(pClass->mipAlias->Get(pClass->mipAlias, 0)));
+					if( hint )
+					{
+						JILLong i;
+						JCLClass* pClass2 = GetClass(pCompiler, hint);
+						for( i = 0; i < pClass->mipAlias->Count(pClass->mipAlias); i++ )
+						{
+							JCLString* str = pClass->mipAlias->Get(pClass->mipAlias, i);
+							if( JCLBeginsWith(str, JCLGetString(pClass2->mipName)) )
+							{
+								JCLAppend(outString, JCLGetString(str));
+								break;
+							}
+						}
+						if( i == pClass->mipAlias->Count(pClass->mipAlias) )
+							JCLAppend(outString, JCLGetString(pClass->mipName));
+					}
 					else
 						JCLAppend(outString, JCLGetString(pClass->mipName));
 				}
-				else if (pClass->miFamily == tf_class || pClass->miFamily == tf_interface || pClass->miFamily == tf_thread)
+				else if (pClass->miFamily == tf_class || pClass->miFamily == tf_interface)
 				{
 					JCLAppend(outString, JCLGetString(pClass->mipName));
 				}
@@ -180,7 +190,7 @@ static void TypeToString(JCLVar* _this, JCLState* pCompiler, JCLString* outStrin
 // Create a string representation of the TYPE INFORMATION in a JCLVar. The
 // result is APPENDED to the given string.
 
-static JCLString* toString_JCLVar(JCLVar* _this, JCLState* pCompiler, JCLString* outString, JILLong flags)
+static JCLString* toString_JCLVar(JCLVar* _this, JCLState* pCompiler, JCLString* outString, JILLong flags, JILLong hint)
 {
 	if( flags & kClearFirst )
 		JCLClear(outString);
@@ -190,12 +200,12 @@ static JCLString* toString_JCLVar(JCLVar* _this, JCLState* pCompiler, JCLString*
 		JCLAppend(outString, "weak ");
 	if( _this->miType == type_array )
 	{
-		TypeToString(_this, pCompiler, outString, _this->miElemType);
+		TypeToString(_this, pCompiler, outString, _this->miElemType, hint);
 		JCLAppend(outString, "[]");
 	}
 	else
 	{
-		TypeToString(_this, pCompiler, outString, _this->miType);
+		TypeToString(_this, pCompiler, outString, _this->miType, hint);
 	}
 	if( (flags & kIdentNames) && JCLGetLength(_this->mipName) )
 	{
@@ -215,17 +225,17 @@ static JCLString* toString_JCLVar(JCLVar* _this, JCLState* pCompiler, JCLString*
 // JCLVar::ToXml
 //------------------------------------------------------------------------------
 
-static JCLString* toXml_JCLVar(JCLVar* _this, JCLState* pState, JCLString* pOut)
+static JCLString* toXml_JCLVar(JCLVar* _this, JCLState* pState, JCLString* pOut, JILLong hint)
 {
 	JCLAppend(pOut, "<var type=\"");
 	if( _this->miType == type_array )
 	{
-		TypeToString(_this, pState, pOut, _this->miElemType);
+		TypeToString(_this, pState, pOut, _this->miElemType, hint);
 		JCLAppend(pOut, "[]");
 	}
 	else
 	{
-		TypeToString(_this, pState, pOut, _this->miType);
+		TypeToString(_this, pState, pOut, _this->miType, hint);
 	}
 	JCLAppend(pOut, "\" name=\"");
 	JCLAppend(pOut, JCLGetString(_this->mipName));

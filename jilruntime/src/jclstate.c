@@ -36,6 +36,7 @@
 COMPILER TODO:
 --------------------------------------------------------------------------------
 	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
+	* C++ code generator should not use class names verbatim. Instead, create macros at top of file that define all class names used by the native type.
 
 	Missing features:
 	* enum
@@ -3021,7 +3022,7 @@ static JILBool AllMembersInited(JCLState* _this, JILLong typeID, JCLString* pArg
 		if( !pVars->Get(pVars, i)->miInited )
 		{
 			pVar = pVars->Get(pVars, i);
-			pVar->ToString(pVar, _this, pArg, kClearFirst|kIdentNames|kCurrentScope);
+			pVar->ToString(pVar, _this, pArg, kClearFirst|kIdentNames|kCurrentScope, typeID);
 			return JILFalse;
 		}
 	}
@@ -4403,7 +4404,7 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 	err = p_full_qualified(_this, pIfaceName);
 	ERROR_IF(err, err, pIfaceName, goto exit);
 	MakeFullQualified(_this, pIfaceName, pIfaceName);
-	FindClass(_this, pIfaceName, &pSrcClass);
+	FindInNamespace(_this, pIfaceName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pIfaceName, goto exit);
 	ERROR_IF(pSrcClass->miFamily != tf_interface, JCL_ERR_Type_Not_Interface, pIfaceName, goto exit);
 	ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pIfaceName, goto exit);
@@ -4487,7 +4488,7 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 	err = p_full_qualified(_this, pBaseName);
 	ERROR_IF(err, err, pBaseName, goto exit);
 	MakeFullQualified(_this, pBaseName, pBaseName);
-	FindClass(_this, pBaseName, &pSrcClass);
+	FindInNamespace(_this, pBaseName, &pSrcClass);
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
 	srcType = pSrcClass->miType;
 	ERROR_IF(!IsClassType(_this, srcType), JCL_ERR_Type_Not_Class, pBaseName, goto exit);
@@ -8686,6 +8687,8 @@ static JILError p_import(JCLState* _this)
 	if( IsFullQualified(_this, pClassName) )
 	{
 		err = p_import_class(_this, pClassName);
+		if( err )
+			goto exit;
 		// expecting to see a ";"
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);

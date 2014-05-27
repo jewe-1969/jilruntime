@@ -48,8 +48,8 @@ FORWARD_CLASS( JCLVar )
 DECL_CLASS( JCLVar )
 
 	void				(*CopyType)		(JCLVar*, const JCLVar*);
-	JCLString*			(*ToString)		(JCLVar*, JCLState*, JCLString*, JILLong);
-	JCLString*			(*ToXml)		(JCLVar*, JCLState*, JCLString*);
+	JCLString*			(*ToString)		(JCLVar*, JCLState*, JCLString*, JILLong, JILLong);
+	JCLString*			(*ToXml)		(JCLVar*, JCLState*, JCLString*, JILLong);
 
 	// TYPE related
 	JILLong				miType;			// typeID this object currently represents (can change due to cast, access to array elements, etc)

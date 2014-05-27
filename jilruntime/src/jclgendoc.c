@@ -233,6 +233,7 @@ exit:
 JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 {
 	JCLString* htmlfile = NULL;
+	JCLString* shortname = NULL;
 	int i;
 	int Anchor =0;
 
@@ -240,6 +241,7 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 		goto exit;
 
 	// create the filename
+	shortname = NEW(JCLString);
 	htmlfile = NEW(JCLString);
 	GetFileName(htmlfile, pClass);
 	JCLAppend(htmlfile, ".html");
@@ -247,8 +249,10 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 	// scan the class tag for special tokens
 	ScanTag(pDict, pClass->mipTag);
 
-	// add the type name as-is to the dictionary
+	// add the type name to the dictionary
+	RemoveParentNamespace(_this, shortname, pClass->mipName);
 	ToDict(pDict, pClass->mipName, htmlfile);
+	ToDict(pDict, shortname, htmlfile);
 
 	FunctionsToDict(pDict, pClass, htmlfile, OnlyFunctions, &Anchor);
 	FunctionsToDict(pDict, pClass, htmlfile, OnlyCtors, &Anchor);
@@ -260,11 +264,14 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 	for( i = 0; i < pClass->mipAlias->Count(pClass->mipAlias); i++ )
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
+		RemoveParentNamespace(_this, shortname, pAlias);
 		ToDict(pDict, pAlias, htmlfile);
+		ToDict(pDict, shortname, htmlfile);
 	}
 
 exit:
 	DELETE(htmlfile);
+	DELETE(shortname);
 	return JCL_No_Error;
 }
 
@@ -431,6 +438,8 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	JCLString* tagstr = NEW(JCLString);
 	JCLString* dummystr = NEW(JCLString);
 	JCLString* namespac = NEW(JCLString);
+	JCLString* shortnam = NEW(JCLString);
+	JCLString* parentns = NEW(JCLString);
 	JCLFunc** sortedFuncs;
 	int i;
 
@@ -449,6 +458,9 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	{
 		JCLSetString(namespac, JCLGetString(pClass->mipName));
 		JCLAppend(namespac, "::");
+		RemoveParentNamespace(_this, shortnam, pClass->mipName);
+		GetParentNamespace(_this, parentns, pClass->mipName);
+		JCLAppend(parentns, "::");
 		sortedFuncs = SortFunctions(pClass);
 		fprintf(pFile, "<h3>%s</h3>\n", pText);
 		fprintf(pFile, "<table id='table1'>\n<tbody>\n");
@@ -459,6 +471,8 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 			{
 				pFunc->ToString(pFunc, _this, workstr, kClearFirst|kNoClassName);
 				JCLReplace(workstr, JCLGetString(namespac), "");
+				JCLReplace(workstr, JCLGetString(parentns), "");
+				JCLReplace(workstr, JCLGetString(pClass->mipName), JCLGetString(shortnam));
 				AutoLinkKeywords(pDict, workstr, pClass->mipName);
 				SplitTag(pFunc->mipTag, tagstr, dummystr);
 				AutoLinkKeywords(pDict, tagstr, pClass->mipName);
@@ -473,6 +487,8 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	DELETE(tagstr);
 	DELETE(dummystr);
 	DELETE(namespac);
+	DELETE(shortnam);
+	DELETE(parentns);
 }
 
 //------------------------------------------------------------------------------
@@ -486,16 +502,23 @@ static void DescribeFunction(JCLState* _this, JCLClass* pClass, FILE* pFile, JCL
 	JCLString* tagstr1 = NEW(JCLString);
 	JCLString* tagstr2 = NEW(JCLString);
 	JCLString* namespac = NEW(JCLString);
+	JCLString* shortnam = NEW(JCLString);
+	JCLString* parentns = NEW(JCLString);
 
 	JCLSetString(namespac, JCLGetString(pClass->mipName));
 	JCLAppend(namespac, "::");
+	GetParentNamespace(_this, parentns, pClass->mipName);
+	JCLAppend(parentns, "::");
+	RemoveParentNamespace(_this, shortnam, pClass->mipName);
 	fprintf(pFile, "<table id='table1' cols='1'>\n<tbody>\n");
 	pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
 	JCLReplace(workstr, JCLGetString(namespac), "");
+	JCLReplace(workstr, JCLGetString(parentns), "");
+	JCLReplace(workstr, JCLGetString(pClass->mipName), JCLGetString(shortnam));
 	SplitTag(pFunc->mipTag, tagstr1, tagstr2);
 	AutoLinkKeywords(pDict, tagstr1, pClass->mipName);
 	AutoLinkKeywords(pDict, tagstr2, pClass->mipName);
-	fprintf(pFile, "<tr id='dark'><td><pre>%s</pre></td></tr><tr id='light'><td><p>%s</p>", JCLGetString(workstr), JCLGetString(tagstr1));
+	fprintf(pFile, "<tr id='dark'><td><code>%s</code></td></tr><tr id='light'><td><p>%s</p>", JCLGetString(workstr), JCLGetString(tagstr1));
 	if( JCLGetLength(tagstr2) )
 	{
 		fprintf(pFile, "<p>%s</p>", JCLGetString(tagstr2));
@@ -508,6 +531,8 @@ static void DescribeFunction(JCLState* _this, JCLClass* pClass, FILE* pFile, JCL
 	DELETE(tagstr1);
 	DELETE(tagstr2);
 	DELETE(namespac);
+	DELETE(shortnam);
+	DELETE(parentns);
 }
 
 //------------------------------------------------------------------------------
@@ -604,12 +629,12 @@ static void GetFamilyAndTypeName(JCLState* _this, JCLClass* pClass, JCLString* f
 	else if (pClass->miFamily == tf_thread)
 	{
 		JCLSetString(familyName, "cofunction");
-		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags);
+		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags, pClass->miParentType);
 	}
 	else if (pClass->miFamily == tf_delegate)
 	{
 		JCLSetString(familyName, "delegate");
-		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags);
+		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags, pClass->miParentType);
 	}
 }
 
@@ -663,10 +688,17 @@ static void FunctionsToDict(JILTable* pDict, JCLClass* pClass, JCLString* pFileN
 			JCLFunc* pFunc = sortedFuncs[i];
 			if (pFn(pFunc))
 			{
+				// add with full-qualified class name
 				JCLSetString(workstr, JCLGetString(pClass->mipName));
 				JCLAppend(workstr, "::");
 				JCLAppend(workstr, JCLGetString(pFunc->mipName));
 				JCLFormat(tagstr, "%s#A%04d", JCLGetString(pFileName), *pAnchor);
+				ToDict(pDict, workstr, tagstr);
+				// add with only class name
+				JCLSetString(workstr, JCLGetString(pClass->mipName));
+				RemoveParentNamespace(NULL, workstr, workstr);
+				JCLAppend(workstr, "::");
+				JCLAppend(workstr, JCLGetString(pFunc->mipName));
 				ToDict(pDict, workstr, tagstr);
 				// scan the function tag for special tokens
 				ScanTag(pDict, pFunc->mipTag);

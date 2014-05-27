@@ -183,7 +183,7 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	for(i = 0; i < _this->mipVars->Count(_this->mipVars); i++)
 	{
 		pVar = _this->mipVars->Get(_this->mipVars, i);
-		pVar->ToXml(pVar, pState, pOut);
+		pVar->ToXml(pVar, pState, pOut, _this->miType);
 	}
 	JCLAppend(pOut, "</variables>\n");
 
@@ -196,7 +196,7 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	}
 	JCLAppend(pOut, "</aliases>\n");
 
-	_this->mipFuncType->ToXml(_this->mipFuncType, pState, pOut);
+	_this->mipFuncType->ToXml(_this->mipFuncType, pState, pOut, _this->miType);
 
 	JCLAppend(pOut, "<tag>");
 	JCLEscapeXml(workstr, _this->mipTag);
