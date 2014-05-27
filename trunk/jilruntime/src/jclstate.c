@@ -4429,7 +4429,7 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 			// if method is constructor, set correct name
 			if( pFunc->miCtor )
 			{
-				pFunc->mipName->Copy(pFunc->mipName, pClassName);
+				RemoveParentNamespace(_this, pFunc->mipName, pClassName);
 				// if method is copy-constructor, set source type to inheriting class
 				if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
 				{
@@ -8863,6 +8863,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 	_this->mipUsing = NEW(Array_JILLong);
 	// begin parsing
 	err = p_root(_this);
+	_this->miNumCompiles += _this->miPass;
 	// pop compiler options from stack
 	PopOptions(_this);
 	DELETE(_this->mipUseNamespace);
