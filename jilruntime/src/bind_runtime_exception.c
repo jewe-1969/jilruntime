@@ -40,7 +40,7 @@ static const char* kClassDeclaration =
 // class info constants
 //------------------------------------------------------------------------------
 
-static const char*	kClassName		=	"runtime_exception"; // The class name that will be used in JewelScript.
+static const char*	kClassName		=	"runtime::exception"; // The class name that will be used in JewelScript.
 static const char*	kBaseName		=	"exception"; // The base interface this class inherits from.
 static const char*	kPackageList	=	"";
 static const char*	kAuthorName		=	"www.jewe.org";

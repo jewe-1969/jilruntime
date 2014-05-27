@@ -595,7 +595,10 @@ static void WriteAliasTable(JCLState* _this, JCLClass* pClass, FILE* pFile, cons
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
 		GetFamilyAndTypeName(_this, pClass, tagstr, workstr, kClearFirst|kFullDecl|kIdentNames);
-		JCLFormat(tmpstr, "(%s)", JCLGetString(pClass->mipName));
+		if( pClass->miFamily == tf_delegate || pClass->miFamily == tf_thread )
+			JCLFormat(tmpstr, "(%s)", JCLGetString(pClass->mipName));
+		else
+			tmpstr->Copy(tmpstr, pClass->mipName);
 		JCLReplace(workstr, JCLGetString(tmpstr), JCLGetString(pAlias));
 		fprintf(pFile, "<tr id='%s'><td>%s %s</td></tr>\n", (i & 1)?"dark":"light", JCLGetString(tagstr), JCLGetString(workstr));
 	}
