@@ -271,10 +271,10 @@ static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
-static JILBool		PartiallyQualified	(JCLState*, const JCLString*);
+static JILBool		PartiallyQualified	(const JCLString*);
+static JILBool		CompareUnqualified	(const JCLString*, const JCLString*);
 static void			MakeFullQualified	(JCLState*, JCLString*, const JCLString*);
 static void			MakeUnqualified		(JCLState*, JCLString*, const JCLString*);
-static JILBool		CompareUnqualified	(JCLState*, const JCLString*, const JCLString*);
 static void			SetCurrentNamespace	(JCLState*, JCLString*);
 static JCLString*	GetCurrentNamespace	(JCLState*);
 static JILLong		TypeInfoFromType	(JCLState*, TypeInfo*, JILLong);
@@ -911,16 +911,16 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 		index = FindClass(_this, pFullName, ppClass);
 		if( index )
 			break;
-		GetParentNamespace(_this, pCurrentNamespace, pCurrentNamespace);
+		GetParentNamespace(pCurrentNamespace, pCurrentNamespace);
 	}
 	// look in 'using' classes
-	if( index == 0 && !PartiallyQualified(_this, pName) )
+	if( index == 0 && !PartiallyQualified(pName) )
 	{
 		for( i = 0; i < _this->mipUsing->count; i++ )
 		{
 			index = _this->mipUsing->Get(_this->mipUsing, i);
 			pClass = GetClass(_this, index);
-			RemoveParentNamespace(_this, pFullName, pClass->mipName);
+			RemoveParentNamespace(pFullName, pClass->mipName);
 			if( JCLCompare(pFullName, pName) )
 			{
 				*ppClass = pClass;
@@ -3311,9 +3311,24 @@ static JILBool IsClassNative(JCLClass* pClass)
 // Returns true if the given identifier name contains at least one scope
 // operator. Which means the identifier is partially qualified.
 
-static JILBool PartiallyQualified(JCLState* _this, const JCLString* pIdentifier)
+static JILBool PartiallyQualified(const JCLString* pIdentifier)
 {
 	return (JCLFindString(pIdentifier, "::", 0) >= 0);
+}
+
+//------------------------------------------------------------------------------
+// CompareUnqualified
+//------------------------------------------------------------------------------
+// Makes the first identifier unqualified and compares it to the second.
+
+static JILBool CompareUnqualified(const JCLString* fullqual, const JCLString* unqual)
+{
+	JILBool result;
+	JCLString* str = NEW(JCLString);
+	RemoveParentNamespace(str, fullqual);
+	result = JCLCompare(str, unqual);
+	DELETE(str);
+	return result;
 }
 
 //------------------------------------------------------------------------------
@@ -3354,7 +3369,7 @@ static void MakeFullQualified(JCLState* _this, JCLString* pResult, const JCLStri
 
 static void MakeUnqualified(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
 {
-	if( PartiallyQualified(_this, pIdentifier) && JCLBeginsWith(pIdentifier, JCLGetString(_this->mipNamespace)) )
+	if( PartiallyQualified(pIdentifier) && JCLBeginsWith(pIdentifier, JCLGetString(_this->mipNamespace)) )
 	{
 		JILLong pos = JCLGetLength(_this->mipNamespace) + 2; // + 2 because "::"
 		JCLSubString(pResult, pIdentifier, pos, JCLGetLength(_this->mipNamespace) - pos);
@@ -3363,57 +3378,6 @@ static void MakeUnqualified(JCLState* _this, JCLString* pResult, const JCLString
 	{
 		JCLSetString(pResult, JCLGetString(pIdentifier));
 	}
-}
-
-//------------------------------------------------------------------------------
-// GetParentNamespace
-//------------------------------------------------------------------------------
-// Returns the full qualified name of the parent namespace of the given identifier.
-
-void GetParentNamespace(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
-{
-	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
-	if( pos >= 0 )
-	{
-		JCLSubString(pResult, pIdentifier, 0, pos - 1);
-	}
-	else
-	{
-		JCLClear(pResult);
-	}
-}
-
-//------------------------------------------------------------------------------
-// RemoveParentNamespace
-//------------------------------------------------------------------------------
-// Removes the parent namespace from the given full qualified identifier.
-
-void RemoveParentNamespace(JCLState* _this, JCLString* pResult, const JCLString* pIdentifier)
-{
-	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
-	if( pos >= 0 )
-	{
-		JCLSubString(pResult, pIdentifier, pos + 1, JCLGetLength(pIdentifier) - pos - 1);
-	}
-	else
-	{
-		JCLSetString(pResult, JCLGetString(pIdentifier));
-	}
-}
-
-//------------------------------------------------------------------------------
-// CompareUnqualified
-//------------------------------------------------------------------------------
-// Makes the first identifier unqualified and compares it to the second.
-
-static JILBool CompareUnqualified(JCLState* _this, const JCLString* fullqual, const JCLString* unqual)
-{
-	JILBool result;
-	JCLString* str = NEW(JCLString);
-	RemoveParentNamespace(_this, str, fullqual);
-	result = JCLCompare(str, unqual);
-	DELETE(str);
-	return result;
 }
 
 //------------------------------------------------------------------------------
@@ -3435,6 +3399,65 @@ static void SetCurrentNamespace(JCLState* _this, JCLString* pIdentifier)
 static JCLString* GetCurrentNamespace(JCLState* _this)
 {
 	return _this->mipNamespace;
+}
+
+//------------------------------------------------------------------------------
+// GetParentNamespace
+//------------------------------------------------------------------------------
+// Returns the full qualified name of the parent namespace of the given identifier.
+
+void GetParentNamespace(JCLString* pResult, const JCLString* pIdentifier)
+{
+	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
+	if( pos >= 0 )
+	{
+		JCLSubString(pResult, pIdentifier, 0, pos - 1);
+	}
+	else
+	{
+		JCLClear(pResult);
+	}
+}
+
+//------------------------------------------------------------------------------
+// RemoveParentNamespace
+//------------------------------------------------------------------------------
+// Removes the parent namespace from the given full qualified identifier.
+
+void RemoveParentNamespace(JCLString* pResult, const JCLString* pIdentifier)
+{
+	JILLong pos = JCLFindCharReverse(pIdentifier, ':', JCLGetLength(pIdentifier) - 1);
+	if( pos >= 0 )
+	{
+		JCLSubString(pResult, pIdentifier, pos + 1, JCLGetLength(pIdentifier) - pos - 1);
+	}
+	else
+	{
+		JCLSetString(pResult, JCLGetString(pIdentifier));
+	}
+}
+
+//------------------------------------------------------------------------------
+// RemoveClassNamespace
+//------------------------------------------------------------------------------
+// Assuming the given prototype string is a member of the given class, removes
+// parent and class namespace from the prototype.
+
+void RemoveClassNamespace(JCLString* prototype, JCLClass* pClass)
+{
+	JCLString* classNS = NEW(JCLString);
+	JCLString* parentNS = NEW(JCLString);
+	classNS->Copy(classNS, pClass->mipName);
+	JCLAppend(classNS, "::");
+	JCLReplace(prototype, JCLGetString(classNS), "");
+	GetParentNamespace(parentNS, pClass->mipName);
+	if( JCLGetLength(parentNS) )
+	{
+		JCLAppend(parentNS, "::");
+		JCLReplace(prototype, JCLGetString(parentNS), "");
+	}
+	DELETE(classNS);
+	DELETE(parentNS);
 }
 
 //------------------------------------------------------------------------------
@@ -4436,7 +4459,7 @@ static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
 			// if method is constructor, set correct name
 			if( pFunc->miCtor )
 			{
-				RemoveParentNamespace(_this, pFunc->mipName, pClassName);
+				RemoveParentNamespace(pFunc->mipName, pClassName);
 				// if method is copy-constructor, set source type to inheriting class
 				if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
 				{
@@ -4654,13 +4677,13 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	err = p_partial_identifier(_this, pToken);
 	ERROR_IF(err, err, pToken, goto exit);
 	MakeFullQualified(_this, pFullName, pToken);
-	RemoveParentNamespace(_this, pName, pFullName);
+	RemoveParentNamespace(pName, pFullName);
 	errorNamePos = pFile->GetLocator(pFile);
 
 	// handle function implementation from global space
-	if( IsGlobalScope(_this, _this->miClass) && PartiallyQualified(_this, pFullName) )
+	if( IsGlobalScope(_this, _this->miClass) && PartiallyQualified(pFullName) )
 	{
-		GetParentNamespace(_this, pNamespace, pFullName);
+		GetParentNamespace(pNamespace, pFullName);
 		FindInNamespace(_this, pNamespace, &pClass);
 		// TODO: This will currently fail if we define a global function directly in a namespace. Currently we only support one global object!
 		ERROR_IF(!pClass, JCL_ERR_Function_In_Namespace, pName, goto exit);
@@ -4704,7 +4727,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		// check for cofunction in native type
 		ERROR_IF((fnKind & kCofunction) && IsClassNative(pClass), JCL_ERR_Cofunction_In_NTL, pName, goto exit);
 		// compare function name with class name (constructor?)
-		if( CompareUnqualified(_this, pClass->mipName, pFunc->mipName) )
+		if( CompareUnqualified(pClass->mipName, pFunc->mipName) )
 		{
 			// this is a constructor, it must be declared "void"
 			if( pFunc->mipResult->miMode != kModeUnused )
@@ -6295,11 +6318,11 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 				err = p_partial_identifier(_this, pToken);
 				ERROR_IF(err, err, pToken, goto exit);
 			}
-			if( PartiallyQualified(_this, pToken) )
+			if( PartiallyQualified(pToken) )
 			{
 				// static function call
-				GetParentNamespace(_this, pToken2, pToken);
-				RemoveParentNamespace(_this, pToken, pToken);
+				GetParentNamespace(pToken2, pToken);
+				RemoveParentNamespace(pToken, pToken);
 				FindInNamespace(_this, pToken2, &pClass);
 				ERROR_IF(pClass == NULL, JCL_ERR_Undefined_Identifier, pToken, goto exit);
 				ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
@@ -6626,7 +6649,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 		pFile->SetLocator(pFile, savePos);
 		err = p_partial_identifier(_this, pToken);
 		ERROR_IF(err, err, pToken, goto exit);
-		GetParentNamespace(_this, pToken, pToken);
+		GetParentNamespace(pToken, pToken);
 		pFile->SetLocator(pFile, pFile->GetLocator(pFile) - 2); // TODO: This is the first time we step back 2 tokens. This wouldnt work without the new precompile feature. If we ever go back to the old way, this will no longer work.
 		// search for class
 		FindInNamespace(_this, pToken, &pClass);
@@ -8689,7 +8712,7 @@ static JILError p_import(JCLState* _this)
 	// expecting class name
 	err = p_partial_identifier(_this, pClassName);
 	ERROR_IF(err, err, pClassName, goto exit);
-	if( PartiallyQualified(_this, pClassName) )
+	if( PartiallyQualified(pClassName) )
 	{
 		err = p_import_class(_this, pClassName);
 		if( err )
@@ -8800,7 +8823,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 		else
 		{
 			#if JIL_USE_LOCAL_FILESYS
-			if( GetOptions(_this)->miAllowFileImport && !PartiallyQualified(_this, pClassName) )
+			if( GetOptions(_this)->miAllowFileImport && !PartiallyQualified(pClassName) )
 			{
 				JCLPair* pPair;
 				// see if a file with the class name exists...
@@ -9137,7 +9160,7 @@ static JILError p_new(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCL
 			// call constructor
 			if( pClass->miFamily != tf_thread )
 				JCLSetString(pToken, JCLGetString(pClass->mipName)); // makes aliases work as constructor name
-			RemoveParentNamespace(_this, pToken, pToken);
+			RemoveParentNamespace(pToken, pToken);
 			err = p_member_call(_this, pLocals, pClass->miType, pToken, pWorkVar, NULL, &outType, kOnlyCtor);
 			if( err )
 				goto exit;

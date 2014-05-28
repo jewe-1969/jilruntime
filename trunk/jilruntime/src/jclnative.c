@@ -101,13 +101,13 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	enumeration = NEW(Array_JCLString);
 
 	// get unqualified class name
-	RemoveParentNamespace(_this, className, pClass->mipName);
+	RemoveParentNamespace(className, pClass->mipName);
 
 	// create base name
 	baseName = NEW(JCLString);
 	if (isInherit)
 	{
-		RemoveParentNamespace(_this, baseName, GetClass(_this, pClass->miBaseType)->mipName);
+		RemoveParentNamespace(baseName, GetClass(_this, pClass->miBaseType)->mipName);
 	}
 
 	// create package list
@@ -209,8 +209,6 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "//--------------------------------------------------------------------------------------------\n");
 	fprintf(outStream, "\n");
 	fprintf(outStream, "static const JILChar* kClassDeclaration =\n");
-	JCLSetString(workstr2, JCLGetString(pClass->mipName));
-	JCLAppend(workstr2, "::");
 	if( JCLGetLength(pClass->mipTag) )
 		fprintf(outStream, "\tTAG(\"%s\")\n", FormatTag(tagstr, pClass->mipTag));
 	else
@@ -221,7 +219,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 		JCLFunc* pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 		pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
 		ERROR_IF(pFunc->miCofunc, JCL_ERR_Native_Code_Generator, workstr, goto exit);
-		JCLReplace(workstr, JCLGetString(workstr2), "");	// TODO: Must remove scope from local delegate types ("Foo::"), not a good solution
+		RemoveClassNamespace(workstr, pClass);
 		fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), FormatTag(tagstr, pFunc->mipTag));
 	}
 	fprintf(outStream, ";\n");
@@ -419,6 +417,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 			if (!pFunc->miMethod)
 			{
 				pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
+				RemoveClassNamespace(workstr, pClass);
 				fprintf(outStream, "		case %s: // %s\n", JCLGetString(enumeration->Get(enumeration, pFunc->miFuncIdx)), JCLGetString(workstr));
 				fprintf(outStream, "		{\n");
 				err = GenerateCallCode(_this, pClass, pFunc, outStream, sObjectName);
@@ -463,6 +462,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 			if (pFunc->miMethod)
 			{
 				pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
+				RemoveClassNamespace(workstr, pClass);
 				fprintf(outStream, "		case %s: // %s\n", JCLGetString(enumeration->Get(enumeration, pFunc->miFuncIdx)), JCLGetString(workstr));
 				fprintf(outStream, "		{\n");
 				err = GenerateCallCode(_this, pClass, pFunc, outStream, sObjectName);
@@ -783,7 +783,7 @@ static JILBool NativeTypeNameFromTypeID(JCLState* _this, JCLString* outString, J
 					if (pClass->miNative || (pClass->miModifier & kModiNativeBinding))
 					{
 						JCLString* workstr = NEW(JCLString);
-						RemoveParentNamespace(_this, workstr, pClass->mipName);
+						RemoveParentNamespace(workstr, pClass->mipName);
 						JCLSetString(outString, "C");
 						JCLAppend(outString, JCLGetString(workstr));
 						JCLAppend(outString, "*");
@@ -929,12 +929,8 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 	JCLClass* pType;
 	JILLong cl;
 	JILLong al;
-	JCLString* classtr = NEW(JCLString);
 	JCLString* workstr = NEW(JCLString);
 	JCLString* tagstr = NEW(JCLString);
-
-	JCLSetString(classtr, JCLGetString(pClass->mipName));
-	JCLAppend(classtr, "::");
 
 	for( cl = 0; cl < _this->mipClasses->Count(_this->mipClasses); cl++ )
 	{
@@ -944,16 +940,15 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 			for( al = 0; al < pType->mipAlias->Count(pType->mipAlias); al++ )
 			{
 				JCLString* alias = pType->mipAlias->Get(pType->mipAlias, al);
-				if( JCLFindString(alias, JCLGetString(classtr), 0) == 0 )
+				if( JCLBeginsWith(alias, JCLGetString(pClass->mipName)) )
 				{
 					DelegateToString(_this, pType->mipFuncType, JCLGetString(alias), workstr, cl);
-					JCLReplace(workstr, JCLGetString(classtr), "");
+					RemoveClassNamespace(workstr, pClass);
 					fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), FormatTag(tagstr, pType->mipTag));
 				}
 			}
 		}
 	}
-	DELETE(classtr);
 	DELETE(workstr);
 	DELETE(tagstr);
 	return err;

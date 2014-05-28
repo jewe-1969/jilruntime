@@ -80,8 +80,6 @@ static const JILChar* kUrlSpan = "0123456789.-_@?=:;/+%#$ABCDEFGHIJKLMNOPQRSTUVW
 
 JILError EmitError(JCLState* _this, const JCLString* pArg, JILError err);
 JILLong FindClass(JCLState* _this, const JCLString* pName, JCLClass** ppClass);
-void RemoveParentNamespace(JCLState*, JCLString*, const JCLString*);
-void GetParentNamespace(JCLState*, JCLString*, const JCLString*);
 
 //------------------------------------------------------------------------------
 // internal helper functions
@@ -259,7 +257,7 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 	ScanTag(pDict, pClass->mipTag);
 
 	// add the type name to the dictionary
-	RemoveParentNamespace(_this, shortname, pClass->mipName);
+	RemoveParentNamespace(shortname, pClass->mipName);
 	ToDict(pDict, pClass->mipName, htmlfile);
 	ToDict(pDict, shortname, htmlfile);
 
@@ -273,7 +271,7 @@ JILError JCLAnalyzeClass(JCLState* _this, JCLClass* pClass, JILTable* pDict)
 	for( i = 0; i < pClass->mipAlias->Count(pClass->mipAlias); i++ )
 	{
 		JCLString* pAlias = pClass->mipAlias->Get(pClass->mipAlias, i);
-		RemoveParentNamespace(_this, shortname, pAlias);
+		RemoveParentNamespace(shortname, pAlias);
 		ToDict(pDict, pAlias, htmlfile);
 		ToDict(pDict, shortname, htmlfile);
 	}
@@ -446,9 +444,6 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	JCLString* workstr = NEW(JCLString);
 	JCLString* tagstr = NEW(JCLString);
 	JCLString* dummystr = NEW(JCLString);
-	JCLString* namespac = NEW(JCLString);
-	JCLString* shortnam = NEW(JCLString);
-	JCLString* parentns = NEW(JCLString);
 	JCLFunc** sortedFuncs;
 	int i;
 
@@ -465,11 +460,6 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	}
 	if (!skip)
 	{
-		JCLSetString(namespac, JCLGetString(pClass->mipName));
-		JCLAppend(namespac, "::");
-		RemoveParentNamespace(_this, shortnam, pClass->mipName);
-		GetParentNamespace(_this, parentns, pClass->mipName);
-		JCLAppend(parentns, "::");
 		sortedFuncs = SortFunctions(pClass);
 		fprintf(pFile, "<h3>%s</h3>\n", pText);
 		fprintf(pFile, "<table id='table1'>\n<tbody>\n");
@@ -479,9 +469,7 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 			if (pFn(pFunc))
 			{
 				pFunc->ToString(pFunc, _this, workstr, kClearFirst|kNoClassName);
-				JCLReplace(workstr, JCLGetString(namespac), "");
-				JCLReplace(workstr, JCLGetString(parentns), "");
-				JCLReplace(workstr, JCLGetString(pClass->mipName), JCLGetString(shortnam));
+				RemoveClassNamespace(workstr, pClass);
 				AutoLinkKeywords(pDict, workstr, pClass->mipName);
 				SplitTag(pFunc->mipTag, tagstr, dummystr);
 				AutoLinkKeywords(pDict, tagstr, pClass->mipName);
@@ -495,9 +483,6 @@ static void WriteFunctionTable(JCLState* _this, JCLClass* pClass, FILE* pFile, F
 	DELETE(workstr);
 	DELETE(tagstr);
 	DELETE(dummystr);
-	DELETE(namespac);
-	DELETE(shortnam);
-	DELETE(parentns);
 }
 
 //------------------------------------------------------------------------------
@@ -510,20 +495,10 @@ static void DescribeFunction(JCLState* _this, JCLClass* pClass, FILE* pFile, JCL
 	JCLString* workstr = NEW(JCLString);
 	JCLString* tagstr1 = NEW(JCLString);
 	JCLString* tagstr2 = NEW(JCLString);
-	JCLString* namespac = NEW(JCLString);
-	JCLString* shortnam = NEW(JCLString);
-	JCLString* parentns = NEW(JCLString);
 
-	JCLSetString(namespac, JCLGetString(pClass->mipName));
-	JCLAppend(namespac, "::");
-	GetParentNamespace(_this, parentns, pClass->mipName);
-	JCLAppend(parentns, "::");
-	RemoveParentNamespace(_this, shortnam, pClass->mipName);
 	fprintf(pFile, "<table id='table1' cols='1'>\n<tbody>\n");
 	pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
-	JCLReplace(workstr, JCLGetString(namespac), "");
-	JCLReplace(workstr, JCLGetString(parentns), "");
-	JCLReplace(workstr, JCLGetString(pClass->mipName), JCLGetString(shortnam));
+	RemoveClassNamespace(workstr, pClass);
 	SplitTag(pFunc->mipTag, tagstr1, tagstr2);
 	AutoLinkKeywords(pDict, tagstr1, pClass->mipName);
 	AutoLinkKeywords(pDict, tagstr2, pClass->mipName);
@@ -539,9 +514,6 @@ static void DescribeFunction(JCLState* _this, JCLClass* pClass, FILE* pFile, JCL
 	DELETE(workstr);
 	DELETE(tagstr1);
 	DELETE(tagstr2);
-	DELETE(namespac);
-	DELETE(shortnam);
-	DELETE(parentns);
 }
 
 //------------------------------------------------------------------------------
@@ -642,11 +614,13 @@ static void GetFamilyAndTypeName(JCLState* _this, JCLClass* pClass, JCLString* f
 	{
 		JCLSetString(familyName, "cofunction");
 		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, (flags & ~kFullDecl), pClass->miParentType);
+		RemoveClassNamespace(typeName, GetClass(_this, pClass->miParentType));
 	}
 	else if (pClass->miFamily == tf_delegate)
 	{
 		JCLSetString(familyName, "delegate");
 		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, (flags & ~kFullDecl), pClass->miParentType);
+		RemoveClassNamespace(typeName, GetClass(_this, pClass->miParentType));
 	}
 }
 
@@ -708,7 +682,7 @@ static void FunctionsToDict(JILTable* pDict, JCLClass* pClass, JCLString* pFileN
 				ToDict(pDict, workstr, tagstr);
 				// add with only class name
 				JCLSetString(workstr, JCLGetString(pClass->mipName));
-				RemoveParentNamespace(NULL, workstr, workstr);
+				RemoveParentNamespace(workstr, workstr);
 				JCLAppend(workstr, "::");
 				JCLAppend(workstr, JCLGetString(pFunc->mipName));
 				ToDict(pDict, workstr, tagstr);
