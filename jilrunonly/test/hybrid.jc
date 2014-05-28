@@ -6,8 +6,6 @@
  *  We can create a script class that contains member functions from a native type this way.
  *
  *  This example shows a script class "Hybrid" that contains all methods from the native "file" class.
- *
- *  Compare this against example "delegate2.jc".
  */
 
 import stdlib;
