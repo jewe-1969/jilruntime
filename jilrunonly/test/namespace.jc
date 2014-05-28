@@ -1,0 +1,46 @@
+import stdlib;
+
+// JewelScript 1.2 supports nested namespaces, classes and interfaces
+namespace std
+{
+    class Outer
+    {
+        interface Iface
+        {
+            method int Hi(int);
+        }
+        class Inner : Iface
+        {
+            method Inner()
+            {
+            }
+        }
+        method Outer()
+        {
+            hi = new Inner();
+        }
+        Iface hi;
+    }
+
+    using stdlib;     // declare namespace usage (C++ "using namespace")
+    using std::Outer; // using always assumes absolute name
+
+    class Application
+    {
+        function Main()
+        {
+            println("Hello World!"); // no need for stdlib::println() thanks to 'using'
+
+            Outer o = new Outer();
+            Iface i = new Inner();   // no need for Outer::Inner() thanks to 'using'
+        }
+    }
+}
+
+using std::Application;
+
+function string main(const string[] args)
+{
+    Main(); // no need for std::Application::Main() thanks to 'using'
+    return null;
+}
