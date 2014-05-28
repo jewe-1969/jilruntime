@@ -4200,6 +4200,8 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	JCLString* pClassName;
 	JCLString* pIfaceName;
 	JCLString* pOldNS;
+	Array_JCLString* pOldNameStack;
+	Array_JILLong* pOldUsing;
 	JILLong tokenID;
 	JILLong oldClass;
 	JILLong classIdx;
@@ -4214,6 +4216,12 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
 	oldClass = _this->miClass;
+	pOldNameStack = _this->mipUseNamespace;
+	pOldUsing = _this->mipUsing;
+	_this->mipUseNamespace = NEW(Array_JCLString);
+	_this->mipUseNamespace->Copy(_this->mipUseNamespace, pOldNameStack);
+	_this->mipUsing = NEW(Array_JILLong);
+	_this->mipUsing->Copy(_this->mipUsing, pOldUsing);
 
 	// we expect to find a class name
 	err = p_partial_identifier(_this, pToken);
@@ -4330,6 +4338,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 			case tk_alias:
 				err = p_alias( _this );
 				break;
+			case tk_using:
+				err = p_using( _this );
+				break;
 			case tk_strict:
 				err = p_strict( _this );
 				break;
@@ -4364,6 +4375,10 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		ERROR_IF(!pClass->miHasCtor && !IsClassNative(pClass), JCL_ERR_No_Constructor_Defined, pClass->mipName, goto exit);
 
 exit:
+	DELETE( _this->mipUseNamespace );
+	DELETE( _this->mipUsing );
+	_this->mipUseNamespace = pOldNameStack;
+	_this->mipUsing = pOldUsing;
 	SetCompileContext(_this, oldClass, 0);
 	SetCurrentNamespace(_this, pOldNS);
 	DELETE( pToken );
