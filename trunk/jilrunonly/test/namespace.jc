@@ -32,9 +32,9 @@ namespace std
         Outer::Inner inner;
     }
 
-    using std::Outer::Inner; // declare namespace usage
     class Using
     {
+        using std::Outer::Inner; // declare namespace usage
         method Using() // access member class with 'using'
         {
             inner = new Inner();
