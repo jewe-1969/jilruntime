@@ -116,7 +116,8 @@ JILBool		IsMethodInherited	(JCLState*, JILLong, JILLong);
 JILLong		TypeFamily			(JCLState*, JILLong);
 void		JCLGetAbsolutePath	(JCLState* _this, JCLString* pOut, const JCLString* pIn);
 JILError	p_import_class		(JCLState* _this, JCLString* pClassName);
-void		RemoveParentNamespace(JCLState*, JCLString*, const JCLString*);
-void		GetParentNamespace	(JCLState*, JCLString*, const JCLString*);
+void		RemoveParentNamespace(JCLString*, const JCLString*);
+void		GetParentNamespace	(JCLString*, const JCLString*);
+void		RemoveClassNamespace(JCLString*, JCLClass*);
 
 #endif	// #ifndef JCLSTATE_H
