@@ -143,7 +143,6 @@ const JCLToken kCharacterList[] =
 	tk_comma,			",",
 	tk_semicolon,		";",
 	tk_point,			".",
-	tk_bullets,			"...",
 
 	// brackets
 	tk_round_open,		"(",
@@ -375,7 +374,7 @@ static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 	c = JCLGetCurrentChar(_this->mipText);
 	d = JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1);
 	// un-escaped string literal?
-	if( c == '/' && d == '\"' )
+	if( (c == '/' || c == '@') && d == '\"' )
 	{
 		// read the entire string literal
 		err = GetStrLiteral(_this, pToken);
@@ -590,15 +589,15 @@ void GetCurrentPosition(JCLFile* _this, JILLong* pColumn, JILLong* pLine)
 static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 {
 	JILError err = JCL_ERR_End_Of_File;
-	JILLong c, q;
+	JILLong c, q, p;
 	char* pDummy;
 	JCLString* pTemp = NULL;
 	JILBool bEscape = JILTrue;
 
 	JCLClear(string);
 	// skip the start quote
-	q = JCLGetCurrentChar(_this->mipText);
-	if( q == '/' )
+	p = q = JCLGetCurrentChar(_this->mipText);
+	if( p == '/' || p == '@' )
 	{
 		// un-escaped string literal
 		bEscape = JILFalse;
@@ -712,8 +711,9 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 					// skip quote and continue
 					JCLSeekForward(_this->mipText, 1);
 				}
-				else if( c == '/' && JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == q )
+				else if( (c == '/' || c == '@') && JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == q )
 				{
+					p = c;
 					bEscape = JILFalse;
 					// skip quote and continue
 					JCLSeekForward(_this->mipText, 2);
@@ -728,10 +728,10 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 			}
 			else
 			{
-				if( JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == '/' )
+				if( p == '@' || JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == '/' )
 				{
 					// skip quote
-					JCLSeekForward(_this->mipText, 2);
+					JCLSeekForward(_this->mipText, (p == '@') ? 1 : 2);
 					// ignore whitespace
 					err = Ignore(_this);
 					if( err )
@@ -745,8 +745,9 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 						// skip quote and continue
 						JCLSeekForward(_this->mipText, 1);
 					}
-					else if( c == '/' && JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == q )
+					else if( (c == '/' || c == '@') && JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1) == q )
 					{
+						p = c;
 						bEscape = JILFalse;
 						// skip quote and continue
 						JCLSeekForward(_this->mipText, 2);

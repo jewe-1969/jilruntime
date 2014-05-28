@@ -890,7 +890,7 @@ JILError NTLDeclareConstantInt(JILUnknown* pDataIn, JILLong typeID, const JILCha
 		JCLAppend(pDS->pString, pName);
 		JCLAppend(pDS->pString, " = ");
 		JCLAppend(pDS->pString, buf);
-		JCLAppend(pDS->pString, ";\n");
+		JCLAppend(pDS->pString, ";");
 		err = JIL_No_Exception;
 	}
 	return err;
@@ -918,7 +918,7 @@ JILError NTLDeclareConstantFloat(JILUnknown* pDataIn, JILLong typeID, const JILC
 		JCLAppend(pDS->pString, pName);
 		JCLAppend(pDS->pString, " = ");
 		JCLAppend(pDS->pString, buf);
-		JCLAppend(pDS->pString, ";\n");
+		JCLAppend(pDS->pString, ";");
 		err = JIL_No_Exception;
 	}
 	return err;
@@ -944,7 +944,7 @@ JILError NTLDeclareConstantString(JILUnknown* pDataIn, JILLong typeID, const JIL
 		JCLAppend(pDS->pString, pName);
 		JCLAppend(pDS->pString, " = \"");
 		JCLAppend(pDS->pString, pValue);
-		JCLAppend(pDS->pString, "\";\n");
+		JCLAppend(pDS->pString, "\";");
 		err = JIL_No_Exception;
 	}
 	return err;

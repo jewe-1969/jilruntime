@@ -49,10 +49,13 @@ JILError EmitError(JCLState* _this, const JCLString* pArg, JILError err);
 static JILError GenerateCallCode(JCLState*, JCLClass*, JCLFunc*, FILE*, const JILChar*);
 static JILBool NativeTypeNameFromTypeID(JCLState*, JCLString*, JILLong);
 static JILLong GetNumFuncs(JCLClass*, JILBool);
-static void DerivePackageString(JCLState*, JCLClass*, JCLString*);
+static void DerivePackageString(JCLState*, JCLClass*, JCLString*, JCLString*);
 static void DelegateToString(JCLState*, JCLFuncType*, const JILChar*, JCLString*, JILLong);
 static JILError SearchClassDelegates(JCLState*, JCLClass*, FILE*);
-static void AddToEnum(Array_JCLString* pArr, JCLString* workstr);
+static void AddToEnum(Array_JCLString*, JCLString*);
+static void TypeNameToMacroName(JCLString*, const JCLString*);
+static const JILChar* FormatTag(JCLString*, const JCLString*);
+static const JILChar* TypeNameToTypeID(JCLState*, JCLString*, JILLong);
 
 //------------------------------------------------------------------------------
 // The header of the file to generate
@@ -77,49 +80,57 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 
 	JCLString* workstr = NULL;
 	JCLString* workstr2 = NULL;
+	JCLString* tagstr = NULL;
 	FILE* outStream = NULL;
+	JCLString* className = NULL;	// unqualified class name (no namespace)
 	JCLString* funcPrefix = NULL;	// prefix used for every native function generated
 	JCLString* objectName = NULL;	// name used for the native class / struct
 	JCLString* baseName = NULL;		// name of base interface if used
 	JCLString* packageList = NULL;	// list of imports required to compile this class
+	JCLString* typeList = NULL;		// list of type names as C macro definitions
 	Array_JCLString* enumeration = NULL;	// list of enum names for functions
 	const JILChar* sFuncPrefix;
 	const JILChar* sObjectName;
 	JILLong i;
 	JILBool isInherit = (pClass->miBaseType != 0);
 
+	className = NEW(JCLString);
 	workstr2 = NEW(JCLString);
+	tagstr = NEW(JCLString);
+	typeList = NEW(JCLString);
 	enumeration = NEW(Array_JCLString);
+
+	// get unqualified class name
+	RemoveParentNamespace(_this, className, pClass->mipName);
 
 	// create base name
 	baseName = NEW(JCLString);
 	if (isInherit)
 	{
-		JCLClass* cbase = GetClass(_this, pClass->miBaseType);
-		JCLSetString(baseName, JCLGetString(cbase->mipName));
+		RemoveParentNamespace(_this, baseName, GetClass(_this, pClass->miBaseType)->mipName);
 	}
 
 	// create package list
 	packageList = NEW(JCLString);
-	DerivePackageString(_this, pClass, packageList);
+	DerivePackageString(_this, pClass, packageList, typeList);
 
 	// create native class name by prefixing script class name with 'C'
 	objectName = NEW(JCLString);
 	JCLSetString(objectName, "C");
-	JCLAppend(objectName, JCLGetString(pClass->mipName));
+	JCLAppend(objectName, JCLGetString(className));
 	sObjectName = JCLGetString(objectName);
 
 	// create function prefix
 	funcPrefix = NEW(JCLString);
 	JCLSetString(funcPrefix, "bind_");
-	JCLAppend(funcPrefix, JCLGetString(pClass->mipName));
+	JCLAppend(funcPrefix, JCLGetString(className));
 	JCLAppend(funcPrefix, "_");
 	sFuncPrefix = JCLGetString(funcPrefix);
 
 	// create output file name
 	workstr = NEW(JCLString);
 	JCLSetString(workstr, "bind_");
-	JCLAppend(workstr, JCLGetString(pClass->mipName));
+	JCLAppend(workstr, JCLGetString(className));
 	JCLAppend(workstr, ".cpp");
 	JCLFormat(workstr2, "%s\\%s", pPath, JCLGetString(workstr));
 
@@ -156,6 +167,22 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "// JILError err = JILRegisterNativeType( pVM, %sproc );\n", sFuncPrefix);
 	fprintf(outStream, "\n");
 
+	// create used types list
+	if( JCLGetLength(typeList) )
+	{
+		fprintf(outStream, "//-----------------------------------------------------------------------------------\n");
+		fprintf(outStream, "// type name macros\n");
+		fprintf(outStream, "//-----------------------------------------------------------------------------------\n");
+		fprintf(outStream, "// This is a list of names of other types this native binding is using. You might\n");
+		fprintf(outStream, "// want to move this list to an include file where you collect ALL type names from\n");
+		fprintf(outStream, "// ALL your native bindings. Then you can include the file in every native binding\n");
+		fprintf(outStream, "// and be sure they all reference the same type names. This will make it easier\n");
+		fprintf(outStream, "// if you ever want to change the name of a class or move it to another namespace.\n");
+		fprintf(outStream, "\n");
+		fprintf(outStream, JCLGetString(typeList));
+		fprintf(outStream, "\n");
+	}
+
 	// create function enumeration
 	fprintf(outStream, "//-----------------------------------------------------------------------------------\n");
 	fprintf(outStream, "// function enumeration - this must be kept in sync with the class declaration below.\n");
@@ -185,7 +212,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	JCLSetString(workstr2, JCLGetString(pClass->mipName));
 	JCLAppend(workstr2, "::");
 	if( JCLGetLength(pClass->mipTag) )
-		fprintf(outStream, "\tTAG(\"%s\")\n", JCLGetString(pClass->mipTag));
+		fprintf(outStream, "\tTAG(\"%s\")\n", FormatTag(tagstr, pClass->mipTag));
 	else
 		fprintf(outStream, "\tTAG(\"TODO: You can fill these tags with documentation. They will be used by the HTML documentation engine.\")\n");
 	SearchClassDelegates(_this, pClass, outStream);
@@ -195,13 +222,13 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 		pFunc->ToString(pFunc, _this, workstr, kClearFirst|kFullDecl|kIdentNames|kNoClassName);
 		ERROR_IF(pFunc->miCofunc, JCL_ERR_Native_Code_Generator, workstr, goto exit);
 		JCLReplace(workstr, JCLGetString(workstr2), "");	// TODO: Must remove scope from local delegate types ("Foo::"), not a good solution
-		fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), JCLGetString(pFunc->mipTag));
+		fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), FormatTag(tagstr, pFunc->mipTag));
 	}
 	fprintf(outStream, ";\n");
 	fprintf(outStream, "\n");
 
 	// create class info constants
-	JCLFormat(workstr, "A native %s class for JewelScript.", JCLGetString(pClass->mipName));
+	JCLFormat(workstr, "A native %s class for JewelScript.", JCLGetString(className));
 	if( JCLGetLength(pClass->mipTag) )
 	{
 		int pos = JCLFindChar(pClass->mipTag, '.', 0);
@@ -216,10 +243,10 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "static const JILChar*	kClassName		=	\"%s\"; // The class name that will be used in JewelScript.\n", JCLGetString(pClass->mipName));
 	if (isInherit)
 		fprintf(outStream, "static const JILChar*	kBaseName		=	\"%s\"; // The base interface this class inherits from.\n", JCLGetString(baseName));
-	fprintf(outStream, "static const JILChar*	kPackageList	=	\"%s\"; // TODO: Add any classes to this list that have to be imported before this one (comma seperated)\n", JCLGetString(packageList));
+	fprintf(outStream, "static const JILChar*	kPackageList	=	%s;\n", JCLGetString(packageList));
 	fprintf(outStream, "static const JILChar*	kAuthorName		=	\"YOUR NAME HERE\"; // TODO: You can enter your name here\n");
 	fprintf(outStream, "static const JILChar*	kAuthorString	=	\"%s\"; // TODO: You can enter a description of your native type here\n", JCLGetString(workstr));
-	JCLFormatTime(workstr, "%c", time(NULL));
+	JCLFormatTime(workstr, "%Y-%m-%d %H:%M:%S", time(NULL));
 	fprintf(outStream, "static const JILChar*	kTimeStamp		=	\"%s\"; // TODO: You can enter a build time stamp here\n", JCLGetString(workstr));
 	fprintf(outStream, "static const JILChar*	kAuthorVersion	=	\"1.0.0.0\"; // TODO: You can change the version number here\n");
 	fprintf(outStream, "\n");
@@ -463,12 +490,15 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 exit:
 	if( outStream != NULL )
 		fclose(outStream);
+	DELETE(className);
 	DELETE(workstr);
 	DELETE(workstr2);
+	DELETE(tagstr);
 	DELETE(funcPrefix);
 	DELETE(objectName);
 	DELETE(baseName);
 	DELETE(packageList);
+	DELETE(typeList);
 	DELETE(enumeration);
 
 	return err;
@@ -518,10 +548,12 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 	JILLong numArg = pArgs->Count(pArgs);
 	JCLVar* pArg;
 	JCLString* workstr = NULL;
+	JCLString* workstr2 = NULL;
 	JCLString* callPrefix = NULL;
 	JILBool bFreeResult = JILFalse;
 
 	workstr = NEW(JCLString);
+	workstr2 = NEW(JCLString);
 	callPrefix = NEW(JCLString);
 
 	// 1. extract arguments
@@ -550,11 +582,10 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 			}
 			else if (NativeTypeNameFromTypeID(_this, workstr, pArg->miType))
 			{
-				JCLClass* ctype = GetClass(_this, pArg->miType);
-				fprintf(outStream, "\t\t\t%s arg_%d = (%s)NTLHandleToObject(ps, NTLTypeNameToTypeID(ps, \"%s\"), h_arg_%d);\n",
+				fprintf(outStream, "\t\t\t%s arg_%d = (%s)NTLHandleToObject(ps, %s, h_arg_%d);\n",
 					JCLGetString(workstr), i,
 					JCLGetString(workstr),
-					JCLGetString(ctype->mipName), i);
+					TypeNameToTypeID(_this, workstr2, pArg->miType), i);
 			}
 		}
 	}
@@ -683,8 +714,7 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 				}
 				else
 				{
-					JCLClass* ctype = GetClass(_this, pArg->miType);
-					fprintf(outStream, "\t\t\tJILHandle* hResult = NTLNewHandleForObject(ps, NTLTypeNameToTypeID(ps, \"%s\"), result);\n", JCLGetString(ctype->mipName));
+					fprintf(outStream, "\t\t\tJILHandle* hResult = NTLNewHandleForObject(ps, %s, result);\n", TypeNameToTypeID(_this, workstr2, pArg->miType));
 				}
 				fprintf(outStream, "\t\t\tNTLReturnHandle(ps, hResult);\n");
 				fprintf(outStream, "\t\t\tNTLFreeHandle(ps, hResult);\n");
@@ -704,6 +734,7 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 	}
 
 	DELETE(workstr);
+	DELETE(workstr2);
 	DELETE(callPrefix);
 	return err;
 }
@@ -751,9 +782,12 @@ static JILBool NativeTypeNameFromTypeID(JCLState* _this, JCLString* outString, J
 				case tf_class:	// user defined class
 					if (pClass->miNative || (pClass->miModifier & kModiNativeBinding))
 					{
+						JCLString* workstr = NEW(JCLString);
+						RemoveParentNamespace(_this, workstr, pClass->mipName);
 						JCLSetString(outString, "C");
-						JCLAppend(outString, JCLGetString(pClass->mipName));
+						JCLAppend(outString, JCLGetString(workstr));
 						JCLAppend(outString, "*");
+						DELETE(workstr);
 					}
 					else
 					{
@@ -799,7 +833,7 @@ static JILLong GetNumFuncs(JCLClass* pClass, JILBool bMethods)
 // Derives a package string (comma seperated list of native class names) from
 // all types declared in all functions of the given class.
 
-static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* outstr)
+static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* outstr, JCLString* typeList)
 {
 	JILLong fn;
 	JILLong p;
@@ -809,6 +843,7 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 
 	pList = NEW(Array_JCLString);
 	JCLClear(outstr);
+	JCLClear(typeList);
 
 	for( fn = 0; fn < pClass->mipFuncs->Count(pClass->mipFuncs); fn++)
 	{
@@ -847,14 +882,26 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 	if( pList->Count(pList) )
 	{
 		JILLong i;
+		JCLString* workstr = NEW(JCLString);
+		JCLString* macroName = NEW(JCLString);
 		for( i = 0; i < pList->Count(pList); i++ )
 		{
-			JCLAppend(outstr, JCLGetString(pList->Get(pList, i)));
-			if ( i < (pList->Count(pList) - 1))
-				JCLAppend(outstr, ", ");
-		}
-	}
+			JCLString* className = pList->Get(pList, i);
+			TypeNameToMacroName(macroName, className);
+			JCLFormat(workstr, "#define %s\t\t\"%s\"\n", JCLGetString(macroName), JCLGetString(className));
+			JCLAppend(typeList, JCLGetString(workstr));
 
+			JCLAppend(outstr, JCLGetString(macroName));
+			if ( i < (pList->Count(pList) - 1))
+				JCLAppend(outstr, " \",\" ");
+		}
+		DELETE(workstr);
+		DELETE(macroName);
+	}
+	else
+	{
+		JCLSetString(outstr, "\"\"");
+	}
 	DELETE(pList);
 }
 
@@ -867,7 +914,7 @@ static void DelegateToString(JCLState* _this, JCLFuncType* pFuncType, const JILC
 {
 	JCLString* str = NEW(JCLString);
 	JCLSetString(str, pDelegateName);
-	pFuncType->ToString(pFuncType, _this, str, outString, kIdentNames, clas);
+	pFuncType->ToString(pFuncType, _this, str, outString, kFullDecl|kIdentNames, clas);
 	DELETE(str);
 }
 
@@ -884,6 +931,7 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 	JILLong al;
 	JCLString* classtr = NEW(JCLString);
 	JCLString* workstr = NEW(JCLString);
+	JCLString* tagstr = NEW(JCLString);
 
 	JCLSetString(classtr, JCLGetString(pClass->mipName));
 	JCLAppend(classtr, "::");
@@ -900,15 +948,78 @@ static JILError SearchClassDelegates(JCLState* _this, JCLClass* pClass, FILE* ou
 				{
 					DelegateToString(_this, pType->mipFuncType, JCLGetString(alias), workstr, cl);
 					JCLReplace(workstr, JCLGetString(classtr), "");
-					fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), JCLGetString(pType->mipTag));
+					fprintf(outStream, "\t\"%s;\" TAG(\"%s\")\n", JCLGetString(workstr), FormatTag(tagstr, pType->mipTag));
 				}
 			}
 		}
 	}
-
 	DELETE(classtr);
 	DELETE(workstr);
+	DELETE(tagstr);
 	return err;
+}
+
+//------------------------------------------------------------------------------
+// TypeNameToMacroName
+//------------------------------------------------------------------------------
+
+static void TypeNameToMacroName(JCLString* macroName, const JCLString* typeName)
+{
+	JCLString* workstr = NEW(JCLString);
+	workstr->Copy(workstr, typeName);
+	JCLReplace(workstr, "::", "_");
+	JCLFormat(macroName, "TYPENAME_%s", JCLGetString(workstr));
+	DELETE(workstr);
+}
+
+//------------------------------------------------------------------------------
+// TypeNameToTypeID
+//------------------------------------------------------------------------------
+
+static const JILChar* TypeNameToTypeID(JCLState* _this, JCLString* pWork, JILLong typeID)
+{
+	const char* type;
+	switch( typeID )
+	{
+		case type_var: type = "type_var"; break;
+		case type_string: type = "type_string"; break;
+		case type_array: type = "type_array"; break;
+		case type_list: type = "type_list"; break;
+		case type_iterator: type = "type_iterator"; break;
+		case type_table: type = "type_table"; break;
+		default:
+		{
+			if( typeID < kNumPredefTypes )
+			{
+				JCLFormat(pWork, "NTLTypeNameToTypeID(ps, \"%s\")", JCLGetString(GetClass(_this, typeID)->mipName));
+			}
+			else
+			{
+				JCLString* macroName = NEW(JCLString);
+				TypeNameToMacroName(macroName, GetClass(_this, typeID)->mipName);
+				JCLFormat(pWork, "NTLTypeNameToTypeID(ps, %s)", JCLGetString(macroName));
+				type = JCLGetString(pWork);
+				DELETE(macroName);
+			}
+			break;
+		}
+	}
+	return type;
+}
+
+//------------------------------------------------------------------------------
+// FormatTag
+//------------------------------------------------------------------------------
+
+static const JILChar* FormatTag(JCLString* pWork, const JCLString* pTag)
+{
+	pWork->Copy(pWork, pTag);
+	JCLReplace(pWork, "\\", "\\\\\\\\"); // Transform single backslash. Looks insane but it's correct. Gets translated to "\\\\" for the binding code file. When the binding code is compiled, it gets translated to "\\" for the tag. Finally, when JewelScript compiles the tag, it's translated to "\".
+	JCLReplace(pWork, "\"", "\\\\\\\""); // " -> \"
+	JCLReplace(pWork, "\x0d", "\\\\r"); // CR -> \r
+	JCLReplace(pWork, "\x0a", "\\\\n"); // LF -> \n
+	JCLReplace(pWork, "\x09", "\\\\t"); // TAB -> \t
+	return JCLGetString(pWork);
 }
 
 #else	// #if JIL_USE_BINDING_CODEGEN
