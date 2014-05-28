@@ -39,14 +39,14 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "3.68"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "3.69"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the JewelScript compiler.
 
-#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "3.43"
+#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "3.44"
 
 //------------------------------------------------------------------------------
 // JIL_MACHINE_VERSION
