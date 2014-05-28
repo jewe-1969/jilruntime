@@ -224,6 +224,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\jilruntime\src\jclarray.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\jilruntime\src\jclclass.c"
 				>
 			</File>
