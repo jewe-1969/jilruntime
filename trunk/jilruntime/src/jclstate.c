@@ -4303,6 +4303,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		switch( tokenID )
 		{
 			case tk_class:
+				ERROR_IF(pClass->miNative, JCL_ERR_Unexpected_Token, pToken, goto exit);
 				err = p_class( _this, 0 );
 				break;
 			case tk_interface:
