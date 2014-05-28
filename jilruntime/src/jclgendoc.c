@@ -32,6 +32,8 @@
 #include "jclclass.h"
 #include "jclstate.h"
 #include "jiltable.h"
+#include "jiltypelist.h"
+#include "jilcallntl.h"
 
 /*
  * ideas for the future:
@@ -58,6 +60,7 @@ const JILChar* kCSSTemplate =
 " #table1 { width:800px; }"
 " #light { background:#f4f4f4; }"
 " #dark { background:#e4e4e4; }"
+" #scroll { display:block; overflow:auto; width:790px; border:0; }"
 " #footer { font-family:sans-serif; font-style:italic; font-size:8pt; text-align:center; }"
 "\n";
 
@@ -101,6 +104,7 @@ static void ScanTag(JILTable* pDict, JCLString* pTag);
 static void SplitTag(JCLString* pTag, JCLString* pPart1, JCLString* pPart2);
 static void WriteTypeTable(JCLState* _this, FILE* pFile, ClFilter pFn, const JILChar* pText, JILTable* pDict, JILLong startClass, JILLong endClass);
 static void GetFileName(JCLString* result, const JCLClass* pClass);
+static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFile, const JILChar* pText, int* pAnchor, JILTable* pDict);
 
 //------------------------------------------------------------------------------
 // filter functions
@@ -193,6 +197,11 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	WriteFunctionTable(_this, pClass, pFile, OnlyMethods, "Methods", &Anchor, pDict);
 	WriteFunctionTable(_this, pClass, pFile, OnlyProperties, "Properties", &Anchor, pDict);
 	WriteAliasTable(_this, pClass, pFile, "Aliases", &Anchor, pDict);
+	// write native type declaration string
+	if( pClass->miNative )
+	{
+		WriteNativeDeclaration(_this, pClass, pFile, "Type Declaration", &Anchor, pDict);
+	}
 	// write full function descriptions
 	if( Anchor )
 	{
@@ -208,7 +217,7 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	JCLSetString(workstr, "{application}");
 	AutoLinkKeywords(pDict, workstr, NULL);
 	fprintf(pFile, "<div id='footer'><a href='index.html'>%s class documentation</a>", JCLGetString(workstr));
-	JCLFormatTime(workstr, "%c", time(NULL));
+	JCLFormatTime(workstr, "%Y-%m-%d %H:%M:%S", time(NULL));
 	fprintf(pFile, " generated on %s</div>\n", JCLGetString(workstr));
 	fprintf(pFile, "</div>\n</body>\n</html>");
 
@@ -312,7 +321,7 @@ JILError JCLCreateClassIndex(JCLState* _this, JILTable* pDict, const JILChar* pP
 	// end of file
 	fprintf(pFile, "<p><br /></p>\n");
 	fprintf(pFile, "<div id='footer'>%s class documentation", JCLGetString(workstr));
-	JCLFormatTime(workstr, "%c", time(NULL));
+	JCLFormatTime(workstr, "%Y-%m-%d %H:%M:%S", time(NULL));
 	fprintf(pFile, " generated on %s</div>\n", JCLGetString(workstr));
 	fprintf(pFile, "</div>\n</body>\n</html>");
 
@@ -632,12 +641,12 @@ static void GetFamilyAndTypeName(JCLState* _this, JCLClass* pClass, JCLString* f
 	else if (pClass->miFamily == tf_thread)
 	{
 		JCLSetString(familyName, "cofunction");
-		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags, pClass->miParentType);
+		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, (flags & ~kFullDecl), pClass->miParentType);
 	}
 	else if (pClass->miFamily == tf_delegate)
 	{
 		JCLSetString(familyName, "delegate");
-		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, flags, pClass->miParentType);
+		pClass->mipFuncType->ToString(pClass->mipFuncType, _this, pClass->mipName, typeName, (flags & ~kFullDecl), pClass->miParentType);
 	}
 }
 
@@ -1013,6 +1022,88 @@ static void GetFileName(JCLString* result, const JCLClass* pClass)
 	JCLReplace(str, "::", "_");
 	JCLAppend(result, JCLGetString(str));
 	DELETE(str);
+}
+
+//------------------------------------------------------------------------------
+// WriteNativeDeclaration
+//------------------------------------------------------------------------------
+
+static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFile, const JILChar* pText, int* pAnchor, JILTable* pDict)
+{
+	JILError err;
+	JILBool bFirst;
+	JCLString* pToken;
+	JCLString* pToken2;
+	JILTypeListItem* pItem;
+	const char* pDecl = NULL;
+	const char* pBase = NULL;
+	JCLDeclStruct declStruct = {0};
+
+	pToken = NEW(JCLString);
+	pToken2 = NEW(JCLString);
+	pItem = JILGetNativeType( _this->mipMachine, JCLGetString(pClass->mipName) );
+	if( pItem )
+	{
+		// try to get class declaration
+		declStruct.pString = NEW(JCLString);
+		declStruct.pState = _this->mipMachine;
+		err = CallNTLGetDeclString(pItem->typeProc, &declStruct, &pDecl);
+		if( err )
+			goto exit;
+		// try to get base class / interface name
+		CallNTLGetBaseName(pItem->typeProc, &pBase);
+		// assemble string
+		JCLSetString(pToken, "native class ");
+		JCLAppend(pToken, JCLGetString(pClass->mipName));
+		if( pBase )
+		{
+			JCLAppend(pToken, " : ");
+			JCLAppend(pToken, pBase);
+		}
+		JCLAppend(pToken, "\n{\n");
+		JCLAppend(pToken, pDecl ? pDecl : JCLGetString(declStruct.pString));
+		JCLAppend(pToken, "\n}\n");
+		JCLEscapeXml(pToken, pToken);
+
+		// insert line feeds into declaration
+		bFirst = JILTrue;
+		JCLSeekUntil(pToken, "{");
+		while( !JCLAtEnd(pToken) )
+		{
+			JCLSeekForward(pToken, 1);
+			JCLSeekWhile(pToken, " \t\n");
+			if( JCLGetCurrentChar(pToken) == '[' )
+			{
+				JCLSetString(pToken2, bFirst ? "    " : " ");
+				JCLInsert(pToken, pToken2, JCLGetLocator(pToken));
+				JCLSeekForward(pToken, JCLGetLength(pToken2));
+				JCLSpanBetween(pToken, '[', ']', pToken2);
+			}
+			bFirst = JILFalse;
+			JCLSeekWhile(pToken, " \t\n");
+			if( JCLGetCurrentChar(pToken) == '}' )
+				break;
+			JCLSetString(pToken2, "\n    ");
+			JCLInsert(pToken, pToken2, JCLGetLocator(pToken));
+			JCLSeekForward(pToken, JCLGetLength(pToken2));
+			JCLSeekUntil(pToken, ";");
+			if( JCLAtEnd(pToken) )
+				break;
+		}
+		JCLReplace(pToken, "\t\t\t", " ");
+		JCLReplace(pToken, "\t\t", " ");
+		JCLReplace(pToken, "\t", " ");
+
+		fprintf(pFile, "<h3>%s</h3>\n", pText);
+		fprintf(pFile, "<table id='table1'>\n<tbody>\n");
+		fprintf(pFile, "<tr id='light'>\n<td id='scroll'><pre>%s</pre></td></tr>\n", JCLGetString(pToken));
+		fprintf(pFile, "</tbody>\n</table>\n");
+	}
+
+exit:
+	DELETE( pToken );
+	DELETE( pToken2 );
+	DELETE( declStruct.pString );
 }
 
 #else	// JIL_USE_HTML_CODEGEN

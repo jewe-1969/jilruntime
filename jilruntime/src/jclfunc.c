@@ -139,6 +139,9 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 	// in compact mode, omit identifier names
 	if( flags & kCompact )
 		flags &= ~kIdentNames;
+	// write keyword 'delegate' in full decl mode
+	if( flags & kFullDecl )
+		JCLAppend(outString, "delegate ");
 	// write result (if the function has a result)
 	pVar = _this->mipResult;
 	if( pVar->miType != type_null )
@@ -149,9 +152,16 @@ static JCLString* toString_JCLFuncType(JCLFuncType* _this, JCLState* pCompiler, 
 	// write function name
 	if( pName )
 	{
-		JCLAppend(outString, "(");
-		JCLAppend(outString, JCLGetString(pName));
-		JCLAppend(outString, ")");
+		if( flags & kFullDecl )
+		{
+			JCLAppend(outString, JCLGetString(pName));
+		}
+		else
+		{
+			JCLAppend(outString, "(");
+			JCLAppend(outString, JCLGetString(pName));
+			JCLAppend(outString, ")");
+		}
 	}
 	if( flags & kCompact )
 		JCLAppend(outString, "(");
