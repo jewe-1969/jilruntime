@@ -122,9 +122,6 @@ static JILError JCLBeginCompile(JILState* pVM, const JILChar* pName, const JILCh
 		err = p_compile(_this, kPassPrecompile);
 		if( err )
 			goto exit;
-		// reset locator to start of file
-		_this->mipFile->SetLocator(_this->mipFile, 0);
-
 		// -- continue compiling, pass 2: Compile
 		err = p_compile(_this, kPassCompile);
 		if( err )
