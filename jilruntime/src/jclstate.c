@@ -901,6 +901,7 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 	JCLClass* pClass;
 	JCLString* pFullName = NEW(JCLString);
 	JCLString* pCurrentNamespace = NEW(JCLString);
+	Array_JILLong* matches = NEW(Array_JILLong);
 	// look in parent namespaces
 	pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
 	while( JCLGetLength(pCurrentNamespace) )
@@ -910,11 +911,11 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 		JCLAppend(pFullName, JCLGetString(pName));
 		index = FindClass(_this, pFullName, ppClass);
 		if( index )
-			break;
+			matches->Add(matches, index);
 		GetParentNamespace(pCurrentNamespace, pCurrentNamespace);
 	}
 	// look in 'using' classes
-	if( index == 0 && !PartiallyQualified(pName) )
+	if( !PartiallyQualified(pName) )
 	{
 		for( i = 0; i < _this->mipUsing->count; i++ )
 		{
@@ -922,32 +923,48 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 			pClass = GetClass(_this, index);
 			RemoveParentNamespace(pFullName, pClass->mipName);
 			if( JCLCompare(pFullName, pName) )
-			{
-				*ppClass = pClass;
-				break;
-			}
-			index = 0;
+				matches->Add(matches, index);
 		}
 	}
 	// look in use namespace list
-	if( index == 0 )
+	for( i = 0; i < _this->mipUseNamespace->Count(_this->mipUseNamespace); i++ )
 	{
-		for( i = 0; i < _this->mipUseNamespace->Count(_this->mipUseNamespace); i++ )
-		{
-			JCLString* str = _this->mipUseNamespace->Get(_this->mipUseNamespace, i);
-			JCLSetString(pFullName, JCLGetString(str));
-			JCLAppend(pFullName, "::");
-			JCLAppend(pFullName, JCLGetString(pName));
-			index = FindClass(_this, pFullName, ppClass);
-			if( index )
-				break;
-		}
+		JCLString* str = _this->mipUseNamespace->Get(_this->mipUseNamespace, i);
+		JCLSetString(pFullName, JCLGetString(str));
+		JCLAppend(pFullName, "::");
+		JCLAppend(pFullName, JCLGetString(pName));
+		index = FindClass(_this, pFullName, ppClass);
+		if( index )
+			matches->Add(matches, index);
 	}
 	// try to find it directly
-	if( index == 0 )
+	index = FindClass(_this, pName, ppClass);
+	if( index )
+		matches->Add(matches, index);
+	// see how many matches we got
+	if( matches->count == 1 )
 	{
-		index = FindClass(_this, pName, ppClass);
+		index = matches->Get(matches, 0);
+		*ppClass = GetClass(_this, index);
 	}
+	else if( matches->count )
+	{
+		JILLong i;
+		JCLClass* pc;
+		for( i = 0; i < matches->count; i++ )
+		{
+			pc = GetClass(_this, matches->Get(matches, i));
+			EmitWarning(_this, pc->mipName, JCL_WARN_Ambiguous_Type_Name);
+		}
+		index = matches->Get(matches, 0);
+		*ppClass = GetClass(_this, index);
+	}
+	else
+	{
+		index = 0;
+		*ppClass = NULL;
+	}
+	DELETE(matches);
 	DELETE(pFullName);
 	DELETE(pCurrentNamespace);
 	return index;
@@ -4039,6 +4056,9 @@ JILError p_compile(JCLState* _this, JILLong pass)
 {
 	JILError err = JCL_No_Error;
 	_this->miPass = pass;
+	_this->mipFile->SetLocator(_this->mipFile, 0);
+	_this->mipUseNamespace->Trunc(_this->mipUseNamespace, 0);
+	_this->mipUsing->Trunc(_this->mipUsing, 0);
 	if( pass == kPassCompile )
 	{
 		// mark global class as fully declared
@@ -15119,7 +15139,6 @@ JILError cg_begin_intro(JCLState* _this)
 	// create init function in global class
 	pClass = GetClass(_this, type_global);
 	pClass->miHasVTable = JILTrue;
-	pClass->miHasBody = JILTrue;
 	JCLSetString(pClass->mipTag, "This class is maintained by the runtime and represents the global space.");
 	pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 	pFunc->miHandle = 0;
