@@ -128,6 +128,8 @@ const JCLToken kOperatorList[] =
 	// other operators
 	tk_plusplus,		"++",
 	tk_minusminus,		"--",
+	tk_ternary,			"?",
+	tk_lambda,			"=>",
 
 	0,					NULL
 };
@@ -162,7 +164,7 @@ const JCLToken kCharacterList[] =
 static const JILChar* kKeywordChars =		"ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
 static const JILChar* kIdentifierChars =	"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
 static const JILChar* kFirstDigitChars =	"-.0123456789";
-static const JILChar* kOperatorChars =		"+-*/%<=>!&|^~";
+static const JILChar* kOperatorChars =		"+-*/%<=>!&|^~?";
 static const JILChar* kSingleChars =		"()[]{};";
 static const JILChar* kCharacterChars =		":,.";
 static const JILChar* kHexDigitChars =		"0123456789ABCDEFabcdef";
@@ -178,6 +180,9 @@ static JILError		peekToken_JCLFile	(JCLFile* _this, JCLString* pToken, JILLong* 
 static JILLong		getLocator_JCLFile	(JCLFile* _this);
 static void			setLocator_JCLFile	(JCLFile* _this, JILLong pos);
 static JILError		close_JCLFile		(JCLFile* _this);
+static JILError		scanBlock_JCLFile	(JCLFile* _this, JCLString* outStr);
+static JILError		scanStatement_JCLFile(JCLFile* _this, JCLString* outStr);
+static JILError		scanExpression_JCLFile(JCLFile* _this, JCLString* outStr);
 
 static JILLong		IsCharType			(JILChar chr, const JILChar* chrSet)	{ return (strchr(chrSet, chr) != NULL); }
 static JILLong		IsDigit				(JILChar chr)							{ return (chr >= '0' && chr <= '9'); }
@@ -203,13 +208,17 @@ void create_JCLFile( JCLFile* _this )
 	_this->GetLocator = getLocator_JCLFile;
 	_this->SetLocator = setLocator_JCLFile;
 	_this->Close = close_JCLFile;
+	_this->ScanBlock = scanBlock_JCLFile;
+	_this->ScanStatement = scanStatement_JCLFile;
+	_this->ScanExpression = scanExpression_JCLFile;
 
 	// init all our members
 	_this->mipName = NULL;
 	_this->mipText = NULL;
 	_this->mipPath = NULL;
 	_this->mipTokens = NULL;
-	_this->mipOtions = NULL;
+	_this->mipPackage = NULL;
+	_this->mipOptions = NULL;
 	_this->miLocator = 0;
 	_this->miPass = 0;
 	_this->miNative = JILFalse;
@@ -225,6 +234,7 @@ void destroy_JCLFile( JCLFile* _this )
 	DELETE( _this->mipName );
 	DELETE( _this->mipText );
 	DELETE( _this->mipPath );
+	DELETE( _this->mipPackage );
 	DELETE( _this->mipTokens );
 }
 
@@ -252,8 +262,9 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	_this->mipName = NEW(JCLString);
 	_this->mipText = NEW(JCLString);
 	_this->mipPath = NEW(JCLString);
+	_this->mipPackage = NEW(JCLString);
 	_this->mipTokens = NEW(Array_JCLFileToken);
-	_this->mipOtions = pOptions;
+	_this->mipOptions = pOptions;
 	_this->miLocator = 0;
 	// copy arguments
 	JCLSetString(_this->mipName, pName);
@@ -283,7 +294,7 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	if( err == JCL_ERR_End_Of_File )
 		err = JCL_No_Error;
 	DELETE(pToken);
-	_this->mipOtions = NULL;
+	_this->mipOptions = NULL;
 	return err;
 }
 
@@ -352,7 +363,144 @@ static JILError close_JCLFile(JCLFile* _this)
 	_this->mipText = NULL;
 	DELETE(_this->mipTokens);
 	_this->mipTokens = NULL;
+	DELETE(_this->mipPackage);
+	_this->mipPackage = NULL;
 	return JCL_No_Error;
+}
+
+//------------------------------------------------------------------------------
+// TokenToString
+//------------------------------------------------------------------------------
+
+static void TokenToString(JCLFile* _this, JILLong tokenID, const JCLString* pToken, JCLString* out)
+{
+	if( tokenID == tk_lit_string )
+	{
+		JCLAppend(out, "/\"");
+		JCLAppend(out, JCLGetString(pToken));
+		JCLAppend(out, "\"/");
+	}
+	else
+	{
+		JCLAppend(out, JCLGetString(pToken));
+	}
+	JCLAppend(out, " ");
+}
+
+//------------------------------------------------------------------------------
+// JCLFile::ScanBlock
+//------------------------------------------------------------------------------
+// Reads all text between {}()[] into a string.
+
+static JILError scanBlock_JCLFile(JCLFile* _this, JCLString* outStr)
+{
+	JILError err;
+	JILLong tokenID;
+	JILLong startToken;
+	JILLong endToken;
+	JILLong hier;
+	JCLString* pToken = NEW(JCLString);
+	JCLClear(outStr);
+	err = getToken_JCLFile(_this, pToken, &startToken);
+	if( !err && startToken == tk_curly_open || startToken == tk_round_open || startToken == tk_square_open )
+	{
+		if( startToken == tk_curly_open )
+			endToken = tk_curly_close;
+		else if( startToken == tk_round_open )
+			endToken = tk_round_close;
+		else if( startToken == tk_square_open )
+			endToken = tk_square_close;
+		TokenToString(_this, startToken, pToken, outStr);
+		hier = 1;
+		do 
+		{
+			err = getToken_JCLFile(_this, pToken, &tokenID);
+			if( err )
+				break;
+			if( tokenID == startToken )
+				hier++;
+			else if( tokenID == endToken )
+				hier--;
+			TokenToString(_this, tokenID, pToken, outStr);
+		}
+		while( tokenID != endToken && hier > 0 );
+	}
+	DELETE(pToken);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JCLFile::ScanStatement
+//------------------------------------------------------------------------------
+// Reads a statement into a string. Stops at ;}
+
+static JILError scanStatement_JCLFile(JCLFile* _this, JCLString* outStr)
+{
+	JILError err;
+	JILLong tokenID;
+	JILLong hier;
+	JILLong savePos;
+	JCLString* pToken = NEW(JCLString);
+	JCLClear(outStr);
+	hier = 0;
+	for(;;) 
+	{
+		savePos = _this->miLocator;
+		err = getToken_JCLFile(_this, pToken, &tokenID);
+		if( err )
+			break;
+		if( tokenID == tk_semicolon && hier == 0 )
+			break;
+		if( tokenID == tk_curly_close && hier == 0 )
+			break;
+		TokenToString(_this, tokenID, pToken, outStr);
+		if( tokenID == tk_curly_open || tokenID == tk_round_open || tokenID == tk_square_open )
+			hier++;
+		else if( tokenID == tk_curly_close || tokenID == tk_round_close || tokenID == tk_square_close )
+			hier--;
+	}
+	_this->miLocator = savePos;
+	DELETE(pToken);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JCLFile::ScanExpression
+//------------------------------------------------------------------------------
+// Reads an expression into a string. Stops at ,);}
+
+static JILError scanExpression_JCLFile(JCLFile* _this, JCLString* outStr)
+{
+	JILError err;
+	JILLong tokenID;
+	JILLong hier;
+	JILLong savePos;
+	JCLString* pToken = NEW(JCLString);
+	JCLClear(outStr);
+	hier = 0;
+	for(;;) 
+	{
+		savePos = _this->miLocator;
+		err = getToken_JCLFile(_this, pToken, &tokenID);
+		if( err )
+			break;
+		if( tokenID == tk_comma && hier == 0 )
+			break;
+		if( tokenID == tk_round_close && hier == 0 )
+			break;
+		if( tokenID == tk_semicolon && hier == 0 )
+			break;
+		if( tokenID == tk_curly_close && hier == 0 )
+			break;
+		TokenToString(_this, tokenID, pToken, outStr);
+		if( tokenID == tk_curly_open || tokenID == tk_round_open || tokenID == tk_square_open )
+			hier++;
+		else if( tokenID == tk_curly_close || tokenID == tk_round_close || tokenID == tk_square_close )
+			hier--;
+	}
+	_this->miLocator = savePos;
+	DELETE(pToken);
+	return err;
 }
 
 //------------------------------------------------------------------------------
@@ -403,7 +551,7 @@ static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 		JILLong type;
 		// check if long or float number, scan in the token and return tk_lit_int or tk_lit_float!
 		JCLSpanNumber(_this->mipText, pToken, &type);
-		*pTokenID = (type || _this->mipOtions->miDefaultFloat) ? tk_lit_float : tk_lit_int;
+		*pTokenID = (type || _this->mipOptions->miDefaultFloat) ? tk_lit_float : tk_lit_int;
 	}
 	else if( IsCharType(c, kCharacterChars) )
 	{

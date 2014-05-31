@@ -38,6 +38,7 @@ DECL_CLASS( JCLLiteral )
 	JCLString*			miString;	// string constant in case of string literals
 	JILLong				miLocator;	// character position of code block in source file (for anonymous delegates)
 	JILBool				miMethod;	// anonymous delegate is method
+	struct JCLFile*		mipFile;	// source file (for anonymous delegates)
 
 END_CLASS( JCLLiteral )
 

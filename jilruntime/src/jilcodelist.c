@@ -714,7 +714,6 @@ void JILCheckInstructionTables(JILState* ps)
 	JILLong i, j, k, l;
 	const JILInstrInfo* pi;
 
-	JILMessageLog(ps, "*** Checking instruction table ***\n");
 	for( i = 0; i < JILNumOpcodes; i++ )
 	{
 		pi = JILGetInfoFromOpcode(i);
@@ -733,5 +732,5 @@ void JILCheckInstructionTables(JILState* ps)
 			e++;
 		}
 	}
-	JILMessageLog(ps, "%d error(s) in instruction table.\n", e);
+	JILMessageLog(ps, "%d error(s) in instruction table\n", e);
 }

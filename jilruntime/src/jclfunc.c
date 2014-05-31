@@ -47,6 +47,7 @@ void create_JCLLiteral( JCLLiteral* _this )
 	_this->miString = NEW(JCLString);
 	_this->miLocator = 0;
 	_this->miMethod = JILFalse;
+	_this->mipFile = NULL;
 }
 
 //------------------------------------------------------------------------------
@@ -74,6 +75,7 @@ void copy_JCLLiteral( JCLLiteral* _this, const JCLLiteral* src )
 	JCLSetString(_this->miString, JCLGetString(src->miString));
 	_this->miLocator = src->miLocator;
 	_this->miMethod = src->miMethod;
+	_this->mipFile = src->mipFile;
 }
 
 /******************************************************************************/

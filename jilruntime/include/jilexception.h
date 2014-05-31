@@ -114,7 +114,7 @@ enum
 
 	JCL_ERR_End_Of_File = JCL_Begin_Errors,	// 1200
 	JCL_ERR_Unexpected_Token,				// 1201
-	JCL_ERR_General_Parser_Error,			// 1202
+	JCL_ERR_Probe_Failed,					// 1202 RESERVED FOR PROBING. USER SHOULD NOT SEE THIS!
 	JCL_ERR_Function_Already_Defined,		// 1203
 	JCL_ERR_Typeless_Arg_Conflict,			// 1204
 	JCL_ERR_Const_Arg_Conflict,				// 1205
@@ -168,7 +168,7 @@ enum
 	JCL_ERR_Member_Protected,				// 1253
 	JCL_ERR_Function_Redefined,				// 1254
 	JCL_ERR_Fatal_Error,					// 1255
-	JCL_ERR_No_Type_Declaration,			// 1256
+	JCL_ERR_Unused1,						// 1256 (unused)
 	JCL_ERR_Ambiguous_Function_Call,		// 1257
 	JCL_ERR_Native_Code_Generator,			// 1258
 	JCL_ERR_Return_In_Cofunction,			// 1259
