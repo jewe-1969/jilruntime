@@ -794,10 +794,10 @@ JILError JILDynamicConvert(JILState* ps, JILLong dType, JILHandle* sObj, JILHand
 			{
 				JILHandle* pH;
 				JILStackFrame stackFrame;
-				JILPushStackFrame(ps, &stackFrame);
 				pti = JILTypeInfoFromType(ps, sObj->type);
 				if( pti->methodInfo.tostr < 0 )
 					goto use_typeinfo;
+				JILPushStackFrame(ps, &stackFrame);
 				err = JILCallMethod(ps, sObj, pti->methodInfo.tostr);
 				if( err == JIL_No_Exception )
 				{
