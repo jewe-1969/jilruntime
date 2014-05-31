@@ -36,16 +36,13 @@
 COMPILER TODO:
 --------------------------------------------------------------------------------
 	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
-	* C++ code generator should not use class names verbatim. Instead, create macros at top of file that define all class names used by the native type.
 
 	Missing features:
 	* enum
-	* ternary operator <exp1> ? <exp2> : <exp3>
 
 	Future ideas:
 	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 	* Indexer function: object[index] is compiled as call to method <type> indexer (int i);
-	* Lambda expressions: (arg1, arg2) => <expr> (compiles <expr> into a function with a single return statement)
 	* Native structures: struct MyStruct { int a; float b; string c; } (object that is binary compatible to a C-Struct and can be manipulated
 		by script. self-contained memory-block, no pointers or references allowed, even when nesting structs. Limited to int, float, string,
 		other structs and static arrays of those types.)
@@ -138,11 +135,12 @@ typedef struct SInitState
 // enum for cg_move_xx
 enum { op_move, op_copy, op_wref };
 
-// flags for p_member_call
-enum { kOnlyCtor = 1 << 0 };
-
-// flags for p_expression
-enum { kExpressionProbeMode = 1 << 0 };
+// flags for p_expression and p_member_call
+enum
+{
+	kExpressionProbeMode	= 1 << 0,	// p_expression()
+	kOnlyCtor				= 1 << 1	// p_member_call()
+};
 
 // enum for p_function(), p_function_literal() and FindFuncRef()
 enum
@@ -254,8 +252,8 @@ static JILBool		EqualRegisters		(const JCLVar*, const JCLVar*);
 static JILBool		ImpConvertible		(JCLState*, JCLVar*, JCLVar*);
 static JILBool		DynConvertible		(JCLState*, JCLVar*, JCLVar*);
 static JILBool		AllMembersInited	(JCLState*, JILLong, JCLString*);
-static JCLFile*		PushImport			(JCLState*, const JCLString*, const JCLString*, const JCLString*, JILBool);
-static void			PopImport			(JCLState*);
+static JILError		PushMacro			(JCLState*, const JILChar*, const JILChar*, JCLFile**);
+static JILError		PushImport			(JCLState*, const JCLString*, const JCLString*, const JCLString*, JILBool, JCLFile**);
 static JCLFile*		FindImport			(JCLState*, const JCLString*);
 static JILBool		IsArithmeticAssign	(JILLong);
 static JILError		CheckTypeConflict	(const JCLVar*, const JCLVar*);
@@ -428,7 +426,8 @@ static JILError		p_accessor_call		(JCLState*, Array_JCLVar*, JCLFunc*, JCLVar*, 
 static JILError		p_skip_braces		(JCLState*, JILLong, JILLong);
 static JILError		p_skip_statement	(JCLState*);
 static JILError		p_skip_block		(JCLState*);
-static JILError		p_cast_operator		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, const TypeInfo*);
+static JILError		p_cast_operator		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**);
+static JILError		p_lambda_operator	(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILLong);
 static JILError		p_option			(JCLState*);
 static JILError		p_using				(JCLState*);
 static JILError		p_delegate			(JCLState*);
@@ -701,7 +700,7 @@ JILError FlushErrorsAndWarnings(JCLState* _this)
 //------------------------------------------------------------------------------
 // This should ONLY be called when detecting an internal programming error in
 // the compiler, from which it cannot recover and which is likely to crash the
-// Application using the compiler API.
+// Application.
 
 void FatalError(JCLState* _this, const JILChar* pFile, JILLong line, const JILChar* pText, const JILChar* pFn)
 {
@@ -725,8 +724,10 @@ void FatalError(JCLState* _this, const JILChar* pFile, JILLong line, const JILCh
 	// output log message
 	JILMessageLog(_this->mipMachine, JCLGetString(str1));
 	#ifdef _DEBUG
+	#if !JIL_NO_FPRINTF
 	if( _this->mipMachine->vmLogOutputProc == NULL )
-		puts(JCLGetString(str1));
+		fprintf(stdout, "%s", JCLGetString(str1));
+	#endif
 	#endif
 	// call fatal error handler, if installed
 	if( _this->miFatalErrorHandler )
@@ -856,9 +857,9 @@ static JILLong GetCodeLocator(JCLState* _this)
 //------------------------------------------------------------------------------
 // FindClass
 //------------------------------------------------------------------------------
-// Find and return a class by name. Returns the address of the found class and
-// the index number. If the class was not found returns NULL and the number of
-// known classes.
+// Find and return a type by name. Returns the address of the found type and
+// the index number. If the type was not found returns NULL and the number of
+// known types.
 
 JILLong FindClass( JCLState* _this, const JCLString* pName, JCLClass** ppClass )
 {
@@ -2838,6 +2839,8 @@ static JILBool IsOperatorToken(JILLong tokenID)
 		case tk_xor_assign:
 		case tk_lshift_assign:
 		case tk_rshift_assign:
+		case tk_ternary:
+		case tk_lambda:
 			return JILTrue;
 		default:
 			return JILFalse;
@@ -3047,38 +3050,40 @@ static JILBool AllMembersInited(JCLState* _this, JILLong typeID, JCLString* pArg
 }
 
 //------------------------------------------------------------------------------
+// PushMacro
+//------------------------------------------------------------------------------
+// Push a new macro onto the stack of used files
+
+static JILError PushMacro(JCLState* _this, const JILChar* pText, const JILChar* pPath, JCLFile** ppOut )
+{
+	JILError err;
+	JCLFile* pImport;
+	*ppOut = NULL;
+	pImport = _this->mipImportStack->New(_this->mipImportStack);
+	err = pImport->Open(pImport, "(MACRO)", pText, pPath, GetOptions(_this));
+	if( err == JCL_No_Error )
+		*ppOut = pImport;
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // PushImport
 //------------------------------------------------------------------------------
-// Push a new import file onto the stack of open imports
+// Push a new import file onto the stack of used files
 
-static JCLFile* PushImport(JCLState* _this, const JCLString* pClassName, const JCLString* pText, const JCLString* pPath, JILBool native)
+static JILError PushImport(JCLState* _this, const JCLString* pClassName, const JCLString* pText, const JCLString* pPath, JILBool native, JCLFile** ppOut)
 {
-	JCLFile* pImport = _this->mipImportStack->New(_this->mipImportStack);
-	pImport->Open(pImport, JCLGetString(pClassName), JCLGetString(pText), JCLGetString(pPath), GetOptions(_this));
-	pImport->miNative = native;
-	return pImport;
-}
-
-//------------------------------------------------------------------------------
-// PopImport
-//------------------------------------------------------------------------------
-// JCLRemove the topmost import file from the stack of open imports
-
-static void PopImport(JCLState* _this)
-{
-	long num = _this->mipImportStack->Count(_this->mipImportStack);
-	if( num )
-		_this->mipImportStack->Trunc(_this->mipImportStack, num - 1);
-}
-
-//------------------------------------------------------------------------------
-// ClearImportStack
-//------------------------------------------------------------------------------
-// JCLRemove all class names of imports from the stack of open imports
-
-void ClearImportStack(JCLState* _this)
-{
-	_this->mipImportStack->Trunc(_this->mipImportStack, 0);
+	JILError err;
+	JCLFile* pImport;
+	*ppOut = NULL;
+	pImport = _this->mipImportStack->New(_this->mipImportStack);
+	err = pImport->Open(pImport, JCLGetString(pClassName), JCLGetString(pText), JCLGetString(pPath), GetOptions(_this));
+	if( err == JCL_No_Error )
+	{
+		pImport->miNative = native;
+		*ppOut = pImport;
+	}
+	return err;
 }
 
 //------------------------------------------------------------------------------
@@ -3575,11 +3580,11 @@ static JILLong StringToType(JCLState* _this, const JCLString* pToken)
 // Checks for a full type declaration and setup the given JCLVar.
 // If 'bResult' is true, the caller does not expect the declaration to include
 // an identifier name (a result type declaration is expected)
-// NOTE: This function will return JCL_ERR_No_Type_Declaration if the tokens
+// NOTE: This function will return JCL_ERR_Probe_Failed if the tokens
 // read do not seem to belong to a type declaration at all. A calling function
 // that calls IsFullTypeDecl() to TEST whether there is a type declaration, should
 // only proceed if this function returns JCL_No_Error (means yes, there is a
-// type decl.) or JCL_ERR_No_Type_Declaration (means no, there is no type
+// type decl.) or JCL_ERR_Probe_Failed (means no, there is no type
 // declaration). On all other error codes the caller should correctly handle the
 // error returned!
 
@@ -3627,13 +3632,13 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 	err = p_partial_identifier(_this, pToken);
 	if( err )
 	{
-		err = JCL_ERR_No_Type_Declaration;
+		err = JCL_ERR_Probe_Failed;
 		goto exit;
 	}
 	type1 = StringToType(_this, pToken);
 	if( type1 == type_null )
 	{
-		err = JCL_ERR_No_Type_Declaration;
+		err = JCL_ERR_Probe_Failed;
 		goto exit;
 	}
 	// check if there is a "(" behind the identifier
@@ -3646,7 +3651,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 	if( tokenID == tk_round_open )
 	{
 		// looks like we ran into a function call or something
-		err = JCL_ERR_No_Type_Declaration;
+		err = JCL_ERR_Probe_Failed;
 		goto exit;
 	}
 	// check for "array"
@@ -3676,7 +3681,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 		}
 		else	// not a "]"
 		{
-			err = JCL_ERR_No_Type_Declaration;
+			err = JCL_ERR_Probe_Failed;
 			goto exit;
 		}
 	}
@@ -4177,17 +4182,10 @@ static JILError p_root(JCLState* _this)
 				pFile->SetLocator(pFile, savePos);
 				// check for type declaration
 				err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
-				if( err == JCL_ERR_No_Type_Declaration )
+				if( err == JCL_ERR_Probe_Failed )
 					err = JCL_ERR_Unexpected_Token;
 				ERROR_IF(err, err, pToken, goto exit);
-				if( _this->miPass == kPassPrecompile )
-				{
-					err = p_global_decl(_this, pVar);
-				}
-				else if( _this->miPass == kPassCompile )
-				{
-					err = p_skip_statement(_this);
-				}
+				err = p_global_decl(_this, pVar);
 				break;
 			}
 		}
@@ -4369,17 +4367,10 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 				pFile->SetLocator(pFile, savePos);
 				// check for type declaration
 				err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
-				if( err == JCL_ERR_No_Type_Declaration )
+				if( err == JCL_ERR_Probe_Failed )
 					err = JCL_ERR_Unexpected_Token;
 				ERROR_IF(err, err, pToken, goto exit);
-				if( _this->miPass == kPassPrecompile )
-				{
-					err = p_member_decl(_this, classIdx, pVar);
-				}
-				else if( _this->miPass == kPassCompile )
-				{
-					err = p_skip_statement(_this);
-				}
+				err = p_member_decl(_this, classIdx, pVar);
 				break;
 			}
 		}
@@ -4691,7 +4682,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	// is it a result type (eg. "const var")?
 	savePos = pFile->GetLocator(pFile);
 	err = IsFullTypeDecl(_this, pToken, pResVar, JILTrue);
-	if( err == JCL_ERR_No_Type_Declaration )
+	if( err == JCL_ERR_Probe_Failed )
 	{
 		// not a type decl, return to saved pos
 		pFile->SetLocator(pFile, savePos);
@@ -4812,7 +4803,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		{
 			pVar = pArgs->New(pArgs);
 			err = IsFullTypeDecl(_this, pToken, pVar, JILTrue);
-			if( err == JCL_ERR_No_Type_Declaration )
+			if( err == JCL_ERR_Probe_Failed )
 				err = JCL_ERR_Unexpected_Token;
 			ERROR_IF(err, err, pToken, goto exit);
 			// peek if there is a name
@@ -5314,6 +5305,7 @@ static JILError p_sub_functions(JCLState* _this)
 	JCLClass* pClass;
 	JCLFuncType* pDelegate;
 	JCLFile* pFile;
+	JCLFile* pOldFile;
 	Array_JCLLiteral* pLiterals;
 	JCLString* pToken;
 	JILLong tokenID;
@@ -5324,11 +5316,11 @@ static JILError p_sub_functions(JCLState* _this)
 
 	pName = NEW(JCLString);
 	pToken = NEW(JCLString);
-	pFile = _this->mipFile;
+	pOldFile = _this->mipFile;
 	pClass = CurrentOutClass(_this);
 	pCurrentFunc = CurrentOutFunc(_this);
 	pLiterals = pCurrentFunc->mipLiterals;
-	savePos = pFile->GetLocator(pFile);
+	savePos = pOldFile->GetLocator(pOldFile);
 
 	for( i = 0; i < pLiterals->Count(pLiterals); i++ )
 	{
@@ -5358,7 +5350,9 @@ static JILError p_sub_functions(JCLState* _this)
 			else
 				pLit->miHandle = pNewFunc->miHandle;
 			// set code locator to start of sub function
+			pFile = pLit->mipFile;
 			pFile->SetLocator(pFile, pLit->miLocator);
+			_this->mipFile = pFile;
 			// check for optional argument name list
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
@@ -5401,7 +5395,8 @@ static JILError p_sub_functions(JCLState* _this)
 
 exit:
 	SetCompileContext(_this, pClass->miType, pCurrentFunc->miFuncIdx);
-	pFile->SetLocator(pFile, savePos);
+	_this->mipFile = pOldFile;
+	pOldFile->SetLocator(pOldFile, savePos);
 	DELETE( pName );
 	DELETE( pToken );
 	return err;
@@ -5610,7 +5605,7 @@ static JILError p_statement(JCLState* _this, Array_JCLVar* pLocals, JILBool* pIs
 	{
 		err = p_local_decl(_this, pLocals, pVar);
 	}
-	else if( err == JCL_ERR_No_Type_Declaration )
+	else if( err == JCL_ERR_Probe_Failed )
 	{
 		pFile->SetLocator(pFile, savePos);
 		err = pFile->PeekToken(pFile, pToken, &tokenID);
@@ -5784,21 +5779,28 @@ static JILError p_member_decl(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 
 	if( !pVar->miConst || IsModifierNativeBinding(pClass) )
 	{
-		for(;;)
+		if( _this->miPass == kPassPrecompile )
 		{
-			err = AddMemberVar(_this, classIdx, pVar);
-			ERROR_IF(err, err, pVar->mipName, goto exit);
-			// peek if we have a "," or ";" token...
-			err = pFile->GetToken(pFile, pToken, &tokenID);
-			ERROR_IF(err, err, pToken, goto exit);
-			if( tokenID == tk_semicolon )
-				break;
-			ERROR_IF(tokenID != tk_comma, JCL_ERR_Unexpected_Token, pToken, goto exit);
-			// get next identifier name
-			err = pFile->GetToken(pFile, pToken, &tokenID);
-			ERROR_IF(err, err, pToken, goto exit);
-			ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
-			JCLSetString(pVar->mipName, JCLGetString(pToken));
+			for(;;)
+			{
+				err = AddMemberVar(_this, classIdx, pVar);
+				ERROR_IF(err, err, pVar->mipName, goto exit);
+				// peek if we have a "," or ";" token...
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				if( tokenID == tk_semicolon )
+					break;
+				ERROR_IF(tokenID != tk_comma, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				// get next identifier name
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
+				JCLSetString(pVar->mipName, JCLGetString(pToken));
+			}
+		}
+		else
+		{
+			err = p_skip_statement(_this);
 		}
 	}
 	else	// if the member is declared const, make it a global variable and mangle name
@@ -6180,46 +6182,33 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 		case tk_round_open:
 		{
 			JILBool bFull = JILTrue;
-			TypeInfo destType;
-			JCLClrTypeInfo(&destType);
-			// parentheses - first check for "cast operator"
-			savePos = pFile->GetLocator(pFile);
-			err = p_partial_identifier(_this, pToken2);
-			if( err == JCL_No_Error )
+			// return to saved position
+			pFile->SetLocator(pFile, savePos);
+			// check for "lambda operator"
+			err = p_lambda_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags);
+			if( err == JCL_ERR_Probe_Failed )
 			{
-				if( TypeInfoFromType(_this, &destType, StringToType(_this, pToken2)) )
-				{
-					err = pFile->GetToken(pFile, pToken2, &tokenID2);
-					ERROR_IF(err, err, pToken2, goto exit);
-					// closing parenthese?
-					if( tokenID2 == tk_round_close )
-					{
-						bFull = JILFalse;
-						err = p_cast_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar, &destType);
-						if( err )
-							goto exit;
-					}
-				}
-			}
-			// do expression in parentheses
-			if( bFull )
-			{
-				// return to saved position
+				// check for "cast operator"
 				pFile->SetLocator(pFile, savePos);
-				err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
-				ERROR_IF(err, err, NULL, goto exit);
-				pWorkVar = *ppVarOut;
-				// parse full expression
-				err = p_expression(_this, pLocals, pWorkVar, &outType, flags);
-				if( err )
-					goto exit;
-				// we expect to see a ")"
-				err = pFile->GetToken(pFile, pToken, &tokenID);
-				ERROR_IF(err, err, pToken, goto exit);
-				ERROR_IF(tokenID != tk_round_close, JCL_ERR_Unexpected_Token, pToken, goto exit);
-				// copy expression result type
-				JCLTypeInfoToVar(&outType, pWorkVar);
-				pWorkVar->miInited = JILTrue;
+				err = p_cast_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar);
+				if( err == JCL_ERR_Probe_Failed )
+				{
+					pFile->SetLocator(pFile, savePos + 1);
+					err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
+					ERROR_IF(err, err, NULL, goto exit);
+					pWorkVar = *ppVarOut;
+					// parse full expression
+					err = p_expression(_this, pLocals, pWorkVar, &outType, flags);
+					if( err )
+						goto exit;
+					// we expect to see a ")"
+					err = pFile->GetToken(pFile, pToken, &tokenID);
+					ERROR_IF(err, err, pToken, goto exit);
+					ERROR_IF(tokenID != tk_round_close, JCL_ERR_Unexpected_Token, pToken, goto exit);
+					// copy expression result type
+					JCLTypeInfoToVar(&outType, pWorkVar);
+					pWorkVar->miInited = JILTrue;
+				}
 			}
 			break;
 		}
@@ -7144,7 +7133,7 @@ static JILError p_expr_mul_div(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_primary(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_primary(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7164,7 +7153,7 @@ static JILError p_expr_mul_div(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_primary(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_primary(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7236,7 +7225,7 @@ static JILError p_expr_add_sub(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_mul_div(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_mul_div(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7287,7 +7276,7 @@ static JILError p_expr_add_sub(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 				pTempVar->miType = type_var;
 				JCLClrTypeInfo( &outType );
 				// get second operand
-				err = p_expr_mul_div(_this, pLocals, pTempVar, &outType, 0);
+				err = p_expr_mul_div(_this, pLocals, pTempVar, &outType, flags);
 				if( err )
 					goto exit;
 				JCLTypeInfoToVar(&outType, pTempVar);
@@ -7355,7 +7344,7 @@ static JILError p_expr_log_shift(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_add_sub(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_add_sub(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7378,7 +7367,7 @@ static JILError p_expr_log_shift(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_add_sub(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_add_sub(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7434,7 +7423,7 @@ static JILError p_expr_gt_lt(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_log_shift(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_log_shift(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7455,7 +7444,7 @@ static JILError p_expr_gt_lt(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 		pTempVar->miType = type_var;
 		JCLClrTypeInfo( &outType );
 		// get second operand
-		err = p_expr_log_shift(_this, pLocals, pTempVar, &outType, 0);
+		err = p_expr_log_shift(_this, pLocals, pTempVar, &outType, flags);
 		if( err )
 			goto exit;
 		JCLTypeInfoToVar(&outType, pTempVar);
@@ -7510,7 +7499,7 @@ static JILError p_expr_eq_ne(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_gt_lt(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_gt_lt(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7544,7 +7533,7 @@ static JILError p_expr_eq_ne(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_gt_lt(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_gt_lt(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7600,7 +7589,7 @@ static JILError p_expr_band(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVa
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_eq_ne(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_eq_ne(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7623,7 +7612,7 @@ static JILError p_expr_band(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVa
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_eq_ne(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_eq_ne(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7680,7 +7669,7 @@ static JILError p_expr_xor(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_band(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_band(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7703,7 +7692,7 @@ static JILError p_expr_xor(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_band(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_band(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7760,7 +7749,7 @@ static JILError p_expr_bor(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_xor(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_xor(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7783,7 +7772,7 @@ static JILError p_expr_bor(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 			pTempVar->miType = type_var;
 			JCLClrTypeInfo( &outType );
 			// get second operand
-			err = p_expr_xor(_this, pLocals, pTempVar, &outType, 0);
+			err = p_expr_xor(_this, pLocals, pTempVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pTempVar);
@@ -7842,7 +7831,7 @@ static JILError p_expr_and(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_bor(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_bor(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7868,7 +7857,7 @@ static JILError p_expr_and(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar
 			cg_opcode(_this, 0);
 			// get second operand
 			JCLClrTypeInfo( &outType );
-			err = p_expr_bor(_this, pLocals, pRetVar, &outType, 0);
+			err = p_expr_bor(_this, pLocals, pRetVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pRetVar);
@@ -7925,7 +7914,7 @@ static JILError p_expr_or(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar,
 	pRetVar->miType = type_var;
 
 	// get first operand
-	err = p_expr_and(_this, pLocals, pRetVar, &outType, 0);
+	err = p_expr_and(_this, pLocals, pRetVar, &outType, flags);
 	if( err )
 		goto exit;
 	JCLTypeInfoToVar(&outType, pRetVar);
@@ -7951,7 +7940,7 @@ static JILError p_expr_or(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar,
 			cg_opcode(_this, 0);
 			// get second operand
 			JCLClrTypeInfo( &outType );
-			err = p_expr_and(_this, pLocals, pRetVar, &outType, 0);
+			err = p_expr_and(_this, pLocals, pRetVar, &outType, flags);
 			if( err )
 				goto exit;
 			JCLTypeInfoToVar(&outType, pRetVar);
@@ -7969,6 +7958,105 @@ static JILError p_expr_or(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar,
 			pFile->SetLocator(pFile, savePos);
 			notDone = JILFalse;
 		}
+	}
+	JCLTypeInfoFromVar(pOut, pRetVar);
+	// report unique status up
+	pLVar->miUnique = pRetVar->miUnique;
+
+exit:
+	FreeDuplicate(&pRetVar);
+	FreeTempVar(_this, &pTempVar);
+	DELETE( pToken );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_expr_ternary
+//------------------------------------------------------------------------------
+// Parse a ternary operator expression
+
+static JILError p_expr_ternary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, TypeInfo* pOut, JILLong flags)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLVar* pTempVar = NULL;
+	JCLVar* pRetVar = NULL;
+	JCLString* pToken;
+	JILLong tokenID;
+	JILLong savePos;
+	TypeInfo outType;
+	JILLong codeFalsePos;
+	JILLong codeEndPos;
+	Array_JILLong* pCode;
+
+	pToken = NEW(JCLString);
+	pFile = _this->mipFile;
+	JCLClrTypeInfo( &outType );
+
+	DuplicateVar(&pRetVar, pLVar);
+	pRetVar->miType = type_var;
+
+	// get first operand
+	err = p_expr_or(_this, pLocals, pRetVar, &outType, flags);
+	if( err )
+		goto exit;
+	JCLTypeInfoToVar(&outType, pRetVar);
+
+	// see what comes next
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+	// operator ?
+	if( tokenID == tk_ternary )
+	{
+		// convert operand to int
+		err = cg_convert_to_type(_this, pRetVar, type_int);
+		ERROR_IF(err, err, NULL, goto exit);
+		// add jump to 'false' branch
+		if (!IsTempVar(pRetVar))
+			FATALERROREXIT("p_expr_ternary", "First operand is not a temp-var!");
+		codeFalsePos = GetCodeLocator(_this);
+		cg_opcode(_this, op_tsteq_r);
+		cg_opcode(_this, pRetVar->miIndex);
+		cg_opcode(_this, 0);
+		// get second operand
+		JCLClrTypeInfo( &outType );
+		err = p_expr_or(_this, pLocals, pRetVar, &outType, flags);
+		if( err )
+			goto exit;
+		JCLTypeInfoToVar(&outType, pRetVar);
+		// convert operand to L-type
+		err = cg_convert_to_type(_this, pRetVar, pLVar->miType);
+		ERROR_IF(err, err, NULL, goto exit);
+		pRetVar->miConst = JILFalse;
+		// add jump to end of expression
+		codeEndPos = GetCodeLocator(_this);
+		cg_opcode(_this, op_bra);
+		cg_opcode(_this, 0);
+		// update jump to false branch
+		pCode = CurrentOutFunc(_this)->mipCode;
+		pCode->Set(pCode, codeFalsePos + 2, GetCodeLocator(_this) - codeFalsePos);
+		// check for ":"
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+		ERROR_IF(tokenID != tk_colon, JCL_ERR_Unexpected_Token, pToken, goto exit);
+		// get third operand
+		JCLClrTypeInfo( &outType );
+		err = p_expr_or(_this, pLocals, pRetVar, &outType, flags);
+		if( err )
+			goto exit;
+		JCLTypeInfoToVar(&outType, pRetVar);
+		// convert operand to L-type
+		err = cg_convert_to_type(_this, pRetVar, pLVar->miType);
+		ERROR_IF(err, err, NULL, goto exit);
+		pRetVar->miConst = JILFalse;
+		// update jump to end branch
+		pCode = CurrentOutFunc(_this)->mipCode;
+		pCode->Set(pCode, codeEndPos + 1, GetCodeLocator(_this) - codeEndPos);
+	}
+	else
+	{
+		pFile->SetLocator(pFile, savePos);
 	}
 	JCLTypeInfoFromVar(pOut, pRetVar);
 	// report unique status up
@@ -8064,7 +8152,7 @@ static JILError p_expression(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 			DuplicateVar(&pDupLVar, pLVar);
 			pWorkVar = pDupLVar;
 		}
-		err = p_expr_or(_this, pLocals, pWorkVar, &outType, flags);
+		err = p_expr_ternary(_this, pLocals, pWorkVar, &outType, flags);
 		if( err )
 			goto exit;
 		JCLTypeInfoToVar(&outType, pWorkVar);
@@ -8795,6 +8883,9 @@ exit:
 JILError p_import_class(JCLState* _this, JCLString* pClassName)
 {
 	JILError err = JCL_No_Error;
+	JILLong classIdx;
+	JCLClass* pClass;
+	JILBool bNative;
 	JCLFile* pFile;
 	JCLFile* pNewFile = NULL;
 	JCLString* pToken = NULL;
@@ -8818,18 +8909,20 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 	if( pNewFile && pNewFile->miPass == _this->miPass )
 		goto exit;
 
-	// in 2nd compile pass, we can ignore native types
-	if( _this->miPass == kPassCompile && pNewFile->miNative )
-		goto exit;
-
 	// are we in PreCompile pass?
 	if( _this->miPass == kPassPrecompile )
 	{
-		JILBool bNative;
 		// see if a typelib with that name exists...
 		pItem = JILGetNativeType( _this->mipMachine, JCLGetString(pClassName) );
 		if( pItem )
 		{
+			// this will serve as forward declaration, in case classes from the package string refer to this class
+			FindClass(_this, pClassName, &pClass);
+			if( pClass == NULL )
+			{
+				err = JCLCreateType(_this, JCLGetString(pClassName), _this->miClass, tf_class, JILTrue, &classIdx);
+				ERROR_IF(err, err, pClassName, goto exit);
+			}
 			// get the type proc
 			proc = pItem->typeProc;
 			// try to get package string
@@ -8893,28 +8986,21 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 			}
 		}
 		// create a new file object
-		pNewFile = PushImport(_this, pClassName, pToken, pFilePath, bNative);
-		// if we have a package string, import those classes first
-		if( pPackage && (*pPackage) )
-		{
-			JCLClass* test;
-			JILLong classIdx;
-			// this will act as a "forward declaration" of the class, in case classes from the package string refer to this class
-			FindClass(_this, pClassName, &test);
-			if( test == NULL )
-			{
-				err = JCLCreateType(_this, JCLGetString(pClassName), _this->miClass, tf_class, bNative, &classIdx);
-				ERROR_IF(err, err, pClassName, goto exit);
-			}
-			// now import the classes from the package string
-			err = p_import_class_list(_this, pPackage);
-			if( err )
-				goto exit;
-		}
+		err = PushImport(_this, pClassName, pToken, pFilePath, bNative, &pNewFile);
+		ERROR_IF(err, err, pClassName, goto exit);
+		// if we have a package string, attach it to the file
+		JCLSetString(pNewFile->mipPackage, pPackage);
 	}
 
 	// set current compile pass
 	pNewFile->miPass = _this->miPass;
+	// import classes from package string first
+	if( JCLGetLength(pNewFile->mipPackage) )
+	{
+		err = p_import_class_list(_this, JCLGetString(pNewFile->mipPackage));
+		if( err )
+			goto exit;
+	}
 	// reset locator to beginning of file
 	pNewFile->SetLocator(pNewFile, 0);
 	// set new file scope
@@ -10570,27 +10656,40 @@ static JILError p_global_decl(JCLState* _this, JCLVar* pVar)
 	{
 		// mangle var name
 		MakeFullQualified(_this, pVar->mipName, pVar->mipName);
-		err = AddGlobalVar(_this, pVar);
-		ERROR_IF(err, err, pVar->mipName, goto exit);
-		// peek if we have an assignment
-		err = pFile->PeekToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
-		if( tokenID == tk_assign )
+		if( _this->miPass == kPassPrecompile )
 		{
-			pAnyVar = FindAnyVar(_this, pVar->mipName);
-			ERROR_IF(!pAnyVar, JCL_ERR_Not_An_LValue, pVar->mipName, goto exit);
-			// compile expression and init variable
-			err = p_assignment(_this, pLocals, pAnyVar, &outType);
-			if( err )
-				goto exit;
+			err = AddGlobalVar(_this, pVar);
+			ERROR_IF(err, err, pVar->mipName, goto exit);
+			// peek if we have an assignment
+			err = pFile->PeekToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			if( tokenID == tk_assign )
+			{
+				err = pFile->ScanExpression(pFile, pToken);
+				if( err )
+					goto exit;
+			}
 		}
 		else
 		{
-			// no assignment, default initialize variable
 			pAnyVar = FindAnyVar(_this, pVar->mipName);
 			ERROR_IF(!pAnyVar, JCL_ERR_Not_An_LValue, pVar->mipName, goto exit);
-			err = cg_init_var(_this, pAnyVar);
-			ERROR_IF(err && err != JCL_ERR_Ctor_Is_Explicit, err, pAnyVar->mipName, goto exit);
+			// peek if we have an assignment
+			err = pFile->PeekToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			if( tokenID == tk_assign )
+			{
+				// compile expression and init variable
+				err = p_assignment(_this, pLocals, pAnyVar, &outType);
+				if( err )
+					goto exit;
+			}
+			else
+			{
+				// no assignment, default initialize variable
+				err = cg_init_var(_this, pAnyVar);
+				ERROR_IF(err && err != JCL_ERR_Ctor_Is_Explicit, err, pAnyVar->mipName, goto exit);
+			}
 		}
 		// check if we have a comma or semicolon
 		err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -11124,27 +11223,149 @@ static JILError p_skip_block(JCLState* _this)
 // p_cast_operator
 //------------------------------------------------------------------------------
 // Parse a cast operator in the form: (typename) expr
-// The function assumes that the opening parenthese has already been read from
-// the input stream.
 
-static JILError p_cast_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar, const TypeInfo* pDestType)
+static JILError p_cast_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar)
 {
-	JILError err = JCL_No_Error;
+	JILError result = JCL_ERR_Probe_Failed;
+	JILError err;
 	JCLFile* pFile;
 	JCLVar* pWorkVar;
+	JCLString* pToken;
+	JCLString* pToken2;
+	JILLong tokenID;
 	TypeInfo outType;
+	TypeInfo destType;
+
+	JCLClrTypeInfo(&outType);
+	JCLClrTypeInfo(&destType);
+	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+	pToken2 = NEW(JCLString);
+
+	// read "("
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	if( err || tokenID != tk_round_open )
+		goto exit;
+	// read type name
+	err = p_partial_identifier(_this, pToken);
+	if( err == JCL_No_Error )
+	{
+		if( TypeInfoFromType(_this, &destType, StringToType(_this, pToken)) )
+		{
+			err = pFile->GetToken(pFile, pToken2, &tokenID);
+			if( err )
+				goto exit;
+			// closing parenthese?
+			if( tokenID == tk_round_close )
+			{
+				result = JCL_No_Error;
+				// if we have no L-Value, fail
+				ERROR_IF(!pLVar, JCL_ERR_Expression_Without_LValue, NULL, goto exit);
+				// warn, if L-Value is var
+				if( destType.miType == type_var && pLVar->miType != type_var )
+					EmitWarning(_this, NULL, JCL_WARN_Cast_To_Var);
+				// do we need a temp var?
+				if( pLVar && IsTempVar(pLVar) )
+				{
+					*ppVarOut = pLVar;
+					pWorkVar = pLVar;
+				}
+				else
+				{
+					err = MakeTempVar(_this, ppTempVar, pLVar);
+					ERROR_IF(err, err, NULL, goto exit);
+					*ppVarOut = *ppTempVar;
+					pWorkVar = *ppTempVar;
+				}
+				pWorkVar->miType = destType.miType;
+				pWorkVar->miElemType = destType.miElemType;
+				pWorkVar->miConst = pLVar->miConst;
+				pWorkVar->miRef = pLVar->miRef;
+				pWorkVar->miElemRef = pLVar->miElemRef;
+				pWorkVar->miTypeCast = JILTrue;
+				// recurse
+				err = p_expr_primary(_this, pLocals, pWorkVar, &outType, 0);
+				if( err )
+					goto exit;
+				// copy expression result type
+				JCLTypeInfoToVar(&outType, pWorkVar);
+				pWorkVar->miInited = JILTrue;
+			}
+		}
+	}
+
+exit:
+	if( result == JCL_No_Error )
+		result = err;
+	DELETE(pToken);
+	DELETE(pToken2);
+	return result;
+}
+
+//------------------------------------------------------------------------------
+// p_lambda_operator
+//------------------------------------------------------------------------------
+// Probe / parse a lambda expression. The function assumes that the opening
+// parenthese is the next token in input stream.
+
+static JILError p_lambda_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar, JILLong flags)
+{
+	JILError result = JCL_ERR_Probe_Failed;
+	JILError err;
+	JCLFile* pFile;
+	JCLFile* pMacro = NULL;
+	JCLString* pToken;
+	JCLString* pArgList;
+	JCLString* pExpression;
+	JCLString* pAnon;
+	JCLVar* pWorkVar;
+	JILLong tokenID;
+	JILBool isBlock;
+	TypeInfo outType;
+	const JILChar* pfn;
 
 	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+	pArgList = NEW(JCLString);
+	pExpression = NEW(JCLString);
+	pAnon = NEW(JCLString);
 	JCLClrTypeInfo(&outType);
+	JCLSetString(pAnon, "anonymous delegate");
+
+	// read argument list into string
+	err = pFile->ScanBlock(pFile, pArgList);
+	if( err )
+		goto exit;
+	// check for "=>"
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	if( err )
+		goto exit;
+	if( tokenID != tk_lambda )
+		goto exit;
+	// read expression into string
+	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	if( err )
+		goto exit;
+	isBlock = (tokenID == tk_curly_open);
+	if( isBlock )
+		err = pFile->ScanBlock(pFile, pExpression);
+	else
+		err = pFile->ScanExpression(pFile, pExpression);
+	if( err )
+		goto exit;
+
+	// in precompile mode, we are done now
+	result = JCL_No_Error;
+	if( _this->miPass == kPassPrecompile )
+		goto exit;
 
 	// if we have no L-Value, fail
 	ERROR_IF(!pLVar, JCL_ERR_Expression_Without_LValue, NULL, goto exit);
-
-	if( pDestType->miType == type_var && pLVar->miType != type_var )
-		EmitWarning(_this, NULL, JCL_WARN_Cast_To_Var);
-
+	// if L-type is not a delegate, fail
+	if( pLVar->miType!= type_var && GetClass(_this, pLVar->miType)->miFamily != tf_delegate )
+		ERROR(JCL_ERR_Incompatible_Type, pAnon, goto exit);
 	// do we need a temp var?
-	if( pLVar && IsTempVar(pLVar) )
+	if( IsTempVar(pLVar) )
 	{
 		*ppVarOut = pLVar;
 		pWorkVar = pLVar;
@@ -11156,19 +11377,29 @@ static JILError p_cast_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 		*ppVarOut = *ppTempVar;
 		pWorkVar = *ppTempVar;
 	}
-	pWorkVar->miType = pDestType->miType;
-	pWorkVar->miElemType = pDestType->miElemType;
-	pWorkVar->miConst = pLVar->miConst;
-	pWorkVar->miRef = pLVar->miRef;
-	pWorkVar->miElemRef = pLVar->miElemRef;
-	pWorkVar->miTypeCast = JILTrue;
-	// recurse
-	err = p_expr_primary(_this, pLocals, pWorkVar, &outType, 0);
-	if( err )
-		goto exit;
+	// format arguments and expression into a function literal
+	pfn = CurrentFunc(_this)->miMethod ? "method" : "function";
+	if( isBlock )
+		JCLFormat(pToken, "%s %s %s;", pfn, JCLGetString(pArgList), JCLGetString(pExpression));
+	else
+		JCLFormat(pToken, "%s %s { return %s; };", pfn, JCLGetString(pArgList), JCLGetString(pExpression));
+	err = PushMacro(_this, JCLGetString(pToken), JCLGetString(pAnon), &_this->mipFile);
+	ERROR_IF(err, err, pAnon, goto exit);
+	err = p_expression(_this, pLocals, pWorkVar, &outType, flags);
+	_this->mipFile = pFile;
+	ERROR_IF(err, err, pAnon, goto exit);
+	// copy expression result type
+	JCLTypeInfoToVar(&outType, pWorkVar);
+	pWorkVar->miInited = JILTrue;
 
 exit:
-	return err;
+	DELETE(pToken);
+	DELETE(pArgList);
+	DELETE(pExpression);
+	DELETE(pAnon);
+	if( result == JCL_No_Error )
+		result = err;
+	return result;
 }
 
 //------------------------------------------------------------------------------
@@ -11339,7 +11570,7 @@ static JILError p_delegate(JCLState* _this)
 	// result type?
 	savePos = pFile->GetLocator(pFile);
 	err = IsFullTypeDecl(_this, pToken, pResVar, JILTrue);
-	if( err == JCL_ERR_No_Type_Declaration )
+	if( err == JCL_ERR_Probe_Failed )
 	{
 		// not a type decl, return to saved pos
 		pFile->SetLocator(pFile, savePos);
@@ -11382,7 +11613,7 @@ static JILError p_delegate(JCLState* _this)
 		{
 			pVar = pArgs->New(pArgs);
 			err = IsFullTypeDecl(_this, pToken, pVar, JILTrue);
-			if( err == JCL_ERR_No_Type_Declaration )
+			if( err == JCL_ERR_Probe_Failed )
 				err = JCL_ERR_Unexpected_Token;
 			ERROR_IF(err, err, pToken, goto exit);
 			// peek if there is a name
@@ -11922,7 +12153,7 @@ static JILError p_function_literal(JCLState* _this, Array_JCLVar* pLocals, JCLVa
 	// ensure the type left from the assignment is a delegate
 	if( TypeFamily(_this, pLVar->miType) != tf_delegate )
 	{
-		JCLSetString(pToken, "Anonymous delegate");
+		JCLSetString(pToken, "anonymous delegate");
 		ERROR(JCL_ERR_Incompatible_Type, pToken, goto exit);
 	}
 
@@ -12777,10 +13008,10 @@ static JILError cg_load_func_literal(JCLState* _this, JILLong codeLocator, JCLVa
 		*ppVarOut = *ppTempVar;
 		pWorkVar = *ppTempVar;
 	}
-	codePos = GetCodeLocator(_this) + 2;
 
 	// create function delegate
-	err = cg_new_delegate(_this, pWorkVar->miType, pObj, pWorkVar);
+	codePos = GetCodeLocator(_this) + 2;
+	err = cg_new_delegate(_this, 0, pObj, pWorkVar);
 	if( err )
 		goto exit;
 
@@ -12791,6 +13022,7 @@ static JILError cg_load_func_literal(JCLState* _this, JILLong codeLocator, JCLVa
 	pLit->miOffset = codePos;
 	pLit->miLocator = codeLocator;
 	pLit->miMethod = (pObj != NULL);
+	pLit->mipFile = _this->mipFile;
 
 exit:
 	return err;

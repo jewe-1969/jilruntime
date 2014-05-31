@@ -52,18 +52,22 @@ DECL_ARRAY( JCLFileToken )
 FORWARD_CLASS( JCLFile )
 DECL_CLASS( JCLFile )
 
-	JILError			(*Open)			(JCLFile*, const JILChar*, const JILChar*, const JILChar*, JCLOption*);
-	JILError			(*GetToken)		(JCLFile*, JCLString*, JILLong*);
-	JILError			(*PeekToken)	(JCLFile*, JCLString*, JILLong*);
-	JILLong				(*GetLocator)	(JCLFile*);
-	void				(*SetLocator)	(JCLFile*, JILLong);
-	JILError			(*Close)		(JCLFile*);
+	JILError			(*Open)				(JCLFile*, const JILChar*, const JILChar*, const JILChar*, JCLOption*);
+	JILError			(*GetToken)			(JCLFile*, JCLString*, JILLong*);
+	JILError			(*PeekToken)		(JCLFile*, JCLString*, JILLong*);
+	JILLong				(*GetLocator)		(JCLFile*);
+	void				(*SetLocator)		(JCLFile*, JILLong);
+	JILError			(*Close)			(JCLFile*);
+	JILError			(*ScanBlock)		(JCLFile*, JCLString*);
+	JILError			(*ScanStatement)	(JCLFile*, JCLString*);
+	JILError			(*ScanExpression)	(JCLFile*, JCLString*);
 
 	JCLString*			mipName;		///< Name of file or code-snippet
 	JCLString*			mipText;		///< The source code
 	JCLString*			mipPath;		///< Filename and path of the file
+	JCLString*			mipPackage;		///< Package import string
 	Array_JCLFileToken*	mipTokens;		///< Array of tokens
-	JCLOption*			mipOtions;		///< Current compiler options
+	JCLOption*			mipOptions;		///< Compiler options, only valid in Open()
 	JILLong				miLocator;		///< Current parsing position
 	JILLong				miPass;			///< Current compile pass
 	JILBool				miNative;		///< File is a native type declaration
@@ -192,6 +196,8 @@ typedef enum
 	// other operators
 	tk_plusplus,
 	tk_minusminus,
+	tk_ternary,
+	tk_lambda,
 
 	tk_num_operators,
 
