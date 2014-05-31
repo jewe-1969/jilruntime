@@ -2026,16 +2026,23 @@ static JILBool IsFuncInGlobalScope(JCLState* _this, const JCLString* pName)
 {
 	JCLFunc* pFunc = NULL;
 	Array_JILLong* pUsing = _this->mipUsing;
-	JILLong i;
+	JILLong i, j, u;
 
 	FindFunction(_this, type_global, pName, 0, &pFunc);
 	if( pFunc )
 		return JILTrue;
 	for( i = 0; i < pUsing->count; i++ )
 	{
-		FindFunction(_this, pUsing->array[i], pName, 0, &pFunc);
-		if( pFunc )
-			return JILTrue;
+		u = pUsing->array[i];
+		j = -1;
+		for(;;)
+		{
+			j = FindFunction(_this, u, pName, j + 1, &pFunc);
+			if( !pFunc )
+				break;
+			if( !pFunc->miMethod )
+				return JILTrue;
+		}
 	}
 	return JILFalse;
 }
