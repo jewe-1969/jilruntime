@@ -90,7 +90,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.3.1.62"
+#define	VERSION		"0.3.1.63"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
@@ -558,14 +558,7 @@ static int OnError( JILState* pMachine, int e, const char* alt )
 	}
 	else
 	{
-		if( e > JIL_No_Exception && e < JIL_Unknown_Exception )
-		{
-			printf( "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e) );
-		}
-		else
-		{
-			printf( "Error: %d\n", e );
-		}
+		printf( "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e) );
 	}
 	return e;
 }
