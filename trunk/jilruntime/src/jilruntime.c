@@ -73,6 +73,7 @@ static void JILClearGCEventList(JILState*);
 
 JILError JILInitializeRuntime(JILState*, const JILChar*, JILBool);
 JILError JILTerminateRuntime(JILState*);
+const JILChar* JCLGetErrorString(JILError err);
 
 //------------------------------------------------------------------------------
 // JILInitialize
@@ -453,14 +454,13 @@ void* JILGetObject(JILState* pState, int objectID)
 
 const JILChar* JILGetExceptionString(JILState* pState, JILError e)
 {
-	// search the exception table...
 	int i;
 	for( i = 0; JILExceptionStrings[i].e != JIL_Unknown_Exception; i++ )
 	{
 		if( JILExceptionStrings[i].e == e )
 			return JILExceptionStrings[i].s;
 	}
-	return "JIL UNKNOWN EXCEPTION";
+	return JCLGetErrorString(e);
 }
 
 //------------------------------------------------------------------------------

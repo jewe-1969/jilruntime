@@ -1084,7 +1084,7 @@ exit:
 
 JILError JCLCreateClassDoc(JCLState* pState, JCLClass* pClass)
 {
-	return JCL_No_Error;
+	return JCL_ERR_Feature_Not_Available;
 }
 
 #endif	// JIL_USE_HTML_CODEGEN

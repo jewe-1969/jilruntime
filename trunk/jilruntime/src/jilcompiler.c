@@ -497,10 +497,9 @@ static void JCLStringDestructor(JILUnknown* p) { DELETE(p); }
 
 JILError JCLGenerateDocs(JILState* pVM, const JILChar* pPath, const JILChar* pParams)
 {
-	JILError err = JCL_No_Error;
-
 #if JIL_USE_HTML_CODEGEN && !JIL_NO_FPRINTF && JIL_USE_LOCAL_FILESYS
 
+	JILError err = JCL_No_Error;
 	JILLong clas;
 	JILLong startClass;
 	JILLong endClass;
@@ -558,10 +557,13 @@ JILError JCLGenerateDocs(JILState* pVM, const JILChar* pPath, const JILChar* pPa
 exit:
 	JILTable_Delete(pTable);
 	FlushErrorsAndWarnings(_this);
+	return err;
+
+#else
+
+	return JCL_ERR_Feature_Not_Available;
 
 #endif
-
-	return err;
 }
 
 //------------------------------------------------------------------------------

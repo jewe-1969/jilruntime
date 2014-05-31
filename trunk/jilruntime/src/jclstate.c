@@ -539,10 +539,10 @@ void copy_JCLState( JCLState* _this, const JCLState* src )
 }
 
 //------------------------------------------------------------------------------
-// JCLGetStringFromError
+// JCLGetErrorString
 //------------------------------------------------------------------------------
 
-static const JILChar* GetStringFromError(JILError err)
+const JILChar* JCLGetErrorString(JILError err)
 {
 	// search the compiler error table...
 	JILLong i;
@@ -569,7 +569,7 @@ JILError EmitError(JCLState* _this, const JCLString* pArg, JILError err)
 	JILLong line = 0;
 	JILLong column = 0;
 
-	pErrorSz = GetStringFromError(err);
+	pErrorSz = JCLGetErrorString(err);
 	pError = NEW(JCLString);
 	if( _this->mipFile )
 	{
@@ -11114,6 +11114,7 @@ exit:
 // Advance in the text stream until the end of a complete statement. This
 // includes block-statements as well as statements that consist of
 // sub-statements (like for example 'if').
+// TODO: Add new statements (clause, goto)
 
 static JILError p_skip_statement(JCLState* _this)
 {
@@ -11362,7 +11363,7 @@ static JILError p_lambda_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	// if we have no L-Value, fail
 	ERROR_IF(!pLVar, JCL_ERR_Expression_Without_LValue, NULL, goto exit);
 	// if L-type is not a delegate, fail
-	if( pLVar->miType!= type_var && GetClass(_this, pLVar->miType)->miFamily != tf_delegate )
+	if( pLVar->miType != type_var && GetClass(_this, pLVar->miType)->miFamily != tf_delegate )
 		ERROR(JCL_ERR_Incompatible_Type, pAnon, goto exit);
 	// do we need a temp var?
 	if( IsTempVar(pLVar) )

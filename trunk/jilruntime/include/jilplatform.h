@@ -88,7 +88,11 @@
 /// be created on the local file system where this isn't desired.
 
 #ifndef JIL_USE_BINDING_CODEGEN
+#ifdef _DEBUG
 #define JIL_USE_BINDING_CODEGEN	1
+#else
+#define JIL_USE_BINDING_CODEGEN	0
+#endif
 #endif
 
 //------------------------------------------------------------------------------
