@@ -1093,7 +1093,6 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 
-
 ------------------------------------------------------------------------------------------------------------------------
 
 52. Compiler allows unmatching types for accessor functions [FIXED]
@@ -1145,6 +1144,35 @@ JEWELSCRIPT COMPILER ISSUES
 	accessor like a regular method:
 
 	Foo foo = new Foo() { value(20); };
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+55. Delegate expression parsing fails on complex expressions
+
+	The way assignments to delegate variables are treated is different from all other types. This is because
+	the compiler must be able to determine the function signature of the delegate by looking at the L-value's type.
+	
+	When parsing other types, the compiler will first probe the expression type-less, then look at the type of the
+	result, and perform automatic type conversion if the expression's type differs from the L-value's type.
+
+	This is not possible for delegates. If the L-value is a delegate, then the expression must be able to generate code
+	that creates a delegate for the correct function signature. So the compiler cannot assume a type-less result first
+	and perform automatic type conversion afterwards.
+	
+	This leads to the compiler failing if an assignment to a delegate is a complex expression, like a ternary
+	operator, for example:
+	
+	Comparator c = (i == 1) ? (a, b) => a - b : (a, b) => a + b;
+	
+	The above example will not compile, because each expression of the ternary operator is probed type-less and
+	therefore the compiler doesn't know what to make of the lambda expression.
+	
+	A solution would be to change the behaviour of all expression parsing functions. If the L-value is a delegate type,
+	then the expression parsing should not probe type-less, but with the discrete delegate type. This change would
+	require extensive code changes and bloat up the already bloated expression parsing some more. So for now, since this
+	only concerns complex expressions involving delegates, I have decided to leave this open.
 
 
 

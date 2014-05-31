@@ -8021,7 +8021,7 @@ static JILError p_expr_ternary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 		cg_opcode(_this, 0);
 		// get second operand
 		JCLClrTypeInfo( &outType );
-		err = p_expr_or(_this, pLocals, pRetVar, &outType, flags);
+		err = p_expr_ternary(_this, pLocals, pRetVar, &outType, flags);
 		if( err )
 			goto exit;
 		JCLTypeInfoToVar(&outType, pRetVar);
@@ -8042,7 +8042,7 @@ static JILError p_expr_ternary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 		ERROR_IF(tokenID != tk_colon, JCL_ERR_Unexpected_Token, pToken, goto exit);
 		// get third operand
 		JCLClrTypeInfo( &outType );
-		err = p_expr_or(_this, pLocals, pRetVar, &outType, flags);
+		err = p_expr_ternary(_this, pLocals, pRetVar, &outType, flags);
 		if( err )
 			goto exit;
 		JCLTypeInfoToVar(&outType, pRetVar);
