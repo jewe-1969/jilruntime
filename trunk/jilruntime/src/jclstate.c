@@ -246,7 +246,7 @@ static void			DuplicateVar		(JCLVar**, const JCLVar*);
 static void			FreeDuplicate		(JCLVar**);
 static JILBool		IsOperatorToken		(JILLong);
 static JILBool		ClassHasBody		(JCLState*, JILLong);
-static JILError		AddGlobalVar		(JCLState*, JCLVar*);
+static JILError		AddGlobalVar		(JCLState*, const JCLVar*, JCLVar**);
 static JILBool		EqualTypes			(const JCLVar*, const JCLVar*);
 static JILBool		EqualRegisters		(const JCLVar*, const JCLVar*);
 static JILBool		ImpConvertible		(JCLState*, JCLVar*, JCLVar*);
@@ -2862,28 +2862,28 @@ static JILBool ClassHasBody(JCLState* _this, JILLong typeID)
 //------------------------------------------------------------------------------
 // Add a global variable to the global object.
 
-static JILError AddGlobalVar(JCLState* _this, JCLVar* pVar)
+static JILError AddGlobalVar(JCLState* _this, const JCLVar* pVar, JCLVar** ppVarOut)
 {
 	JILError err = JCL_No_Error;
 	JCLVar* pNewVar;
 	JCLClass* pClass;
+	JILLong index;
 
 	err = IsIdentifierUsed(_this, kGlobalVar, type_global, pVar->mipName);
 	if( err )
 		goto exit;
-
 	pClass = GetClass(_this, type_global);
-	if( !pClass )
-		return JCL_ERR_Undefined_Identifier;	// TODO: not really a good error code
 	// check that class is not a native type
 	if( IsClassNative(pClass) )
 		return JCL_ERR_Illegal_NTL_Variable;
-	pVar->miMode = kModeMember;
-	pVar->miIndex = 2;
-	pVar->miMember = pClass->mipVars->Count(pClass->mipVars);
-	pVar->miInited = JILFalse;
+	index = pClass->mipVars->Count(pClass->mipVars);
 	pNewVar = pClass->mipVars->New(pClass->mipVars);
 	pNewVar->Copy(pNewVar, pVar);
+	pNewVar->miMode = kModeMember;
+	pNewVar->miIndex = 2;
+	pNewVar->miMember = index;
+	pNewVar->miInited = JILFalse;
+	*ppVarOut = pNewVar;
 
 exit:
 	return err;
@@ -10658,8 +10658,10 @@ static JILError p_global_decl(JCLState* _this, JCLVar* pVar)
 		MakeFullQualified(_this, pVar->mipName, pVar->mipName);
 		if( _this->miPass == kPassPrecompile )
 		{
-			err = AddGlobalVar(_this, pVar);
+			err = AddGlobalVar(_this, pVar, &pAnyVar);
 			ERROR_IF(err, err, pVar->mipName, goto exit);
+			// pretend variable is initialized (we'll do this in the 2nd pass anyway)
+			pAnyVar->miInited = JILTrue;
 			// peek if we have an assignment
 			err = pFile->PeekToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
@@ -10680,6 +10682,7 @@ static JILError p_global_decl(JCLState* _this, JCLVar* pVar)
 			if( tokenID == tk_assign )
 			{
 				// compile expression and init variable
+				pAnyVar->miInited = JILFalse;
 				err = p_assignment(_this, pLocals, pAnyVar, &outType);
 				if( err )
 					goto exit;
