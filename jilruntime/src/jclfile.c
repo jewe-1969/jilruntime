@@ -467,7 +467,7 @@ static JILError scanStatement_JCLFile(JCLFile* _this, JCLString* outStr)
 //------------------------------------------------------------------------------
 // JCLFile::ScanExpression
 //------------------------------------------------------------------------------
-// Reads an expression into a string. Stops at ,);}
+// Reads an expression into a string. Stops at :,);}
 
 static JILError scanExpression_JCLFile(JCLFile* _this, JCLString* outStr)
 {
@@ -484,14 +484,19 @@ static JILError scanExpression_JCLFile(JCLFile* _this, JCLString* outStr)
 		err = getToken_JCLFile(_this, pToken, &tokenID);
 		if( err )
 			break;
-		if( tokenID == tk_comma && hier == 0 )
-			break;
-		if( tokenID == tk_round_close && hier == 0 )
-			break;
-		if( tokenID == tk_semicolon && hier == 0 )
-			break;
-		if( tokenID == tk_curly_close && hier == 0 )
-			break;
+		if( hier == 0 )
+		{
+			if( tokenID == tk_colon )
+				break;
+			if( tokenID == tk_comma )
+				break;
+			if( tokenID == tk_round_close )
+				break;
+			if( tokenID == tk_semicolon )
+				break;
+			if( tokenID == tk_curly_close )
+				break;
+		}
 		TokenToString(_this, tokenID, pToken, outStr);
 		if( tokenID == tk_curly_open || tokenID == tk_round_open || tokenID == tk_square_open )
 			hier++;
