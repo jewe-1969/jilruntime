@@ -4069,8 +4069,6 @@ JILError p_compile(JCLState* _this, JILLong pass)
 	JILError err = JCL_No_Error;
 	_this->miPass = pass;
 	_this->mipFile->SetLocator(_this->mipFile, 0);
-	_this->mipUseNamespace->Trunc(_this->mipUseNamespace, 0);
-	_this->mipUsing->Trunc(_this->mipUsing, 0);
 	if( pass == kPassCompile )
 	{
 		// mark global class as fully declared
