@@ -379,7 +379,7 @@ void JCLCollapseSpaces(JCLString* _this)
 		JILLong i;
 		JILBool coll;
 		JILByte *read, *write;
-		read = (JILByte*) _this->m_String;
+		read = (JILByte*)_this->m_String;
 		write = read;
 		coll = JILFalse;
 		for( i = 0; i < _this->m_Length; i++ )
@@ -400,7 +400,7 @@ void JCLCollapseSpaces(JCLString* _this)
 			}
 		}
 		*write = 0;
-		_this->m_Length = (JILLong) (write - _this->m_String);
+		_this->m_Length = (JILLong) (write - (JILByte*)_this->m_String);
 	}
 }
 
