@@ -30,7 +30,7 @@
 enum
 { 
 	JIL_Num_Exception_Strings =	50,
-	JCL_Num_Compiler_Codes =	111
+	JCL_Num_Compiler_Codes =	112
 };
 
 //------------------------------------------------------------------------------
@@ -201,6 +201,7 @@ enum
 	JCL_ERR_Character_Value_Too_Large,		// 1286
 	JCL_ERR_Goto_Without_Context,			// 1287
 	JCL_ERR_Function_In_Namespace,			// 1288
+	JCL_ERR_Feature_Not_Available,			// 1289
 
 	// Compiler warnings
 	JCL_Begin_Warnings = 1500,

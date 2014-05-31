@@ -1021,7 +1021,7 @@ static const JILChar* FormatTag(JCLString* pWork, const JCLString* pTag)
 
 JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass)
 {
-	return JCL_No_Error;
+	return JCL_ERR_Feature_Not_Available;
 }
 
 #endif	// #if JIL_USE_BINDING_CODEGEN

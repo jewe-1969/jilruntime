@@ -86,7 +86,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Fatal_Error,				"Fatal error",
 	0,	JCL_ERR_Unused1,					"Unused1",
 	0,	JCL_ERR_Ambiguous_Function_Call,	"Ambiguous function call",
-	0,	JCL_ERR_Native_Code_Generator,		"Error while running native binding code generator",
+	0,	JCL_ERR_Native_Code_Generator,		"Error while running binding code or documentation generator",
 	0,	JCL_ERR_Return_In_Cofunction,		"Cannot use 'return' in cofunction, use 'yield'",
 	0,	JCL_ERR_Yield_Outside_Cofunction,	"Cannot use 'yield' outside of cofunctions",
 	0,	JCL_ERR_Const_Thread_Error,			"Type 'thread' cannot be const",
@@ -117,6 +117,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Character_Value_Too_Large,	"Character value too large in string literal",
 	0,	JCL_ERR_Goto_Without_Context,		"Goto without clause",
 	0,	JCL_ERR_Function_In_Namespace,		"Function in namespace not supported",
+	0,	JCL_ERR_Feature_Not_Available,		"The requested feature is not available",
 
 	// Compiler warnings
 	2,	JCL_WARN_Imp_Conv_From_Var,			"Conversion from typeless to type",
