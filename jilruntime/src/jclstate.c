@@ -4873,7 +4873,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 	}
 	// check for ctor, cctor
-	if( pFunc->miCtor && !pFunc->miExplicit ) // TODO: disallow 'explicit' OK?
+	if( pFunc->miCtor )
 	{
 		if (pFunc->mipArgs->Count(pFunc->mipArgs) == 0 && pClass->miMethodInfo.ctor == -1)
 		{
@@ -4887,7 +4887,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 	}
 	// check for string convertor
-	else if( pFunc->miConvertor && !pFunc->miExplicit ) // TODO: disallow 'explicit' OK?
+	else if( pFunc->miConvertor )
 	{
 		if( pFunc->mipResult->miType == type_string && pClass->miMethodInfo.tostr == -1)
 			pClass->miMethodInfo.tostr = pFunc->miFuncIdx;
