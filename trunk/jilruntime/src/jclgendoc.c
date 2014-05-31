@@ -1038,6 +1038,8 @@ static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFil
 		JCLAppend(pToken, pDecl ? pDecl : JCLGetString(declStruct.pString));
 		JCLAppend(pToken, "\n}\n");
 		JCLEscapeXml(pToken, pToken);
+		// kill any tabulators
+		JCLCollapseSpaces(pToken);
 
 		// insert line feeds into declaration
 		bFirst = JILTrue;
@@ -1064,9 +1066,6 @@ static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFil
 			if( JCLAtEnd(pToken) )
 				break;
 		}
-		JCLReplace(pToken, "\t\t\t", " ");
-		JCLReplace(pToken, "\t\t", " ");
-		JCLReplace(pToken, "\t", " ");
 
 		fprintf(pFile, "<h3>%s</h3>\n", pText);
 		fprintf(pFile, "<table id='table1'>\n<tbody>\n");

@@ -331,7 +331,7 @@ void JCLFill(JCLString* _this, JILLong chr, JILLong size)
 //------------------------------------------------------------------------------
 // JCLTrim
 //------------------------------------------------------------------------------
-// JCLTrim all control characters and space from beginning and end of this string.
+// Trim all control characters and space from beginning and end of this string.
 
 void JCLTrim(JCLString* _this)
 {
@@ -361,6 +361,46 @@ void JCLTrim(JCLString* _this)
 		{
 			JCLSubString(_this, _this, start, end - start);
 		}
+	}
+}
+
+//------------------------------------------------------------------------------
+// JCLCollapseSpaces
+//------------------------------------------------------------------------------
+// Replaces consecutive whitespace characters by a single space.
+// CR and LF will not be treated as whitespace.
+
+static JILBool NoWhiteSpace(JILByte c) { return (c > 32 || c == 0x0d || c == 0x0a); }
+
+void JCLCollapseSpaces(JCLString* _this)
+{
+	if( _this->m_Length )
+	{
+		JILLong i;
+		JILBool coll;
+		JILByte *read, *write;
+		read = (JILByte*) _this->m_String;
+		write = read;
+		coll = JILFalse;
+		for( i = 0; i < _this->m_Length; i++ )
+		{
+			if( NoWhiteSpace(*read) )
+			{
+				*write++ = *read++;
+				coll = JILFalse;
+			}
+			else
+			{
+				if( !coll )
+				{
+					*write++ = ' ';
+					coll = JILTrue;
+				}
+				read++;
+			}
+		}
+		*write = 0;
+		_this->m_Length = (JILLong) (write - _this->m_String);
 	}
 }
 
@@ -572,7 +612,7 @@ exit:
 // checks if the string from the current position begins with the given
 // substring and returns true if so.
 
-JILLong JCLBeginsWith(const JCLString* _this, const JILChar* string)
+JILBool JCLBeginsWith(const JCLString* _this, const JILChar* string)
 {
 	JILLong result = JILFalse;
 	if( _this->m_Locator < _this->m_Length )
