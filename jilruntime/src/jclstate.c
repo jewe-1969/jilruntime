@@ -8906,7 +8906,7 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 
 	// check if class is already imported
 	pNewFile = FindImport(_this, pClassName);
-	if( pNewFile && pNewFile->miPass == _this->miPass )
+	if( pNewFile && pNewFile->miPass >= _this->miPass )
 		goto exit;
 
 	// are we in PreCompile pass?

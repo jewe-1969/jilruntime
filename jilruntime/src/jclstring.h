@@ -58,6 +58,7 @@ JILLong					JCLReplace			(JCLString* _this, const JILChar* search, const JILChar
 void					JCLSubString		(JCLString* _this, const JCLString* source, JILLong index, JILLong length);
 void					JCLFill				(JCLString* _this, JILLong chr, JILLong size);
 void					JCLTrim				(JCLString* _this);
+void					JCLCollapseSpaces	(JCLString* _this);
 void					JCLRandomIdentifier	(JCLString* _this, JILLong length);
 JILLong					JCLFormat			(JCLString* _this, const JILChar* pFormat, ...);
 JILLong					JCLFormatTime		(JCLString* _this, const JILChar* pFormat, time_t time);
@@ -65,7 +66,6 @@ JILLong					JCLFindChar			(const JCLString* _this, JILLong chr, JILLong index);
 JILLong					JCLFindCharReverse	(const JCLString* _this, JILLong chr, JILLong index);
 JILLong					JCLFindString		(const JCLString* _this, const JILChar* src, JILLong index);
 JILLong					JCLReadTextFile		(JCLString* _this, const JILChar* pFile, JILState* pVM);
-JILLong					JCLBeginsWith		(const JCLString* _this, const JILChar* string);
 void					JCLEscapeXml		(JCLString* _this, const JCLString* pString);
 
 //------------------------------------------------------------------------------
@@ -76,6 +76,7 @@ static JILLong			JCLAtEnd			(const JCLString* _this)	{ return (_this->m_Locator 
 static JILLong			JCLGetLocator		(const JCLString* _this)	{ return _this->m_Locator; }
 static JILLong			JCLGetCurrentChar	(const JCLString* _this)	{ return (_this->m_Locator < _this->m_Length) ? (JILByte) _this->m_String[_this->m_Locator] : 0; }
 void					JCLSetLocator		(JCLString* _this, JILLong position);
+JILBool					JCLBeginsWith		(const JCLString* _this, const JILChar* string);
 JILLong					JCLSpanIncluding	(JCLString* _this, const JILChar* charSet, JCLString* result);
 JILLong					JCLSpanExcluding	(JCLString* _this, const JILChar* charSet, JCLString* result);
 JILLong					JCLSpanBetween		(JCLString* _this, JILChar startChr, JILChar endChr, JCLString* result);
