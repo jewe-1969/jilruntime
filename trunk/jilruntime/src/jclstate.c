@@ -284,6 +284,7 @@ static JILError		CreateCofunction	(JCLState*, JCLVar*, Array_JCLVar*, JILLong*);
 static JILError		CreateDelegate		(JCLState*, JCLVar*, Array_JCLVar*, JILLong*);
 static JILError		AddAlias			(JCLState*, JCLString*, JILLong);
 static JILError		GetSignature		(JCLState*, const JILChar*, JCLVar*, Array_JCLVar*, JCLString*);
+static void			AddUniqueTypeID		(Array_JILLong*, JILLong);
 static void			CreateInitState		(SInitState*, JCLState*);
 static void			SaveInitState		(SInitState*);
 static void			RestoreInitState	(const SInitState*);
@@ -911,8 +912,7 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 		JCLAppend(pFullName, "::");
 		JCLAppend(pFullName, JCLGetString(pName));
 		index = FindClass(_this, pFullName, ppClass);
-		if( index )
-			matches->Add(matches, index);
+		AddUniqueTypeID(matches, index);
 		GetParentNamespace(pCurrentNamespace, pCurrentNamespace);
 	}
 	// look in 'using' classes
@@ -924,7 +924,7 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 			pClass = GetClass(_this, index);
 			RemoveParentNamespace(pFullName, pClass->mipName);
 			if( JCLCompare(pFullName, pName) )
-				matches->Add(matches, index);
+				AddUniqueTypeID(matches, index);
 		}
 	}
 	// look in use namespace list
@@ -935,13 +935,11 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 		JCLAppend(pFullName, "::");
 		JCLAppend(pFullName, JCLGetString(pName));
 		index = FindClass(_this, pFullName, ppClass);
-		if( index )
-			matches->Add(matches, index);
+		AddUniqueTypeID(matches, index);
 	}
 	// try to find it directly
 	index = FindClass(_this, pName, ppClass);
-	if( index )
-		matches->Add(matches, index);
+	AddUniqueTypeID(matches, index);
 	// see how many matches we got
 	if( matches->count == 1 )
 	{
@@ -2487,6 +2485,24 @@ exit:
 static JILError AddMemberVar(JCLState* _this, JILLong classIdx, JCLVar* pVar)
 {
 	return AddMemberVarEx(_this, kClassVar, classIdx, pVar);
+}
+
+//------------------------------------------------------------------------------
+// AddUniqueTypeID
+//------------------------------------------------------------------------------
+// Add the type ID to the array if it is not already in the array.
+
+static void AddUniqueTypeID(Array_JILLong* pUsing, JILLong typeID)
+{
+	JILLong i;
+	if( typeID == type_null )
+		return;
+	for( i = 0; i < pUsing->count; i++ )
+	{
+		if( pUsing->array[i] == typeID )
+			return;
+	}
+	pUsing->Add(pUsing, typeID);
 }
 
 //------------------------------------------------------------------------------
@@ -11510,14 +11526,7 @@ static JILError p_using(JCLState* _this)
 		{
 			pToken->Copy(pToken, pClass->mipName);
 			ERROR_IF(pClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pToken, goto exit);
-			// if the given class is not already there, add it to the list
-			for( i = 0; i < pUsing->count; i++ )
-			{
-				if( pUsing->array[i] == pClass->miType )
-					break;
-			}
-			if( i == pUsing->count )
-				pUsing->Set(pUsing, i, pClass->miType);
+			AddUniqueTypeID(pUsing, pClass->miType);
 		}
 		// add to "using namespace" list
 		for( i = 0; i < pNameStack->Count(pNameStack); i++)
