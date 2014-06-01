@@ -303,6 +303,9 @@ static JILError TableCallMember(NTLInstance* pInst, JILLong funcID, JILTable* _t
 			NTLFreeHandle(ps, pDel);
 			break;
 		}
+		case kCleanup:
+			JILTable_Cleanup(_this);
+			break;
 		case kToArray:
 		{
 			JILHandle* pH;
