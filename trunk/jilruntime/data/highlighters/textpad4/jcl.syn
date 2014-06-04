@@ -8,7 +8,7 @@ Namespace1 = 6
 IgnoreCase = No
 KeyWordLength =
 BracketChars = {[()]}
-OperatorChars = -+*/<>!~%^&|=,;
+OperatorChars = -+*/<>!~%^&|=,;?:
 PreprocStart = 
 SyntaxStart =
 SyntaxEnd =
