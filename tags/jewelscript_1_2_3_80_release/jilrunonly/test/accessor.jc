@@ -1,0 +1,203 @@
+/*
+ *  accessor.jc
+ *
+ *  This script discusses the 'accessor' keyword.
+ */
+
+import stdlib;
+using stdlib;
+
+/*
+ *  JewelScript doesn't know the 'public', 'protected' and 'private' keywords
+ *  known from C++ and Java. By default, other classes or global functions have
+ *  full access to any member of an object.
+ *  However, JewelScript supports a quite powerful way of controlling access
+ *  to member variables. Consider this example class, Foo:
+ */
+
+class Foo
+{
+    method Foo()
+    {
+        fooValue = 0;
+    }
+
+    accessor int fooValue()
+    {
+        return fooValue;
+    }
+
+    accessor fooValue( int f )
+    {
+        fooValue = f;
+    }
+
+    int fooValue;
+}
+
+/*
+ *  The accessor keyword declares / defines a special kind of method and can only be
+ *  use for methods that either:
+ *      a) have no argument and a return value, or
+ *      b) have no return value and *ONE* function argument
+ *
+ *  Declaring a method as an accessor will tell the compiler that this function can be
+ *  used AS IF the function name was a member variable, so if we write:
+ */
+
+function test1()
+{
+    Foo f = new Foo();
+
+    f.fooValue = 27;        // will call fooValue( 27 );
+    int x = f.fooValue;     // will call fooValue();
+}
+
+/*
+ *  It is important to understand what really happens, because when looking at the code
+ *  in function test1, you would think this is a normal access to a member variable.
+ *  But it is not, because class Foo defines two accessor methods which have the same name
+ *  as a member variable, and thus _HIDE_ this member variable from the 'outside' of the class.
+ *  From now on, everytime a method of another class or a global function assigns a value to
+ *  'fooValue', the compiler will generate a call to it's accessor method.
+ *  And everytime a method of another class or a global function reads a value from it, the
+ *  compiler will generate a call to the other accessor method.
+ *  Inside these accessor methods, we have full control over how the real fooValue variable
+ *  is written or read, from simple assignment / returning the value, to checking the
+ *  value against limits, to complex operations - anything can be done.
+ *  Note that the compiler will use accessors as soon as you define *ONE* of the two
+ *  accessor methods for a variable, that way we can make "read-only" or even "write-only"
+ *  member variables:
+ */
+
+class FooB
+{
+    method FooB()
+    {
+        fooValue = 0;
+    }
+
+    accessor int fooValue()
+    {
+        return fooValue;
+    }
+
+    int fooValue;
+}
+
+function test2()
+{
+    FooB f = new FooB();
+
+//  f.fooValue = 27;        // will fail, because accessor not defined
+    int x = f.fooValue;    // will call fooValue();
+}
+
+/*
+ *  It is not mandatory for accessor methods to hide a member variable with the same name.
+ *  In fact, you can choose any name for an accessor method, and then use that method like
+ *  you would use a variable.
+ *  That way we can add 'virtual' variables to a class (virtual in terms of "exist only
+ *  in thought", not in terms of inheritance); variables that are not physically present
+ *  in the object:
+ */
+
+class FooC
+{
+    method FooC(const string name)
+    {
+        fooName = name;
+    }
+
+    accessor int length()
+    {
+        return fooName.length;
+    }
+
+    string fooName;
+}
+
+function test3()
+{
+    FooC f = new FooC( "Benjamin" );
+
+    int x = f.length;  // will call length();
+}
+
+/*
+ *  The above example shows a simple class that stores a string that is passed to the object
+ *  in it's constructor. Additionally it defines an accessor method that returns the length
+ *  of the stored string. We can read this value as if 'length' were a member variable of FooC,
+ *  but we cannot write to it.
+ *  Also note that, since accessors are methods, they can be declared in interfaces, in effect
+ *  allowing us to declare 'member variables' as a part of the common interface for inheriting
+ *  classes:
+ */
+
+interface IPerson
+{
+    method          IPerson(const string, int);
+
+    accessor        Name(const string);
+    accessor string Name();
+
+    accessor        Age(int);
+    accessor int    Age();
+}
+
+/*
+ *  All inheriting classes of interface IPerson will have to implement accessor methods for
+ *  'Name' and 'Age', which means you can safely assume any object derived from this
+ *  interface has these two 'member variables' and can assign values to them, or read out
+ *  their values:
+ */
+
+class SimplePerson : IPerson
+{
+    method SimplePerson(const string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+    accessor        Name(const string name)   { Name = name; }
+    accessor string Name()                    { return Name; }
+    accessor        Age(int age)              { Age = age; }
+    accessor int    Age()                     { return Age; }
+
+    string  Name;
+    int     Age;
+}
+
+function test4a(IPerson aPerson)
+{
+    string n = aPerson.Name;
+    int a = aPerson.Age;
+
+    print({"Name: ",n,"\nAge:  ",a,"\n"});
+
+    aPerson.Name = "Peter";
+    aPerson.Age = 27;
+}
+
+function test4()
+{
+    SimplePerson person = new SimplePerson("Benjamin", 39);
+
+    test4a( person );
+    test4a( person );
+}
+
+/*
+ *  function main
+ *
+ *  call'em all.
+ */
+
+function string main(const string[] args)
+{
+    test1();
+    test2();
+    test3();
+    test4();
+    return "";
+}

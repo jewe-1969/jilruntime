@@ -1,0 +1,53 @@
+import stdlib;
+
+namespace std
+{
+    class Outer
+    {
+        class Inner
+        {
+            const string Hello = "Hello World!";
+            string msg;
+            method Inner() { msg = ""; }
+            function Print(Inner i) { stdlib::println(i.msg); }
+        }
+
+        method Outer() // access member class
+        {
+            inner = new Inner();
+            inner.msg = Inner::Hello;
+            Inner::Print(inner);
+        }
+        Inner inner;
+    }
+
+    class No_Using
+    {
+        method No_Using() // access member class without 'using'
+        {
+            inner = new Outer::Inner();
+            inner.msg = Outer::Inner::Hello;
+            Outer::Inner::Print(inner);
+        }
+        Outer::Inner inner;
+    }
+
+    class Using
+    {
+        using std::Outer::Inner; // declare namespace usage
+        method Using() // access member class with 'using'
+        {
+            inner = new Inner();
+            inner.msg = Hello;
+            Print(inner);
+        }
+        Inner inner;
+    }
+}
+
+function string main(const string[] args)
+{
+    std::No_Using n;
+    std::Using u;
+    return null;
+}

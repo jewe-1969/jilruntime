@@ -1,0 +1,82 @@
+/*
+ *  trex2.jc
+ *
+ *  Test and demonstrate the trex (tiny regular expression) native type.
+ */
+
+import stdlib;
+import trex;
+
+using stdlib;   // get rid of stdlib namespace
+
+/* The text for testing Search() */
+
+const string kSearchText =
+    "Trex (Tiny-Regular-EXpression) is a simple, yet powerful regular expression\n"
+    "search algorithm, developed by Alberto Demichelis. The cool thing about regular\n"
+    "expressions is that you can extract or convert whole text files with one\n"
+    "search expression, saving you hours of painful work, if you had to do the\n"
+    "same by hand!";
+
+function string main(const string[] args)
+{
+    /*
+     *  test search()
+     */
+    print("* search() test: Find all words that begin with a small 'a' or capital 'T' and return them in an array. Source text is:\n");
+    print("\n\"" + kSearchText + "\"\n\n");
+    print("* Creating regular expression object aWords with \"[^a-zA-Z](a|T)([a-zA-Z]+)\"\n");
+    trex aWords = /"[^a-zA-Z](a|T)([a-zA-Z]+)"/;
+    if( aWords.valid )
+        print("The regular expression is valid.\n");
+    else
+        print("There seems to be an error in the regular expression. It is invalid.\n");
+    string[] result = aWords.search( kSearchText, "$1-$2" );
+    print("* Listing resulting string array: (We insert a dash after the first character)\n");
+    for( int i = 0; i < result.length; i++ )
+        printf("result[%2d] = \"%s\"\n", {i, result[i]});
+    print("* Done\n\n");
+    /*
+     *  test search() with delegate
+     */
+    print("* search() test: Find all words that begin with a capital letter and call delegate:\n");
+    print("* Creating regular expression object bWords with \"[A-Z][a-zA-Z]*\"\n");
+    trex bWords = /"[A-Z][a-zA-Z]*"/;
+    if( bWords.valid )
+        print("The regular expression is valid.\n");
+    else
+        print("There seems to be an error in the regular expression. It is invalid.\n");
+    print("* Executing search:\n");
+    bWords.search(kSearchText, function { print("Delegate called for match: " + regex.getSubMatch(0) + "\n"); });
+    print("* Done\n\n");
+    /*
+     *  test slice()
+     */
+    print("* slice() test: Slice the text into strings and put them into an array.\n");
+    print(/"* Creating regular expression object aDelimiters with "[ ,!\t\n\-\.\(\)]+""/ "\n");
+    trex aDelimiters = /"[ ,!\t\n\-\.\(\)]+"/;
+    if( aDelimiters.valid )
+        print("The regular expression is valid.\n");
+    else
+        print("There seems to be an error in the regular expression. It is invalid.\n");
+    string[] slices = aDelimiters.slice( kSearchText );
+    print("* Listing resulting string array:\n");
+    for( int j = 0; j < slices.length; j++ )
+        printf("slices[%2d] = \"%s\"\n", {j, slices[j]});
+    print("* Done\n\n");
+    /*
+     *  test replace()
+     */
+    print("* replace() test: Encapsulate all words in curly braces.\n");
+    print("* Creating regular expression object allWords with \"([^a-zA-Z]?)([a-zA-Z]+)\"\n");
+    trex allWords = /"([^a-zA-Z]?)([a-zA-Z]+)"/;
+    if( allWords.valid )
+        print("The regular expression is valid.\n");
+    else
+        print("There seems to be an error in the regular expression. It is invalid.\n");
+    string replaced = allWords.replace( kSearchText, "$1{$2}" );
+    print("* Result of Replace():\n\n");
+    print( replaced );
+
+    return "";
+}
