@@ -84,8 +84,7 @@ static const JILLong kFirstVarRegister	= 3;	// first three regs are reserved!
 // saved than this number, PUSHR and POPR will be used.
 // Starting with library version 0.7.1.66, using PUSHR / POPR is reasonably faster
 // than using single pushes, so this value should be kept low.
-// Extensive performance tests on my P4 / 2.4 GHz proved the below settings to
-// be the optimum.
+// Extensive performance tests proved the below settings to be the optimum.
 
 static const JILLong kPushRegisterThreshold = 1;
 static const JILLong kPushMultiThreshold = 1;
@@ -97,7 +96,9 @@ static const JILLong kPushMultiThreshold = 1;
 static const JILLong kSimStackSize = 1024;		// number of locations on simulated stack
 static const JILLong kFileBufferSize = 1024;	// used by p_import()
 
-const JILChar* kNameGlobalNameSpace = "__global";
+const JILChar* kNameGlobalNamespace = "global";
+const JILChar* kNameGlobalScope = "global::";
+const JILChar* kNameGlobalClass = "__global";
 const JILChar* kNameGlobalInitFunction = "__init";
 const JILChar* kNameAnonymousFunction = "__anonymous_function_%x";
 
@@ -898,75 +899,91 @@ JILLong FindClass( JCLState* _this, const JCLString* pName, JCLClass** ppClass )
 
 static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass** ppClass)
 {
-	JILLong index = 0;
-	JILLong i;
-	JCLClass* pClass;
-	JCLString* pFullName = NEW(JCLString);
-	JCLString* pCurrentNamespace = NEW(JCLString);
-	Array_JILLong* matches = NEW(Array_JILLong);
-	// look in parent namespaces
-	pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
-	while( JCLGetLength(pCurrentNamespace) )
+	// test for "std::"
+	if( JCLBeginsWith(pName, kNameGlobalScope) )
 	{
-		JCLSetString(pFullName, JCLGetString(pCurrentNamespace));
-		JCLAppend(pFullName, "::");
-		JCLAppend(pFullName, JCLGetString(pName));
-		index = FindClass(_this, pFullName, ppClass);
-		AddUniqueTypeID(matches, index);
-		GetParentNamespace(pCurrentNamespace, pCurrentNamespace);
-	}
-	// look in 'using' classes
-	if( !PartiallyQualified(pName) )
-	{
-		for( i = 0; i < _this->mipUsing->count; i++ )
-		{
-			index = _this->mipUsing->Get(_this->mipUsing, i);
-			pClass = GetClass(_this, index);
-			RemoveParentNamespace(pFullName, pClass->mipName);
-			if( JCLCompare(pFullName, pName) )
-				AddUniqueTypeID(matches, index);
-		}
-	}
-	// look in use namespace list
-	for( i = 0; i < _this->mipUseNamespace->Count(_this->mipUseNamespace); i++ )
-	{
-		JCLString* str = _this->mipUseNamespace->Get(_this->mipUseNamespace, i);
-		JCLSetString(pFullName, JCLGetString(str));
-		JCLAppend(pFullName, "::");
-		JCLAppend(pFullName, JCLGetString(pName));
-		index = FindClass(_this, pFullName, ppClass);
-		AddUniqueTypeID(matches, index);
-	}
-	// try to find it directly
-	index = FindClass(_this, pName, ppClass);
-	AddUniqueTypeID(matches, index);
-	// see how many matches we got
-	if( matches->count == 1 )
-	{
-		index = matches->Get(matches, 0);
-		*ppClass = GetClass(_this, index);
-	}
-	else if( matches->count )
-	{
-		JILLong i;
-		JCLClass* pc;
-		for( i = 0; i < matches->count; i++ )
-		{
-			pc = GetClass(_this, matches->Get(matches, i));
-			EmitWarning(_this, pc->mipName, JCL_WARN_Ambiguous_Type_Name);
-		}
-		index = matches->Get(matches, 0);
-		*ppClass = GetClass(_this, index);
+		// absolute qualifier
+		JILLong index;
+		JCLString* newName = NEW(JCLString);
+		newName->Copy(newName, pName);
+		JCLReplace(newName, kNameGlobalScope, "");
+		index = FindClass(_this, newName, ppClass);
+		DELETE(newName);
+		return index;
 	}
 	else
 	{
-		index = 0;
-		*ppClass = NULL;
+		// partial qualifier
+		JILLong index = 0;
+		JILLong i;
+		JCLClass* pClass;
+		JCLString* pFullName = NEW(JCLString);
+		JCLString* pCurrentNamespace = NEW(JCLString);
+		Array_JILLong* matches = NEW(Array_JILLong);
+		// look in parent namespaces
+		pCurrentNamespace->Copy(pCurrentNamespace, GetCurrentNamespace(_this));
+		while( JCLGetLength(pCurrentNamespace) )
+		{
+			JCLSetString(pFullName, JCLGetString(pCurrentNamespace));
+			JCLAppend(pFullName, "::");
+			JCLAppend(pFullName, JCLGetString(pName));
+			index = FindClass(_this, pFullName, ppClass);
+			AddUniqueTypeID(matches, index);
+			GetParentNamespace(pCurrentNamespace, pCurrentNamespace);
+		}
+		// look in 'using' classes
+		if( !PartiallyQualified(pName) )
+		{
+			for( i = 0; i < _this->mipUsing->count; i++ )
+			{
+				index = _this->mipUsing->Get(_this->mipUsing, i);
+				pClass = GetClass(_this, index);
+				RemoveParentNamespace(pFullName, pClass->mipName);
+				if( JCLCompare(pFullName, pName) )
+					AddUniqueTypeID(matches, index);
+			}
+		}
+		// look in use namespace list
+		for( i = 0; i < _this->mipUseNamespace->Count(_this->mipUseNamespace); i++ )
+		{
+			JCLString* str = _this->mipUseNamespace->Get(_this->mipUseNamespace, i);
+			JCLSetString(pFullName, JCLGetString(str));
+			JCLAppend(pFullName, "::");
+			JCLAppend(pFullName, JCLGetString(pName));
+			index = FindClass(_this, pFullName, ppClass);
+			AddUniqueTypeID(matches, index);
+		}
+		// try to find it directly
+		index = FindClass(_this, pName, ppClass);
+		AddUniqueTypeID(matches, index);
+		// see how many matches we got
+		if( matches->count == 1 )
+		{
+			index = matches->Get(matches, 0);
+			*ppClass = GetClass(_this, index);
+		}
+		else if( matches->count )
+		{
+			JILLong i;
+			JCLClass* pc;
+			for( i = 0; i < matches->count; i++ )
+			{
+				pc = GetClass(_this, matches->Get(matches, i));
+				EmitWarning(_this, pc->mipName, JCL_WARN_Ambiguous_Type_Name);
+			}
+			index = matches->Get(matches, 0);
+			*ppClass = GetClass(_this, index);
+		}
+		else
+		{
+			index = 0;
+			*ppClass = NULL;
+		}
+		DELETE(matches);
+		DELETE(pFullName);
+		DELETE(pCurrentNamespace);
+		return index;
 	}
-	DELETE(matches);
-	DELETE(pFullName);
-	DELETE(pCurrentNamespace);
-	return index;
 }
 
 //------------------------------------------------------------------------------
@@ -3490,19 +3507,17 @@ void RemoveParentNamespace(JCLString* pResult, const JCLString* pIdentifier)
 
 void RemoveClassNamespace(JCLString* prototype, JCLClass* pClass)
 {
-	JCLString* classNS = NEW(JCLString);
-	JCLString* parentNS = NEW(JCLString);
-	classNS->Copy(classNS, pClass->mipName);
-	JCLAppend(classNS, "::");
-	JCLReplace(prototype, JCLGetString(classNS), "");
-	GetParentNamespace(parentNS, pClass->mipName);
-	if( JCLGetLength(parentNS) )
+	JCLString* str = NEW(JCLString);
+	str->Copy(str, pClass->mipName);
+	JCLAppend(str, "::");
+	JCLReplace(prototype, JCLGetString(str), "");
+	GetParentNamespace(str, pClass->mipName);
+	if( JCLGetLength(str) )
 	{
-		JCLAppend(parentNS, "::");
-		JCLReplace(prototype, JCLGetString(parentNS), "");
+		JCLAppend(str, "::");
+		JCLReplace(prototype, JCLGetString(str), "");
 	}
-	DELETE(classNS);
-	DELETE(parentNS);
+	DELETE(str);
 }
 
 //------------------------------------------------------------------------------
@@ -6354,7 +6369,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 				// handle leading ::
 				err = p_partial_identifier(_this, pToken);
 				ERROR_IF(err, err, pToken, goto exit);
-				JCLSetString(pToken2, kNameGlobalNameSpace);
+				JCLSetString(pToken2, kNameGlobalClass);
 				JCLAppend(pToken2, "::");
 				JCLInsert(pToken, pToken2, 0);
 			}
@@ -12605,6 +12620,14 @@ static JILError p_partial_identifier(JCLState* _this, JCLString* pIdentifier)
 	}
 	while( tokenID == tk_scope );
 	pFile->SetLocator(pFile, savePos);
+
+	// disallow "global" in identifier
+	JCLSetString(pToken, "::");
+	JCLAppend(pToken, kNameGlobalNamespace);
+	if( JCLFindString(pIdentifier, JCLGetString(pToken), 0) >= 0 )
+		err = JCL_ERR_Global_In_Identifier;
+	else if( JCLEquals(pIdentifier, kNameGlobalNamespace) )
+		err = JCL_ERR_Global_In_Identifier;
 
 exit:
 	DELETE( pToken );

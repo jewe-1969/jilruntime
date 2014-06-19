@@ -53,7 +53,7 @@ static const JILLong kTypeAllocGrain		= 16;		// native types
 
 JILEXTERN JILLong g_NewCalls;
 JILEXTERN JILLong g_DeleteCalls;
-JILEXTERN const JILChar* kNameGlobalNameSpace;
+JILEXTERN const JILChar* kNameGlobalClass;
 JILEXTERN const JILExceptionInfo JILExceptionStrings[JIL_Num_Exception_Strings];
 JILEXTERN JILError JILInitializeCompiler(JILState*, const JILChar*);
 JILEXTERN JILError JCLFreeCompiler(JILState*);
@@ -263,7 +263,7 @@ JILHandle* JILGetFunction(JILState* pState, JILHandle* pObj, const JILChar* pCla
 	else	// global function
 	{
 		if( pClass == NULL )
-			pClass = kNameGlobalNameSpace;
+			pClass = kNameGlobalClass;
 		// get the class
 		JILFindTypeInfo(pState, pClass, &pTypeInfo);
 		if( !pTypeInfo || pTypeInfo->family != tf_class )

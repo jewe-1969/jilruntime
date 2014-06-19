@@ -84,7 +84,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Member_Protected,			"No suitable accessor defined",
 	0,	JCL_ERR_Function_Redefined,			"Function redefined, different function types",
 	0,	JCL_ERR_Fatal_Error,				"Fatal error",
-	0,	JCL_ERR_Unused1,					"Unused1",
+	0,	JCL_ERR_Global_In_Identifier,		"Illegal use of 'global' in identifier",
 	0,	JCL_ERR_Ambiguous_Function_Call,	"Ambiguous function call",
 	0,	JCL_ERR_Native_Code_Generator,		"Error while running binding code or documentation generator",
 	0,	JCL_ERR_Return_In_Cofunction,		"Cannot use 'return' in cofunction, use 'yield'",
