@@ -98,7 +98,7 @@ static const JILLong kFileBufferSize = 1024;	// used by p_import()
 
 const JILChar* kNameGlobalNamespace = "global";
 const JILChar* kNameGlobalScope = "global::";
-const JILChar* kNameGlobalClass = "__global";
+const JILChar* kNameGlobalClass = "global";
 const JILChar* kNameGlobalInitFunction = "__init";
 const JILChar* kNameAnonymousFunction = "__anonymous_function_%x";
 
@@ -6361,24 +6361,11 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			}
 			break;
 		}
-		case tk_scope:
 		case tk_identifier:
 		{
-			if( tokenID == tk_scope )
-			{
-				// handle leading ::
-				err = p_partial_identifier(_this, pToken);
-				ERROR_IF(err, err, pToken, goto exit);
-				JCLSetString(pToken2, kNameGlobalClass);
-				JCLAppend(pToken2, "::");
-				JCLInsert(pToken, pToken2, 0);
-			}
-			else
-			{
-				pFile->SetLocator(pFile, savePos);
-				err = p_partial_identifier(_this, pToken);
-				ERROR_IF(err, err, pToken, goto exit);
-			}
+			pFile->SetLocator(pFile, savePos);
+			err = p_partial_identifier(_this, pToken);
+			ERROR_IF(err, err, pToken, goto exit);
 			if( PartiallyQualified(pToken) )
 			{
 				// static function call

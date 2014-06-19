@@ -72,6 +72,8 @@ const JILLong kInterfaceExceptionGetMessage = 1;	// method index of the getMessa
 
 static const JILLong kFileBufferSize = 1024;	// used by JCLLoadAndCompile()
 
+JILEXTERN const JILChar* kNameGlobalClass;
+
 //------------------------------------------------------------------------------
 // static functions
 //------------------------------------------------------------------------------
@@ -840,7 +842,7 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 	err = JCLCreateType(_this, "float", 0, tf_integral, JILFalse, &type);
 	if( err )
 		goto error;
-	err = JCLCreateType(_this, "__global", 0, tf_class, JILFalse, &type);
+	err = JCLCreateType(_this, kNameGlobalClass, 0, tf_class, JILFalse, &type);
 	if( err )
 		goto error;
 
