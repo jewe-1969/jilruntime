@@ -7,6 +7,17 @@ import stdlib;
 
 using runtime, stdlib;
 
+class MyException : global::exception
+{
+    method MyException()                { _e = typeof(this); _m = ""; }
+    method MyException(int e)           { _e = e; _m = ""; }
+    method MyException(const string m)  { _e = typeof(this); _m = m; }
+    method int getError()               { return _e; }
+    method string getMessage()          { return _m; }
+    int _e;
+    string _m;
+}
+
 function string main(const string[] args)
 {
     int e = getTypeID("MyException");
@@ -18,10 +29,10 @@ function string main(const string[] args)
     printf("JewelScript compiler version:  %s\n", compilerVersion());
     printf("JewelScript type interface:    %s\n", typeInterfaceVersion());
     print("\n");
-    printf("Is DEBUG build:                %s\n", yesNo(debugBuild()));
-    printf("Is RELEASE build:              %s\n", yesNo(releaseBuild()));
-    printf("Supports TRACE exception:      %s\n", yesNo(traceException()));
-    printf("Extended runtime checks:       %s\n", yesNo(runtimeChecks()));
+    printf("Is DEBUG build:                %s\n", debugBuild() ? "YES" : "NO");
+    printf("Is RELEASE build:              %s\n", releaseBuild() ? "YES" : "NO");
+    printf("Supports TRACE exception:      %s\n", traceException() ? "YES" : "NO");
+    printf("Extended runtime checks:       %s\n", runtimeChecks() ? "YES" : "NO");
     print("\n");
     printf("Stack-size used:               %d\n", stackSize());
     printf("Current instruction counter:   %d\n", instructionCounter());
@@ -30,7 +41,7 @@ function string main(const string[] args)
     printf("Get type family of '%d':       %d\n", {e, getTypeFamily(e)});
     printf("Get base type of '%d':         %s\n", {e, getTypeName(getBaseType(e))});
     printf("Get type ID of 'table':        %d\n", t);
-    printf("Is 'table' native type?        %s\n", yesNo(isTypeNative(t)));
+    printf("Is 'table' native type?        %s\n", isTypeNative(t) ? "YES" : "NO");
     printf("Get 'table' version            %s\n", getTypeVersion(t));
     printf("Get 'table' author             %s\n", getTypeAuthor(t));
     printf("Get 'table' description:       %s\n", getTypeDescription(t));
@@ -40,23 +51,4 @@ function string main(const string[] args)
     printf("Instruction counter now at:    %d\n", instructionCounter());
     print("\n");
     return null;
-}
-
-function string yesNo(bool flag)
-{
-    if( flag )
-        return "YES";
-    else
-        return "NO";
-}
-
-class MyException : exception
-{
-    method MyException()                { _e = typeof(this); _m = ""; }
-    method MyException(int e)           { _e = e; _m = ""; }
-    method MyException(const string m)  { _e = typeof(this); _m = m; }
-    method int getError()               { return _e; }
-    method string getMessage()          { return _m; }
-    int _e;
-    string _m;
 }

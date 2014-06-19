@@ -168,7 +168,7 @@ enum
 	JCL_ERR_Member_Protected,				// 1253
 	JCL_ERR_Function_Redefined,				// 1254
 	JCL_ERR_Fatal_Error,					// 1255
-	JCL_ERR_Unused1,						// 1256 (unused)
+	JCL_ERR_Global_In_Identifier,			// 1256
 	JCL_ERR_Ambiguous_Function_Call,		// 1257
 	JCL_ERR_Native_Code_Generator,			// 1258
 	JCL_ERR_Return_In_Cofunction,			// 1259
