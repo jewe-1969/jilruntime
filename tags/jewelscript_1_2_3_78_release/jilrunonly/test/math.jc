@@ -1,0 +1,79 @@
+/*
+ *  math.jc
+ *
+ *  This file demonstrates all the mathematical functions
+ *  defined in the 'math' native type library.
+ */
+
+import stdlib;
+import math;
+
+using stdlib;   // get rid of stdlib namespace
+using math;     // get rid of math namespace
+
+/*
+ *  function main()
+ *
+ *  our main entry point function
+ */
+
+function string main( const string[] args )
+{
+    float f = 0.333;
+
+    if( args.length == 1 )
+        printf( "No value specified, using %g\n", f );
+    else
+        f = (float) args[1];
+
+    test( "abs", f, abs(f) );
+    test( "acos", f, acos(f) );
+    test( "asin", f, asin(f) );
+    test( "atan", f, atan(f) );
+    test( "atan2", f, 2, atan2(f, 2) );
+    test( "cos", f, cos(f) );
+    test( "cosh", f, cosh(f) );
+    test( "exp", f, exp(f) );
+    test( "fabs", f, fabs(f) );
+    test( "log", f, log(f) );
+    test( "log10", f, log10(f) );
+    test( "pow", f, 2, pow(f, 2) );
+    test( "sin", f, sin(f) );
+    test( "sinh", f, sinh(f) );
+    test( "tan", f, tan(f) );
+    test( "tanh", f, tanh(f) );
+    test( "sqrt", f, sqrt(f) );
+    test( "ceil", f, ceil(f) );
+    test( "floor", f, floor(f) );
+    test( "integer", f, integer(f) );
+    test( "frac", f, frac(f) );
+    test( "sgn", f, sgn(f) );
+    test( "min", f, 2, min(f, 2) );
+    test( "max", f, 2, max(f, 2) );
+    test( "fmin", f, 2, fmin(f, 2) );
+    test( "fmax", f, 2, fmax(f, 2) );
+    test( "random", random() );
+    test( "whiteNoise", whiteNoise() );
+    test( "gaussianNoise", gaussianNoise() );
+
+    return "";
+}
+
+/*
+ *  function test()
+ */
+
+function test( const string s, float r )
+{
+    printf( "%s() = %g\n", {s, r} );
+}
+
+function test( const string s, float f, float r )
+{
+    printf( "%s(%g) = %g\n", {s, f, r} );
+}
+
+function test( const string s, float f, float g, float r )
+{
+    printf( "%s(%g, %g) = %g\n", {s, f, g, r} );
+}

@@ -1,0 +1,76 @@
+/*
+ *  typeof.jc
+ *
+ *  In this file we test the typeof operator, which allows us to determine the
+ *  actual type of a variable or expression during compile time, as well as during run time.
+ *  This is especially helpful when using the typeless var type.
+ */
+
+/*
+ *  Forward declarations and imports
+ */
+
+import stdlib;
+import file;
+
+using stdlib;   // get rid of stdlib namespace
+
+/*
+ *  function main
+ */
+
+function string main(const string[] args)
+{
+    var c = new file();                 // allocate a file object and assign it to a typeless var
+    var d = new Foo();                  // allocate a Foo and assign it to another var
+
+    PrintType( "null", null );
+    PrintType( "27", 27 );
+    PrintType( "27.5", 27.5 );
+    PrintType( "\"hello\"", "hello" );
+    PrintType( "{1, 1}", {1, 1} );
+    PrintType( "c", c );
+    PrintType( "d", d );
+
+    return "";
+}
+
+/*
+ *  function PrintType
+ */
+
+function PrintType( string name, const var t )
+{
+    switch( typeof(t) )
+    {
+        case typeof(null):
+            print("argument '" + name + "' is of type 'null'\n" );
+            break;
+        case typeof(int):
+            print("argument '" + name + "' is of type 'int'\n" );
+            break;
+        case typeof(float):
+            print("argument '" + name + "' is of type 'float'\n" );
+            break;
+        case typeof(string):
+            print("argument '" + name + "' is of type 'string'\n" );
+            break;
+        case typeof(array):
+            print("argument '" + name + "' is of type 'array'\n" );
+            break;
+        case typeof(file):
+            print("argument '" + name + "' is of type 'file'\n" );
+            break;
+        case typeof(Foo):
+            print("argument '" + name + "' is of type 'Foo'\n" );
+            break;
+    }
+}
+
+/*
+ *  class Foo
+ *
+ *  For testing classes, we create a little useless Foo class
+ */
+
+class Foo { method Foo(){} }
