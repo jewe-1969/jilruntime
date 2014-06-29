@@ -79,11 +79,11 @@ static const JILChar* kClassDeclaration =
 	"method				swap(const int index1, const int index2);" TAG("Exchanges the positions of the specified elements in the array.")
 	"method string		format(const string format);" TAG("Formats this array into a string. The format string must contain ANSI format identifiers. Every subsequent identifier in the format string is associated with the next array element. This only works with one dimensional arrays.")
 	"method string		toString();" TAG("Recursively converts all convertible elements of this array into a string. This method can be slow for very complex multi-dimensional arrays.")
-	"method array		process(processor fn, var args);" TAG("Calls a delegate for every element in this array. The delegate may process the element and return it. It may also return null. The function will concatenate all non-null results of the delegate into a new array.")
-	"method				enumerate(enumerator fn, var args);" TAG("Calls a delegate for every element in this array.")
+	"method array		process(processor fn, var args);" TAG("Calls a delegate for every element in this array. The delegate may process the element and return it. It may also return null. The function will concatenate all non-null results of the delegate into a new array. If the array is multi-dimensional, this creates a multi-dimensional result. The delegate is not called for elements that are null-references.")
+	"method				enumerate(enumerator fn, var args);" TAG("Calls a delegate function for every element in this array. The delegate can read or modify each element that is passed to it. If the given array is multi-dimensional, this function recursively processes all elements. The delegate is not called for elements that contain null-references.")
 	"method				push(var item);" TAG("Adds the specified item to the end of this array. This actually modifies the array and allows to use it like a stack.")
 	"method	var			pop();" TAG("Removes the top level element from this array and returns it. If the array is currently empty, null is returned. This actually modifies the array and allows to use it like a stack.")
-	"method	array		sort(comparator fn);" TAG("Sorts this array's elements depending on the specified comparator delegate.")
+	"method	array		sort(comparator fn);" TAG("Sorts this array's elements according to the specified comparator delegate.")
 	"method int			indexOf(var item, const int index);" TAG("Searches 'item' in a one-dimensional array and returns the index of the first occurrence. The search starts at the given 'index' position. Integers, floats and strings will be compared by value, all other types will be compared by reference. If no element is found, -1 is returned.")
 ;
 
@@ -913,7 +913,8 @@ JILString* JILArray_ToString(JILArray* _this)
 /// array from the results of the delegate calls. If the result of the delegate
 /// is not null, it is placed in the destination array.
 /// If the given array is multi-dimensional, this function recursively processes
-/// all elements and creates a multi-dimensional destination array.
+/// all elements and creates a multi-dimensional destination array. The
+/// delegate is not called for elements that contain null-references.
 
 JILError JILArray_Process(const JILArray* _this, JILHandle* pDelegate, JILHandle* pArgs, JILArray** ppNew)
 {
@@ -926,7 +927,7 @@ JILError JILArray_Process(const JILArray* _this, JILHandle* pDelegate, JILHandle
 	pNewArr = JILArray_New(ps);
 	for( i = 0; i < _this->size; i++ )
 	{
-		if(_this->ppHandles[i]->type == type_array)
+		if( _this->ppHandles[i]->type == type_array )
 		{
 			JILArray* pSubArray;
 			JILHandleArray* pH = JILGetArrayHandle(_this->ppHandles[i]);
@@ -937,7 +938,7 @@ JILError JILArray_Process(const JILArray* _this, JILHandle* pDelegate, JILHandle
 			JILArray_ArrMove(pNewArr, pResult);
 			NTLFreeHandle(ps, pResult);
 		}
-		else
+		else if( _this->ppHandles[i]->type != type_null )
 		{
 			pResult = JILCallFunction(ps, pDelegate, 2, kArgHandle, _this->ppHandles[i], kArgHandle, pArgs);
 			result = NTLHandleToError(ps, pResult);
@@ -964,8 +965,9 @@ error:
 // JILArray_Enumerate
 //------------------------------------------------------------------------------
 /// Calls a delegate function for every element in this array. The delegate can
-/// read or modify each element as it is passed to it. If the given array is
-/// multi-dimensional, this function recursively processes all elements.
+/// read or modify each element that is passed to it. If the given array is
+/// multi-dimensional, this function recursively processes all elements. The
+/// delegate is not called for elements that contain null-references.
 
 JILError JILArray_Enumerate(JILArray* _this, JILHandle* pDelegate, JILHandle* pArgs)
 {
@@ -975,12 +977,12 @@ JILError JILArray_Enumerate(JILArray* _this, JILHandle* pDelegate, JILHandle* pA
 
 	for( i = 0; i < _this->size; i++ )
 	{
-		if(_this->ppHandles[i]->type == type_array)
+		if( _this->ppHandles[i]->type == type_array )
 		{
 			JILHandleArray* pH = JILGetArrayHandle(_this->ppHandles[i]);
 			JILArray_Enumerate(pH->arr, pDelegate, pArgs);
 		}
-		else
+		else if( _this->ppHandles[i]->type != type_null )
 		{
 			JILHandle* pResult = JILCallFunction(ps, pDelegate, 2, kArgHandle, _this->ppHandles[i], kArgHandle, pArgs);
 			err = NTLHandleToError(ps, pResult);
