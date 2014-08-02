@@ -832,6 +832,7 @@ JILString* JILArray_Format(JILArray* _this, JILString* pFormat)
 	JILString* pOutStr;
 	JILString* pTmpStr;
 	JILString* pFmtStr;
+	JILHandle* pValue;
 
 	pOutStr = JILString_New(_this->pState);
 	pTmpStr = JILString_New(_this->pState);
@@ -843,7 +844,7 @@ JILString* JILArray_Format(JILArray* _this, JILString* pFormat)
 	{
 		// search for a % character in format string
 		pos = JILString_FindChar(pFormat, '%', start);
-		if( pos < 0 || index >= _this->size )
+		if( pos < 0 )
 		{
 			// no more formats, literally copy rest of format string
 			JILString_SubStr(pTmpStr, pFormat, start, len - start);
@@ -872,7 +873,8 @@ JILString* JILArray_Format(JILArray* _this, JILString* pFormat)
 				// isolate the format specification
 				JILString_SubStr(pFmtStr, pFormat, pos, l + 1);
 				// write handle data formatted to string
-				JILArrayHandleToStringF(_this->pState, pTmpStr, pFmtStr, _this->ppHandles[index++]);
+				pValue = (index >= _this->size) ? JILGetNullHandle(_this->pState) : _this->ppHandles[index++];
+				JILArrayHandleToStringF(_this->pState, pTmpStr, pFmtStr, pValue);
 				JILString_Append(pOutStr, pTmpStr);
 			}
 			start = pos + l + 1;
