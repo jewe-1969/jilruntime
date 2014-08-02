@@ -380,7 +380,17 @@ const JILChar* NTLHandleToString(JILState* pState, JILHandle* handle)
 JILHandle* NTLConvertToString(JILState* pState, JILHandle* handle)
 {
 	JILHandle* hStr = NULL;
-	if( handle != NULL )
+	if( handle == NULL || handle->type == type_null )
+	{
+		// if user code calls this with null-reference, they explicitly wish to retrieve string "null"
+		JILTypeInfo* pti = JILTypeInfoFromType(pState, type_null);
+		JILString* pString = JILString_New(pState);
+		JILString_Assign(pString, JILCStrGetString(pState, pti->offsetName));
+		hStr = JILGetNewHandle(pState);
+		hStr->type = type_string;
+		JILGetStringHandle(hStr)->str = pString;
+	}
+	else
 	{
 		if( JILDynamicConvert(pState, type_string, handle, &hStr) != JIL_No_Exception )
 		{
