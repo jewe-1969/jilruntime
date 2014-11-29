@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: main.c                                                (c) 2012 jewe.org
+// File: main.c                                                (c) 2014 jewe.org
 //------------------------------------------------------------------------------
 //
 // JILRUNONLY LICENSE AGREEMENT
@@ -9,7 +9,7 @@
 // differ from this license text, then this text shall
 // prevail.
 //
-// Copyright (c) 2005-2011 jewe.org
+// Copyright (c) 2005-2014 jewe.org
 //
 // This software is provided 'as-is', without any express
 // or implied warranty. In no event will the authors be
@@ -54,10 +54,10 @@
 //  will need to set up a project for these files. The output type for the
 //	project should be an executable for the OS'es native console.
 //  Required include pathes for this project are:
-//      "../externals/jilruntime/include"
-//      "../externals/jilruntime/src"
-//		"../externals/ansi"
-//		"../externals/trex"
+//      "../../jilruntime/include"
+//      "../../jilruntime/src"
+//		"../contrib/native/ansi"
+//		"../contrib/native/trex"
 //
 //------------------------------------------------------------------------------
 
@@ -90,7 +90,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.3.1.64"
+#define	VERSION		"0.3.1.65"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
@@ -201,7 +201,7 @@ int main(int nArgs, char* ppArgList[])
 	// we need at least 1 parameter
 	if( nArgs < 2 )
 	{
-		printf(	kUsageString );
+		fprintf(stdout, "%s", kUsageString);
 		return 0;
 	}
 	// check for options
@@ -255,7 +255,7 @@ int main(int nArgs, char* ppArgList[])
 			bExit = 1;
 		else
 		{
-			printf(	kUsageString );
+			fprintf(stdout, "%s", kUsageString);
 			return 0;
 		}
 		if( ++nFile == nArgs ) break;
@@ -481,7 +481,7 @@ cleanup:
 
 static void CBOutputLogMessage(JILState* pMachine, const char* pString)
 {
-	fprintf(stdout, pString);
+	fprintf(stdout, "%s", pString);
 }
 
 //------------------------------------------------------------------------------
@@ -500,15 +500,15 @@ static void CBBreakException(JILState* pState)
 {
 	char str[128];
 
-	printf( "\nJIL BREAK EXCEPTION AT %d: %d %s\n",
+	fprintf(stdout, "\nJIL BREAK EXCEPTION AT %d: %d %s\n",
 		pState->errProgramCounter,
 		pState->errException,
 		JILGetExceptionString(pState, pState->errException)
 		);
 
 	JILListInstruction( pState, pState->errProgramCounter, str, 128, 1 );
-	printf( "%s\n", str );
-	printf( "\nContinue execution? (Y/N) " );
+	fprintf(stdout, "%s\n", str);
+	fprintf(stdout, "\nContinue execution? (Y/N) ");
 	scanf( "%s", str );
 	if( strcmp(str, "Y") == 0 || strcmp(str, "y") == 0 )
 		JILClearExceptionState(pState);
@@ -532,16 +532,16 @@ static void CBMachineException(JILState* pState)
 {
 	char str[128];
 
-	printf( "\nJIL MACHINE EXCEPTION AT %d: %d %s\n",
+	fprintf(stdout, "\nJIL MACHINE EXCEPTION AT %d: %d %s\n",
 		pState->errProgramCounter,
 		pState->errException,
 		JILGetExceptionString(pState, pState->errException)
 		);
 
 	JILListInstruction( pState, pState->errProgramCounter, str, 128, 1 );
-	printf( "%s\n\n", str );
+	fprintf(stdout, "%s\n\n", str);
 
-	printf( "Tracing back last 10 functions on callstack:\n" );
+	fprintf(stdout, "Tracing back last 10 functions on callstack:\n");
 	JILListCallStack( pState, 10, stdout );
 }
 
@@ -554,11 +554,11 @@ static int OnError( JILState* pMachine, int e, const char* alt )
 {
 	if( alt )
 	{
-		printf( "%s\n", alt );
+		fprintf(stdout, "%s\n", alt);
 	}
 	else
 	{
-		printf( "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e) );
+		fprintf(stdout, "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e));
 	}
 	return e;
 }
@@ -614,25 +614,25 @@ static int PrintVersionInfo(JILState* pMachine)
 	pInfo = JILGetRuntimeVersion( pMachine );
 
 	// print version info
-	printf( "Program version:        " VERSION "\n\n");
-	printf( "Library version:        %s\n", JILGetVersionString(pInfo->LibraryVersion, pVersion));
-	printf( "Runtime version:        %s\n", JILGetVersionString(pInfo->RuntimeVersion, pVersion));
-	printf( "Compiler version:       %s\n", JILGetVersionString(pInfo->CompilerVersion, pVersion));
-	printf( "Type interface version: %s\n", JILGetVersionString(pInfo->TypeInterfaceVersion, pVersion));
+	fprintf(stdout, "Program version:        " VERSION "\n\n");
+	fprintf(stdout, "Library version:        %s\n", JILGetVersionString(pInfo->LibraryVersion, pVersion));
+	fprintf(stdout, "Runtime version:        %s\n", JILGetVersionString(pInfo->RuntimeVersion, pVersion));
+	fprintf(stdout, "Compiler version:       %s\n", JILGetVersionString(pInfo->CompilerVersion, pVersion));
+	fprintf(stdout, "Type interface version: %s\n", JILGetVersionString(pInfo->TypeInterfaceVersion, pVersion));
 
-	printf( "VM build flags:\n" );
+	fprintf(stdout, "VM build flags:\n");
 	if( pInfo->BuildFlags & kDebugBuild )
-		printf( "- Is a debug build\n" );
+		fprintf(stdout, "- Is a debug build\n");
 	else
-		printf( "- Is a release build\n" );
+		fprintf(stdout, "- Is a release build\n");
 	if( pInfo->BuildFlags & kTraceExceptionEnabled )
-		printf( "- Supports trace exception\n" );
+		fprintf(stdout, "- Supports trace exception\n");
 	else
-		printf( "- Does not support trace exception\n" );
+		fprintf(stdout, "- Does not support trace exception\n");
 	if( pInfo->BuildFlags & kExtendedRuntimeChecks )
-		printf( "- Performs extended runtime checks\n\n" );
+		fprintf(stdout, "- Performs extended runtime checks\n\n");
 	else
-		printf( "- Extended runtime checks are disabled\n\n" );
+		fprintf(stdout, "- Extended runtime checks are disabled\n\n");
 
 	return 0;
 }
