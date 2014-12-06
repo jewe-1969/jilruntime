@@ -33,7 +33,7 @@ class Point
     method Point(int x, int y);         ["Constructs a new Point instance from the given X and Y coordinates."]
     method int IsInside(const Rect r);  ["Returns true if this Point is inside the area of the given Rect."]
     method Add(const Point p);          ["Adds the coordinates of the specified Point to this point's coordinates. This can be used to sum up local coordinates to compute absolute screen coordinates."]
-    method Sub(const Point p);          ["Subtracts the coordinates of the specified Point from this point's coordinates. This can be used to calculate local coordinates from absolute screen coordinates. It can also just be used to demonstrated source code documentation."]
+    method Sub(const Point p);          ["Subtracts the coordinates of the specified Point from this point's coordinates. This can be used to calculate local coordinates from absolute screen coordinates. It can also just be used to demonstrate source code documentation."]
     accessor int X();                   ["Returns the point's current X coordinate."]
     accessor int Y();                   ["Returns the point's current Y coordinate."]
 
