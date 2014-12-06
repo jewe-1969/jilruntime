@@ -38,9 +38,8 @@ function int fib(int n)
 
 /*** bench ***/
 
-function int bench()
+function int bench(int n)
 {
-    int n=18;
     int x=0;
     for (int a=0;a<n;a++)
     {
@@ -90,9 +89,8 @@ function int fib_o(int n)
 
 /*** bench ***/
 
-function int bench_o()
+function int bench_o(int n)
 {
-    int n=18;
     int x=0;
     for (int a=0;a<n;a++)
     {
@@ -141,9 +139,9 @@ function string main(const string[] args)
 
     print("\n*** 6 TIMES NESTED FOR TEST (18 iterations each) ***\n");
     t.tickDiff();
-    printf("bench() = %d\n", bench());
+    printf("bench() = %d\n", bench(18));
     printf("Normal: %g s\n", t.tickDiff() / 1000.0);
-    printf("bench() = %d\n", bench_o());
+    printf("bench() = %d\n", bench_o(18));
     printf("Optimized: %g s\n", t.tickDiff() / 1000.0);
 
     float ictr2 = instructionCounter();
