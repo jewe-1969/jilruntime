@@ -27,6 +27,7 @@
 #include "jilcodelist.h"	// needed for GetInstructionSize()
 #include "jilopcodes.h"
 #include "jilprogramming.h"
+#include "jiltools.h"
 
 /******************************************************************************/
 /**************************** class JCLLiteral ********************************/
@@ -3097,31 +3098,31 @@ static JILError OptimizeRegisterReplacing(JCLFunc* pFunc, OptimizeReport* pRepor
 static JILError DebugListFunction(JCLFunc* _this, JCLState* pCompiler)
 {
 	JILError err = JCL_No_Error;
-	#if !JIL_NO_FPRINTF
 	JILLong* pSaveBuffer = NULL;
 	JILLong length, saveLen;
-	fprintf(stderr, "----- Debug-Printing function %s -----\n", JCLGetString(_this->mipName));
+	JILState* pMachine = pCompiler->mipMachine;
+
+	JILMessageLog(pMachine, "\n----- Debug printing function %s -----\n", JCLGetString(_this->mipName));
 	length = _this->mipCode->count;
-	saveLen = JILGetCodeLength(pCompiler->mipMachine);
+	saveLen = JILGetCodeLength(pMachine);
 	saveLen = (length < saveLen) ? length : saveLen;
 	pSaveBuffer = (JILLong*) malloc( sizeof(JILLong) * saveLen );
-	err = JILGetMemory(pCompiler->mipMachine, 0, pSaveBuffer, saveLen);
+	err = JILGetMemory(pMachine, 0, pSaveBuffer, saveLen);
 	if( err ) 
 		goto cleanup;
-	err = JILSetMemory(pCompiler->mipMachine, 0, _this->mipCode->array, length);
+	err = JILSetMemory(pMachine, 0, _this->mipCode->array, length);
 	if( err )
 		goto restore;
-	JILListCode(pCompiler->mipMachine, 0, length, 1, stderr);
+	JILListCode(pMachine, 0, length, 1);
 
 restore:
-	err = JILSetMemory(pCompiler->mipMachine, 0, pSaveBuffer, saveLen);
+	err = JILSetMemory(pMachine, 0, pSaveBuffer, saveLen);
 	if( err )
 		goto cleanup;
 
 cleanup:
 	free( pSaveBuffer );
-	fprintf(stderr, "----------------------------------------\n");
-	#endif
+	JILMessageLog(pMachine, "----------------------------------------\n");
 	return err;
 }
 
