@@ -67,21 +67,30 @@ JILEXTERN const JILChar*		JILGetHandleTypeName	(JILState* pState, JILLong type);
 //------------------------------------------------------------------------------
 // JILListCode
 //------------------------------------------------------------------------------
-/// Outputs multiple lines of virtual machine instructions to given stream.
+/// Outputs multiple lines of virtual machine instructions to the runtime's
+/// log output callback. @see JILSetLogCallback ()
 
-JILEXTERN void					JILListCode				(JILState* pState, JILLong from, JILLong to, JILLong extInfo, JILFILE* stream);
+JILEXTERN void					JILListCode				(JILState* pState, JILLong from, JILLong to, JILLong extInfo);
 
 //------------------------------------------------------------------------------
 // JILListCallStack
 //------------------------------------------------------------------------------
-/// Outputs function names on the callstack to the given stream. 'maxTraceback'
-/// specifies the maximum number of nested calls to print out. This function
-/// relies heavily on the symbol table and will not work if no symbol table
-/// is present for the current program.
+/// Outputs function names on the callstack to the log output callback.
+/// 'maxTraceback' specifies the maximum number of nested calls to print out.
 /// WARNING: This function is very costly in terms of CPU usage, so it should
-/// only be called for debugging purposes!
+/// only be called for debugging purposes! @see JILSetLogCallback ()
 
-JILEXTERN void					JILListCallStack		(JILState* pState, JILLong maxTraceback, JILFILE* stream);
+JILEXTERN void					JILListCallStack		(JILState* pState, JILLong maxTraceback);
+
+//------------------------------------------------------------------------------
+// JILOutputCrashLog
+//------------------------------------------------------------------------------
+/// Lists current instruction, call stack, register and stack contents. The log
+/// is output to the runtime's log output callback.
+/// WARNING: This function is very costly in terms of CPU usage, so it should
+/// only be called for debugging purposes! @see JILSetLogCallback ()
+
+JILEXTERN void					JILOutputCrashLog		(JILState* pState);
 
 //------------------------------------------------------------------------------
 // JILListInstruction
@@ -96,12 +105,21 @@ JILEXTERN JILLong				JILListInstruction		(JILState* pState, JILLong address, JIL
 //------------------------------------------------------------------------------
 // JILListHandle
 //------------------------------------------------------------------------------
+/// Creates a string representation from the specified handle. The parameters
+/// 'maxString' specifies how many bytes the function is allowed to write into
+/// 'pString'.
+
+JILEXTERN JILLong				JILListHandle			(JILState* pState, JILHandle* pObject, JILChar* pString, JILLong maxString);
+
+//------------------------------------------------------------------------------
+// JILListHandleByIndex
+//------------------------------------------------------------------------------
 /// Creates a string representation from the specified handle index,
 /// as well as a comment string containing more information about the handle.
 /// The parameters 'maxString' and 'maxComment' specify how many bytes the
 /// function is allowed to write into 'pString' and 'pComment'.
 
-JILEXTERN JILLong				JILListHandle			(JILState* pState, JILLong hObj, JILChar* pString, JILLong maxString, JILChar* pComment, JILLong maxComment, JILLong flags);
+JILEXTERN JILLong				JILListHandleByIndex	(JILState* pState, JILLong hObj, JILChar* pString, JILLong maxString, JILChar* pComment, JILLong maxComment, JILLong flags);
 
 //------------------------------------------------------------------------------
 // JILGetFunctionName

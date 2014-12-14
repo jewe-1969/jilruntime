@@ -15,6 +15,7 @@
 #include "jiltools.h"
 #include "jilstring.h"
 #include "jilcallntl.h"
+#include "jilarray.h"
 
 //------------------------------------------------------------------------------
 // class declaration string
@@ -44,6 +45,7 @@ static const char* kClassDeclaration =
 	"function int getNumTypes ();" TAG("Returns the total number of types known to the runtime.")
 	"function int generateBindings (const string path);" TAG("Generates native binding code at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 	"function int generateDocs (const string path, const string args);" TAG("Generates HTML documentation at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
+	"function printLog (const string[] args);" TAG("Uses the runtime's logging callback to output the given string arguments. A line-feed is added after printing all arguments.")
 ;
 
 //------------------------------------------------------------------------------
@@ -282,14 +284,27 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnInt(ps, ps->vmUsedTypeInfoSegSize);
 			break;
 		}
-		case 20:
+		case 20: // function int generateBindings (const string path)
 		{
 			NTLReturnInt(ps, JCLGenerateBindings(ps, NTLGetArgString(ps, 0)));
 			break;
 		}
-		case 21:
+		case 21: // function int generateDocs (const string path, const string args)
 		{
 			NTLReturnInt(ps, JCLGenerateDocs(ps, NTLGetArgString(ps, 0), NTLGetArgString(ps, 1)));
+			break;
+		}
+		case 22: // function printLog (const string[] args)
+		{
+			JILArray* pArray;
+			JILString* pResult;
+			pArray = (JILArray*) NTLGetArgObject(ps, 0, type_array);
+			if( pArray )
+			{
+				pResult = JILArray_ToString(pArray);
+				JILMessageLog(ps, "%s", JILString_String(pResult));
+				JILString_Delete(pResult);
+			}
 			break;
 		}
 		default:

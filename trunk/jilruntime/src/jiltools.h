@@ -64,8 +64,8 @@
 //------------------------------------------------------------------------------
 // JILMessageLog
 //------------------------------------------------------------------------------
-/// Generate a string from variable arguments and a format string and call the
-/// log output proc to output the string. @see JILSetLogCallback ()
+/// Output a formatted string with variable arguments to the runtime's message
+/// log callback. Uses standard ANSI format specifiers. @see JILSetLogCallback ()
 
 JILEXTERN void	JILMessageLog		(JILState* pState, const JILChar* pFormat, ...);
 

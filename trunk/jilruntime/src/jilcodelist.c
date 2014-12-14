@@ -26,6 +26,8 @@
 
 JILEXTERN const JILInstrInfo g_InstructionInfo[JILNumOpcodes];
 
+JILEXTERN const JILChar* JILGetExceptionString(JILState* pState, JILError e);
+
 //------------------------------------------------------------------------------
 // Operand sizes
 //------------------------------------------------------------------------------
@@ -43,6 +45,8 @@ static const JILLong kOperandTypeSize[kNumOperandTypes] =
 	1,	// ot_eas,		Operand is addressing mode "stack, displacement", i.e. "(sp+12)"
 	2,	// ot_regrng,	Operand is a register range, i.e. "r3-r7"
 };
+
+#define kMaxStringLength 128
 
 //------------------------------------------------------------------------------
 // static functions in this file
@@ -150,17 +154,13 @@ const JILChar* JILGetHandleTypeName(JILState* pState, JILLong type)
 //------------------------------------------------------------------------------
 // JILListCode
 //------------------------------------------------------------------------------
-// Outputs multiple lines of virtual machine instructions to given stream.
 
-void JILListCode(JILState* pState, JILLong from, JILLong to, JILLong extInfo, JILFILE* stream)
+void JILListCode(JILState* pState, JILLong from, JILLong to, JILLong extInfo)
 {
-	#if !JIL_NO_FPRINTF
 	JILLong i;
 	JILLong size;
-	JILChar str[128];
+	JILChar str[kMaxStringLength];
 
-	if( stream == NULL )
-		stream = stdout;
 	if( from > pState->vmpCodeSegment->usedSize )
 		from = pState->vmpCodeSegment->usedSize;
 	if( to > pState->vmpCodeSegment->usedSize )
@@ -174,15 +174,14 @@ void JILListCode(JILState* pState, JILLong from, JILLong to, JILLong extInfo, JI
 	{
 		if( i == 21 )
 			i = 21;
-		size = JILListInstruction( pState, i, str, 128, extInfo );
+		size = JILListInstruction( pState, i, str, kMaxStringLength, extInfo );
 		if( !size )
 		{
-			fprintf(stream, "ERROR IN INSTRUCTION TABLE OR INVALID INSTRUCTION!\n");
+			JILMessageLog(pState, "INVALID INSTRUCTION!\n");
 			break;
 		}
-		fprintf(stream, "%s\n", str);
+		JILMessageLog(pState, "%s\n", str);
 	}
-	#endif
 }
 
 //------------------------------------------------------------------------------
@@ -202,12 +201,12 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 	JILLong opcode = 0;
 	JILLong size = 0;
 	JILLong adr;
-	JILChar pComment[128];
-	JILChar pString[128];
+	JILChar pComment[kMaxStringLength];
+	JILChar pString[kMaxStringLength];
 
 	pComment[0] = 0;
-	JILSnprintf(pString, 128, "%d", address);
-	JILTabTo(pString, 128, 8);
+	JILSnprintf(pString, kMaxStringLength, "%d", address);
+	JILTabTo(pString, kMaxStringLength, 8);
 	err = JILGetMemory( pState, address, &opcode, 1 );
 	if( err )
 		return 0;
@@ -215,18 +214,18 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 	if( pInfo )
 	{
 		size = JILGetInstructionSize(opcode);
-		JILStrcat( pString, 128, pInfo->name );
-		JILTabTo(pString, 128, 16);
+		JILStrcat( pString, kMaxStringLength, pInfo->name );
+		JILTabTo(pString, kMaxStringLength, 16);
 		adr = address + 1;
 		for( i = 0; i < pInfo->numOperands; i++ )
 		{
-			l = JILListOperand( pState, address, adr, pInfo->opType[i], pString, 128, pComment, 128 );
+			l = JILListOperand( pState, address, adr, pInfo->opType[i], pString, kMaxStringLength, pComment, kMaxStringLength );
 			if( !l )
 				return 0;
 			adr += l;
 			if( (i + 1) < pInfo->numOperands )
 			{
-				JILStrcat(pString, 128, ",");
+				JILStrcat(pString, kMaxStringLength, ",");
 			}
 		}
 		// check for opcode with special pComment
@@ -234,25 +233,25 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 		{
 			case op_calln:
 			case op_callm:
-				JILGetCalln(pState, pComment, 128, address);
+				JILGetCalln(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_jsr:
-				JILGetJsr(pState, pComment, 128, address);
+				JILGetJsr(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_newctx:
-				JILStrcpy(pComment, 128, "cofunction ");
+				JILStrcpy(pComment, kMaxStringLength, "cofunction ");
 				JILGetNewctx(pState, pComment + 11, 117, address);
 				break;
 		}
 		if( *pComment && extInfo )
 		{
-			JILTabTo( pString, 128, 32 );
-			JILStrcat( pString, 128, ";" );
-			JILStrcat( pString, 128, pComment );
+			JILTabTo( pString, kMaxStringLength, 32 );
+			JILStrcat( pString, kMaxStringLength, ";" );
+			JILStrcat( pString, kMaxStringLength, pComment );
 		}
 	}
 	// try to get function name from address
-	if( JILGetFunctionName(pState, pComment, 128, address) )
+	if( JILGetFunctionName(pState, pComment, kMaxStringLength, address) )
 	{
 		JILStrcpy(pOutput, maxLength, "function ");
 		JILStrcat(pOutput, maxLength, pComment);
@@ -267,11 +266,10 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 }
 
 //------------------------------------------------------------------------------
-// JILListHandle
+// JILListHandleByIndex
 //------------------------------------------------------------------------------
-//
 
-JILLong JILListHandle(JILState* pState, JILLong hObj, JILChar* pString, JILLong maxString, JILChar* pComment, JILLong maxComment, JILLong isData)
+JILLong JILListHandleByIndex(JILState* pState, JILLong hObj, JILChar* pString, JILLong maxString, JILChar* pComment, JILLong maxComment, JILLong isData)
 {
 	// get handle
 	JILLong err;
@@ -340,29 +338,68 @@ JILLong JILListHandle(JILState* pState, JILLong hObj, JILChar* pString, JILLong 
 }
 
 //------------------------------------------------------------------------------
+// JILListHandle
+//------------------------------------------------------------------------------
+
+JILLong JILListHandle(JILState* pState, JILHandle* pHandle, JILChar* pString, JILLong maxString)
+{
+	JILChar tempstr[32];
+	JILLong type = pHandle->type;
+	switch( type )
+	{
+		case type_null:
+			JILSnprintf( pString, maxString, "%s", JILGetHandleTypeName(pState, type) );
+			break;
+		case type_int:
+			JILSnprintf( tempstr, 32, "%d", JILGetIntHandle(pHandle)->l );
+			JILSnprintf( pString, maxString, "%s %s", JILGetHandleTypeName(pState, type), tempstr );
+			break;
+		case type_float:
+			JILSnprintf( pString, maxString, "%s %g", JILGetHandleTypeName(pState, type), JILGetFloatHandle(pHandle)->f );
+			break;
+		case type_string:
+			JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 30 );
+			JILSnprintf( pString, maxString, "%s \"%s\"", JILGetHandleTypeName(pState, type), tempstr );
+			break;
+		case type_array:
+			JILSnprintf( tempstr, 32, "%d", JILGetArrayHandle(pHandle)->arr->size );
+			JILSnprintf( pString, maxString, "%s [%s]", JILGetHandleTypeName(pState, type), tempstr );
+			break;
+		default:
+			if( type >= 0 && type < pState->vmUsedTypeInfoSegSize )	// could list garbage data so must check
+			{
+				JILSnprintf( pString, maxString, "%s", JILGetHandleTypeName(pState, type) );
+			}
+			else
+			{
+				JILSnprintf( pString, maxString, "INVALID HANDLE TYPE" );
+			}
+			break;
+	}
+	return 0;
+}
+
+//------------------------------------------------------------------------------
 // JILListCallStack
 //------------------------------------------------------------------------------
-// Outputs function names on the callstack to the given stream.
+// Outputs function names on the callstack to the log output callback.
 
-void JILListCallStack(JILState* pState, JILLong maxTraceback, JILFILE* stream)
+void JILListCallStack(JILState* pState, JILLong maxTraceback)
 {
-	#if !JIL_NO_FPRINTF
 	JILLong numStack;
 	JILLong addr;
 	JILLong i;
 	JILContext* pContext;
-	char buf[256];
+	JILChar buf[kMaxStringLength];
 
 	if( !pState->vmInitialized )
 		return;
-	if( stream == NULL )
-		stream = stdout;
 
 	// show current program counter
 	pContext = pState->vmpContext;
 	addr = pContext->vmProgramCounter;
-	JILGetFunctionName(pState, buf, 256, addr);
-	fprintf(stream, "%4d: %s()\n", 0, buf);
+	JILGetFunctionName(pState, buf, kMaxStringLength, addr);
+	JILMessageLog(pState, "%4d: %s()\n", 0, buf);
 
 	// iterate over callstack
 	numStack = pState->vmCallStackSize - pContext->vmCallStackPointer;
@@ -374,20 +411,82 @@ void JILListCallStack(JILState* pState, JILLong maxTraceback, JILFILE* stream)
 		addr = pContext->vmpCallStack[pContext->vmCallStackPointer + i];
 		if( addr == kReturnToNative )
 		{
-			fprintf(stream, "%4d: native_entry_point()\n", i+1, addr);
+			JILMessageLog(pState, "%4d: native_entry_point()\n", i+1, addr);
 		}
 		else
 		{
-			JILGetFunctionName(pState, buf, 256, addr);
-			fprintf(stream, "%4d: %s()\n", i+1, buf);
+			JILGetFunctionName(pState, buf, kMaxStringLength, addr);
+			JILMessageLog(pState, "%4d: %s()\n", i+1, buf);
 		}
 	}
 	return;
 
 error:
-	fprintf(stream, "INVALID FUNCTION ADDRESS ERROR\n");
+	JILMessageLog(pState, "INVALID FUNCTION ADDRESS ERROR\n");
 	return;
-	#endif
+}
+
+//------------------------------------------------------------------------------
+// JILOutputCrashLog
+//------------------------------------------------------------------------------
+
+void JILOutputCrashLog(JILState* ps)
+{
+	JILLong r;
+	JILLong numStack;
+	JILContext* pContext;
+	JILFuncInfo* pFuncInfo;
+	JILChar str[kMaxStringLength];
+
+	if( ps->errException != 0 )
+	{
+		JILMessageLog(ps, "\n*** VIRTUAL MACHINE EXCEPTION AT %d: %d %s ***\n\n",
+			ps->errProgramCounter,
+			ps->errException,
+			JILGetExceptionString(ps, ps->errException));
+	}
+
+	JILListInstruction( ps, ps->errProgramCounter, str, kMaxStringLength, 1 );
+	JILMessageLog(ps, "%s\n\n", str);
+
+	JILMessageLog(ps, "*** TRACING BACK CALLSTACK ***\n\n");
+	JILListCallStack(ps, 10);
+
+	JILMessageLog(ps, "\n*** LISTING REGISTER CONTENTS ***\n\n");
+	pContext = ps->vmpContext;
+	for( r = 0; r < kNumRegisters; r++ )
+	{
+		JILListHandle(ps, pContext->vmppRegister[r], str, kMaxStringLength);
+		JILMessageLog(ps, "  r%-2d: %s\n", r , str);
+	}
+
+	JILMessageLog(ps, "\n*** LISTING STACK CONTENTS ***\n\n");
+	pContext = ps->vmpContext;
+	numStack = ps->vmDataStackSize - pContext->vmDataStackPointer - kNumRegisters;
+	if( numStack < 0 )
+	{
+		JILMessageLog(ps, "DATA STACK OVERFLOW: %d\n", numStack);
+	}
+	else
+	{
+		numStack = numStack < 100 ? numStack : 100;
+		for( r = 0; r < numStack; r++ )
+		{
+			JILListHandle(ps, pContext->vmppDataStack[pContext->vmDataStackPointer + r], str, kMaxStringLength);
+			JILMessageLog(ps, "%5d: %s\n", r, str);
+		}
+	}
+
+	JILMessageLog(ps, "\n*** LISTING FULL FUNCTION ***\n\n");
+	JILGetFunctionByAddr(ps, ps->errProgramCounter, &pFuncInfo);
+	if( pFuncInfo )
+	{
+		JILListCode(ps, pFuncInfo->codeAddr, pFuncInfo->codeAddr + pFuncInfo->codeSize, 1);
+	}
+	else
+	{
+		JILMessageLog(ps, "FUNCTION NOT FOUND\n");
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -423,7 +522,6 @@ JILLong JILGetFunctionName(JILState* pState, JILChar* pDst, JILLong maxLength, J
 //-----------------------------------------------------------------------------
 // JILListOperand
 //------------------------------------------------------------------------------
-//
 
 static JILLong JILListOperand(JILState* pState, JILLong address, JILLong adr, JILLong type, JILChar* pString, JILLong maxString, JILChar* pComment, JILLong maxComment)
 {
@@ -448,7 +546,7 @@ static JILLong JILListOperand(JILState* pState, JILLong address, JILLong adr, JI
 			err = JILGetMemory( pState, adr, &val, 1 );
 			if( err )
 				return 0;
-			err = JILListHandle(pState, val, tempstr, 32, pComment, maxComment, 1);
+			err = JILListHandleByIndex(pState, val, tempstr, 32, pComment, maxComment, 1);
 			if( err )
 				return 0;
 			JILStrcat( pString, maxString, tempstr );

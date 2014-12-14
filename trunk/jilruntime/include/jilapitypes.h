@@ -90,7 +90,7 @@ typedef enum
 	JIL_UserData = 0,					///< Reserved for the "user" of the library, has no predefined meaning
 	JIL_Application,					///< Specify this to attach your application object to the runtime
 	JIL_LogHandler,						///< Specify this to attach an object for log output handling to the runtime
-	JIL_Debugger,						///< Reserved for the byte-code debugging tool, don't use
+	JIL_Debugger,						///< Reserved for the byte-code debugger, do not use
 
 	kUserDataSize						///< The total number of pointers the virtual machine can store
 

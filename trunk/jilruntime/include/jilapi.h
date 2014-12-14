@@ -290,6 +290,14 @@ JILEXTERN const JILChar*		JILGetVersionString		(JILLong version, JILChar* pBuffe
 JILEXTERN void					JILSetLogCallback		(JILState* pState, JILLogOutputProc proc);
 
 //------------------------------------------------------------------------------
+// JILMessageLog
+//------------------------------------------------------------------------------
+/// Output a formatted string with variable arguments to the runtime's message
+/// log callback. Uses standard ANSI format specifiers. @see JILSetLogCallback ()
+
+JILEXTERN void					JILMessageLog			(JILState* pState, const JILChar* pFormat, ...);
+
+//------------------------------------------------------------------------------
 // JILAttachObject
 //------------------------------------------------------------------------------
 /// Attach any object to the virtual machine's state using this function. The
