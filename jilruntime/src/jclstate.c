@@ -8943,7 +8943,15 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 			FindClass(_this, pClassName, &pClass);
 			if( pClass == NULL )
 			{
-				err = JCLCreateType(_this, JCLGetString(pClassName), _this->miClass, tf_class, JILTrue, &classIdx);
+				// get parent type ID
+				JILLong parentType;
+				JCLClass* pParent;
+				GetParentNamespace(pToken, pClassName);
+				parentType = FindClass(_this, pToken, &pParent);
+				if( pParent == NULL )
+					parentType = type_global;
+				// create new type
+				err = JCLCreateType(_this, JCLGetString(pClassName), parentType, tf_class, JILTrue, &classIdx);
 				ERROR_IF(err, err, pClassName, goto exit);
 			}
 			// get the type proc
