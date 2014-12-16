@@ -125,6 +125,7 @@ void Delete_FixMem(JILFixMem* _this)
 			free( bucket );
 			_this->currentBucket--;
 		}
+		#if !JIL_NO_FPRINTF
 		JIL_INSERT_DEBUG_CODE(
 			if( _this->currentBucket || missingBlocks )
 			{
@@ -144,6 +145,7 @@ void Delete_FixMem(JILFixMem* _this)
 					);
 			}
 		);
+		#endif
 		free( _this );
 	}
 }
