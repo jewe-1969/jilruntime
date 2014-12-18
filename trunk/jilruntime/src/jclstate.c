@@ -429,6 +429,7 @@ static JILError		p_skip_braces		(JCLState*, JILLong, JILLong);
 static JILError		p_skip_statement	(JCLState*);
 static JILError		p_skip_block		(JCLState*);
 static JILError		p_cast_operator		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**);
+static JILError		p_weak_operator		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**);
 static JILError		p_lambda_operator	(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILLong);
 static JILError		p_option			(JCLState*);
 static JILError		p_using				(JCLState*);
@@ -3661,6 +3662,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 	if( tokenID == tk_weak )
 	{
 		pVar->miWeak = JILTrue;
+		EmitWarning(_this, NULL, JCL_WARN_Wref_Variable);
 	}
 	else
 	{
@@ -11281,6 +11283,17 @@ static JILError p_cast_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	if( err || tokenID != tk_round_open )
 		goto exit;
+	// check for "weak"
+	err = pFile->PeekToken(pFile, pToken, &tokenID);
+	if( err )
+		goto exit;
+	if( tokenID == tk_weak )
+	{
+		err = p_weak_operator(_this, pLocals, pLVar, ppVarOut, ppTempVar);
+		if( err == JCL_No_Error )
+			result = JCL_No_Error;
+		goto exit;
+	}
 	// read type name
 	err = p_partial_identifier(_this, pToken);
 	if( err == JCL_No_Error )
@@ -11335,6 +11348,70 @@ exit:
 	DELETE(pToken);
 	DELETE(pToken2);
 	return result;
+}
+
+//------------------------------------------------------------------------------
+// p_weak_operator
+//------------------------------------------------------------------------------
+// Parse weak-cast operator in the form: (weak) expr
+
+static JILError p_weak_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLVar* pWorkVar;
+	JCLString* pToken;
+	JILLong tokenID;
+	TypeInfo outType;
+
+	JCLClrTypeInfo(&outType);
+	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+
+	// read "weak"
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	if( err || tokenID != tk_weak )
+		goto exit;
+	// read ")"
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	if( err || tokenID != tk_round_close )
+		goto exit;
+
+	// if we have no L-Value, fail
+	ERROR_IF(!pLVar, JCL_ERR_Expression_Without_LValue, NULL, goto exit);
+	// if L-Value is not ref, fail
+	ERROR_IF(!IsRef(pLVar), JCL_ERR_Weak_Without_Ref, NULL, goto exit);
+	// warn, if L-Value is already weak
+	if( IsWeakRef(pLVar) )
+		EmitWarning(_this, NULL, JCL_WARN_Taking_Wref_From_Wref);
+	// do we need a temp var?
+	if( IsTempVar(pLVar) )
+	{
+		*ppVarOut = pLVar;
+		pWorkVar = pLVar;
+	}
+	else
+	{
+		err = MakeTempVar(_this, ppTempVar, pLVar);
+		ERROR_IF(err, err, NULL, goto exit);
+		*ppVarOut = *ppTempVar;
+		pWorkVar = *ppTempVar;
+	}
+	// HACK: p_expr_primary() will NOT move weak references to temp registers, so we have to set dest var to 'kUsageVar' to force it
+	pWorkVar->miUsage = kUsageVar;
+	pWorkVar->miWeak = JILTrue;
+	// recurse
+	err = p_expr_primary(_this, pLocals, pWorkVar, &outType, 0);
+	if( err )
+		goto exit;
+	// copy expression result type
+	JCLTypeInfoToVar(&outType, pWorkVar);
+	pWorkVar->miUsage = kUsageTemp;
+	pWorkVar->miInited = JILTrue;
+
+exit:
+	DELETE(pToken);
+	return err;
 }
 
 //------------------------------------------------------------------------------

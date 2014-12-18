@@ -134,12 +134,14 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	4,	JCL_WARN_Imp_Conv_Float_Int,		"Conversion from 'float' to 'int', value might get truncated",
 	4,	JCL_WARN_Imp_Conv_Int_Float,		"Conversion from 'int' to 'float', value might get truncated",
 	4,	JCL_WARN_Auto_Copy_Const,			"Assigning constant to reference, copying r-value",
-	2,	JCL_WARN_Taking_Ref_From_Wref,		"Taking reference from weak reference, the reference to the value remains weak",
+	4,	JCL_WARN_Taking_Ref_From_Wref,		"Taking reference from weak reference, the reference to the value remains weak",
 	3,	JCL_WARN_Operator_No_Effect,		"Operator has no effect",
 	3,	JCL_WARN_Null_Assign_No_Ref,		"Assigning 'null' to variable that is not a reference",
 	3,	JCL_WARN_Function_Auto_Complete,	"Function declared but not defined, generating default code",
 	2,  JCL_WARN_Dynamic_Conversion,		"Dynamic conversion from typeless to 'string'",
 	1,  JCL_WARN_Ambiguous_Type_Name,		"Ambiguous type name",
+	4,	JCL_WARN_Taking_Wref_From_Wref,		"Taking weak reference from weak reference",
+	3,	JCL_WARN_Wref_Variable,				"Weak reference declaration discouraged; using (weak) operator recommended",
 
 	// leave this at the end of the table
 	0,	JCL_Unknown_Error_Code,				"UNKNOWN COMPILER ERROR CODE"
