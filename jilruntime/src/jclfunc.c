@@ -1191,6 +1191,28 @@ static JILBool GetCopyToRegister(CodeBlock* _this, JILLong addr, OpcodeInfo* out
 }
 
 //------------------------------------------------------------------------------
+// GetWrefToRegister
+//------------------------------------------------------------------------------
+
+static JILBool GetWrefToRegister(CodeBlock* _this, JILLong addr, OpcodeInfo* outInfo)
+{
+	JILBool res;
+	switch( _this->array[addr] )
+	{
+		case op_wref_rr:
+		case op_wref_dr:
+		case op_wref_xr:
+		case op_wref_sr:
+			res = GetOpcodeInfo(_this, addr, outInfo);
+			break;
+		default:
+			res = JILFalse;
+			break;
+	}
+	return res;
+}
+
+//------------------------------------------------------------------------------
 // GetMoveFromRegister
 //------------------------------------------------------------------------------
 
@@ -1367,6 +1389,8 @@ static JILBool CreateCombinedMove(CodeBlock* _this, const OpcodeInfo* srcInfo, c
 		// choose which new instruction to make
 		if( srcInfo->base_opcode == op_move_rr )		// src used a move
 			mergedInfo.base_opcode = dstInfo->base_opcode;
+		else if( srcInfo->base_opcode == op_wref_rr )	// src used a wref
+			mergedInfo.base_opcode = srcInfo->base_opcode;
 		else if( srcInfo->base_opcode == op_moveh_r )	// src used a moveh
 		{
 			// if destination used move, make a moveh
@@ -2391,7 +2415,8 @@ static JILError OptimizeMoveOperations(JCLFunc* pFunc, OptimizeReport* pReport)
 		{
 			opsize = JILGetInstructionSize( _this->array[opaddr] );
 			if( GetMoveToRegister(_this, opaddr, &mtrInfo) ||
-				GetCopyToRegister(_this, opaddr, &mtrInfo) )
+				GetCopyToRegister(_this, opaddr, &mtrInfo) ||
+				GetWrefToRegister(_this, opaddr, &mtrInfo) )
 			{
 				JILLong reg = mtrInfo.operand[dst].data[0];	// exclude registers used as local variables
 				if( pFunc->miLocalRegs[reg] == 0 )
