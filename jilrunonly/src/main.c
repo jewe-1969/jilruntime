@@ -90,7 +90,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.3.1.65"
+#define	VERSION		"0.3.1.66"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
@@ -201,7 +201,7 @@ int main(int nArgs, char* ppArgList[])
 	// we need at least 1 parameter
 	if( nArgs < 2 )
 	{
-		fprintf(stdout, "%s", kUsageString);
+		fputs(kUsageString, stdout);
 		return 0;
 	}
 	// check for options
@@ -255,7 +255,7 @@ int main(int nArgs, char* ppArgList[])
 			bExit = 1;
 		else
 		{
-			fprintf(stdout, "%s", kUsageString);
+			fputs(kUsageString, stdout);
 			return 0;
 		}
 		if( ++nFile == nArgs ) break;
@@ -378,7 +378,7 @@ int main(int nArgs, char* ppArgList[])
 
 	// list code, if requested
 	if( bListCode )
-		JILListCode(pMachine, 0, 0, 1, stdout);
+		JILListCode(pMachine, 0, 0, JILTrue);
 
 	// exit without running, if requested
 	if( bExit )
@@ -414,7 +414,7 @@ int main(int nArgs, char* ppArgList[])
 		// no exception - print the result to console
 		pStr = NTLHandleToString(pMachine, hResult);
 		if( pStr )
-			fprintf(stdout, "%s\n", pStr);
+			JILMessageLog(pMachine, "%s\n", pStr);
 	}
 	else
 	{
@@ -422,7 +422,7 @@ int main(int nArgs, char* ppArgList[])
 		hException = NTLHandleToErrorMessage(pMachine, hResult);
 		pStr = NTLHandleToString(pMachine, hException);
 		if( pStr )
-			fprintf(stdout, "%s\n    Error:   %d\n    Message: %s\n", NTLGetTypeName(pMachine, NTLHandleToTypeID(pMachine, hResult)), err, pStr);
+			JILMessageLog(pMachine, "%s\n    Error:   %d\n    Message: %s\n", NTLGetTypeName(pMachine, NTLHandleToTypeID(pMachine, hResult)), err, pStr);
 	}
 
 	/*
@@ -481,7 +481,7 @@ cleanup:
 
 static void CBOutputLogMessage(JILState* pMachine, const char* pString)
 {
-	fprintf(stdout, "%s", pString);
+	fputs(pString, stdout);
 }
 
 //------------------------------------------------------------------------------
@@ -500,15 +500,15 @@ static void CBBreakException(JILState* pState)
 {
 	char str[128];
 
-	fprintf(stdout, "\nJIL BREAK EXCEPTION AT %d: %d %s\n",
+	JILMessageLog(pState, "\nBREAK EXCEPTION AT %d: %d %s\n",
 		pState->errProgramCounter,
 		pState->errException,
 		JILGetExceptionString(pState, pState->errException)
 		);
 
-	JILListInstruction( pState, pState->errProgramCounter, str, 128, 1 );
-	fprintf(stdout, "%s\n", str);
-	fprintf(stdout, "\nContinue execution? (Y/N) ");
+	JILListInstruction(pState, pState->errProgramCounter, str, 128, 1);
+	JILMessageLog(pState, "%s\n", str);
+	JILMessageLog(pState, "\nContinue execution? (Y/N) ");
 	scanf( "%s", str );
 	if( strcmp(str, "Y") == 0 || strcmp(str, "y") == 0 )
 		JILClearExceptionState(pState);
@@ -530,19 +530,7 @@ static void CBBreakException(JILState* pState)
 
 static void CBMachineException(JILState* pState)
 {
-	char str[128];
-
-	fprintf(stdout, "\nJIL MACHINE EXCEPTION AT %d: %d %s\n",
-		pState->errProgramCounter,
-		pState->errException,
-		JILGetExceptionString(pState, pState->errException)
-		);
-
-	JILListInstruction( pState, pState->errProgramCounter, str, 128, 1 );
-	fprintf(stdout, "%s\n\n", str);
-
-	fprintf(stdout, "Tracing back last 10 functions on callstack:\n");
-	JILListCallStack( pState, 10, stdout );
+	JILOutputCrashLog(pState);
 }
 
 //------------------------------------------------------------------------------
@@ -550,15 +538,19 @@ static void CBMachineException(JILState* pState)
 //------------------------------------------------------------------------------
 // Handle an error.
 
-static int OnError( JILState* pMachine, int e, const char* alt )
+static int OnError(JILState* pMachine, int e, const char* alt)
 {
-	if( alt )
+	if( pMachine == NULL )
 	{
 		fprintf(stdout, "%s\n", alt);
 	}
+	else if( alt != NULL )
+	{
+		JILMessageLog(pMachine, "%s\n", alt);
+	}
 	else
 	{
-		fprintf(stdout, "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e));
+		JILMessageLog(pMachine, "Error: %d %s\n", e, JILGetExceptionString(pMachine, (JILError) e));
 	}
 	return e;
 }
@@ -614,25 +606,25 @@ static int PrintVersionInfo(JILState* pMachine)
 	pInfo = JILGetRuntimeVersion( pMachine );
 
 	// print version info
-	fprintf(stdout, "Program version:        " VERSION "\n\n");
-	fprintf(stdout, "Library version:        %s\n", JILGetVersionString(pInfo->LibraryVersion, pVersion));
-	fprintf(stdout, "Runtime version:        %s\n", JILGetVersionString(pInfo->RuntimeVersion, pVersion));
-	fprintf(stdout, "Compiler version:       %s\n", JILGetVersionString(pInfo->CompilerVersion, pVersion));
-	fprintf(stdout, "Type interface version: %s\n", JILGetVersionString(pInfo->TypeInterfaceVersion, pVersion));
+	JILMessageLog(pMachine, "Program version:        " VERSION "\n\n");
+	JILMessageLog(pMachine, "Library version:        %s\n", JILGetVersionString(pInfo->LibraryVersion, pVersion));
+	JILMessageLog(pMachine, "Runtime version:        %s\n", JILGetVersionString(pInfo->RuntimeVersion, pVersion));
+	JILMessageLog(pMachine, "Compiler version:       %s\n", JILGetVersionString(pInfo->CompilerVersion, pVersion));
+	JILMessageLog(pMachine, "Type interface version: %s\n", JILGetVersionString(pInfo->TypeInterfaceVersion, pVersion));
 
-	fprintf(stdout, "VM build flags:\n");
+	JILMessageLog(pMachine, "VM build flags:\n");
 	if( pInfo->BuildFlags & kDebugBuild )
-		fprintf(stdout, "- Is a debug build\n");
+		JILMessageLog(pMachine, "- Is a debug build\n");
 	else
-		fprintf(stdout, "- Is a release build\n");
+		JILMessageLog(pMachine, "- Is a release build\n");
 	if( pInfo->BuildFlags & kTraceExceptionEnabled )
-		fprintf(stdout, "- Supports trace exception\n");
+		JILMessageLog(pMachine, "- Supports trace exception\n");
 	else
-		fprintf(stdout, "- Does not support trace exception\n");
+		JILMessageLog(pMachine, "- Does not support trace exception\n");
 	if( pInfo->BuildFlags & kExtendedRuntimeChecks )
-		fprintf(stdout, "- Performs extended runtime checks\n\n");
+		JILMessageLog(pMachine, "- Performs extended runtime checks\n\n");
 	else
-		fprintf(stdout, "- Extended runtime checks are disabled\n\n");
+		JILMessageLog(pMachine, "- Extended runtime checks are disabled\n\n");
 
 	return 0;
 }
@@ -663,6 +655,7 @@ static void GetAppPath(const char* pFilespec)
 static void WaitForEnter()
 {
 	char string[16];
+	fputs("\n[Press RETURN to exit]", stdout);
 	fgets(string, 15, stdin);
 }
 
