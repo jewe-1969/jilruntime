@@ -224,6 +224,7 @@ JILError JILCallDelegate(JILState* pState, JILHandle* pDelegate)
 	result = JILInitVM(pState);
 	if( result )
 		return result;
+	// if the reference is null, return null, don't generate exception (TODO: do we want to keep it that way?)
 	if( pDelegate->type == type_null )
 	{
 		JILAddRef( JILGetNullHandle(pState) );
@@ -231,9 +232,11 @@ JILError JILCallDelegate(JILState* pState, JILHandle* pDelegate)
 		pState->vmpContext->vmppRegister[kReturnRegister] = JILGetNullHandle(pState);
 		return result;
 	}
+	// if the reference is not a delegate, fail
 	pTypeInfo = JILTypeInfoFromType(pState, pDelegate->type);
 	if( pTypeInfo->family != tf_delegate )
 		return JIL_ERR_Invalid_Handle_Type;
+	// get delegate and call
 	pdg = JILGetDelegateHandle(pDelegate)->pDelegate;
 	if( pdg->pObject )
 	{
