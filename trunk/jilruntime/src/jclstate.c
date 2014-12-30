@@ -3681,6 +3681,18 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 		err = JCL_ERR_Probe_Failed;
 		goto exit;
 	}
+	else
+	{
+		// if identifier is known type, but is followed by operator token, it's not a type declaration!
+		err = pFile->PeekToken(pFile, pToken, &tokenID);
+		if( err )
+			goto exit;
+		if (IsOperatorToken(tokenID))
+		{
+			err = JCL_ERR_Probe_Failed;
+			goto exit;
+		}
+	}
 	// check if there is a "(" behind the identifier
 	savePos = pFile->GetLocator(pFile);
 	err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -14684,7 +14696,11 @@ static JILError cg_auto_convert(JCLState* _this, JCLVar* src, JCLVar* dst, JCLVa
 	JILError err = JCL_ERR_Incompatible_Type;
 	if( ImpConvertible(_this, src, dst) )
 	{
-		if( (src->miType == type_var && dst->miType != type_var)
+		if( src->miType == type_array && src->miElemType == type_var && dst->miType == type_array && dst->miElemType != type_var )
+		{
+			EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_Var_Array);
+		}
+		else if( (src->miType == type_var && dst->miType != type_var)
 			|| (src->miMode == kModeArray && src->miType == type_var && dst->miType != type_var) )
 		{
 			if( dst->miType == type_string )

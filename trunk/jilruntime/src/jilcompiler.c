@@ -56,23 +56,21 @@ JILEXTERN JILError JCLAnalyzeParameters(JCLState* _this, const JILChar* pParams,
 // code templates
 //------------------------------------------------------------------------------
 
-static const char* kAnonFunction	= "function %s %s(%s){%s}";
-static const char* kDefaultImports	= "import string; import array; import list; import iterator; import table; ";
-static const char* kDefaultAlias	= "alias int bool; alias int char; ";
-static const char* kInterfaceException =
+static const JILChar* kAnonFunction	=			"function %s %s(%s){%s}";
+static const JILChar* kDefaultImports =			"import string; import array; import list; import iterator; import table; ";
+static const JILChar* kDefaultAlias	=			"alias int bool; alias int char; ";
+static const JILChar* kInterfaceException =
 	"strict interface exception {"
 	TAG("Strict interface for all classes that can be thrown as exceptions.")
 	"    method int    getError   ();" TAG("Returns the error code for this exception. This can be any non-zero value. Implementing script classes can just return <code>typeof(this)</code> here.")
 	"    method string getMessage ();" TAG("Returns the error message for this exception. Implementing classes should return an empty string rather than null when no message is available.")
-	"}"
-	"class runtime::exception; "
-;
-const JILLong kInterfaceExceptionGetError   = 0;	// method index of the getError() method
-const JILLong kInterfaceExceptionGetMessage = 1;	// method index of the getMessage() method
+	"} import runtime::exception;";
 
-static const JILLong kFileBufferSize = 1024;	// used by JCLLoadAndCompile()
+const JILLong kInterfaceExceptionGetError =		0;		// method index of the getError() method
+const JILLong kInterfaceExceptionGetMessage =	1;		// method index of the getMessage() method
+static const JILLong kFileBufferSize =			1024;	// used by JCLLoadAndCompile()
 
-JILEXTERN const JILChar* kNameGlobalClass;
+JILEXTERN const JILChar*	kNameGlobalClass;
 
 //------------------------------------------------------------------------------
 // static functions
@@ -857,7 +855,7 @@ JILError JILInitializeCompiler(JILState* pMachine, const JILChar* options)
 		goto error;
 
 	// generic delegate type, only used when calling JILGetFunction() API function
-	err = JCLCreateType(_this, "__delegate", 0, tf_delegate, JILFalse, &type);
+	err = JCLCreateType(_this, "__delegate", type_global, tf_delegate, JILFalse, &type);
 	if( err )
 		goto error;
 	if( type != type_delegate )

@@ -142,6 +142,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	1,  JCL_WARN_Ambiguous_Type_Name,		"Ambiguous type name",
 	4,	JCL_WARN_Taking_Wref_From_Wref,		"Taking weak reference from weak reference",
 	3,	JCL_WARN_Wref_Variable,				"Weak reference declaration discouraged; using (weak) operator recommended",
+	2,	JCL_WARN_Imp_Conv_Var_Array,		"Conversion from typeless array to typed array",
 
 	// leave this at the end of the table
 	0,	JCL_Unknown_Error_Code,				"UNKNOWN COMPILER ERROR CODE"

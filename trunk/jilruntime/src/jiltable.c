@@ -56,6 +56,7 @@ struct JILTable
 	JILState*				pState;
 	struct JILTableNode*	pNode;
 	JILTableMode			mode;			// native mode is used internally by the runtime, see NTLTypeNameToTypeID()
+	JILLong					count;
 };
 
 typedef struct JILTableMergeData
@@ -99,6 +100,7 @@ enum
 	kCleanup,
 	kToArray,
 	kToList,
+	kCount,
 	kMerge
 };
 
@@ -121,6 +123,7 @@ static const char* kClassDeclaration =
 	"method int		cleanup();" TAG("Frees all empty nodes in this table, releasing unneeded resources. This only affects internal infrastructure, all table data will remain intact. When storing and clearing large amounts of values in the table, calling this can improve memory footprint and performance of all other recursive table methods.")
 	"method array	toArray();" TAG("Moves all values from this table into a new array. This is a highly recursive operation that can be very time consuming with complex tables.")
 	"method list	toList();" TAG("Moves all keys and values from this table into a new list. This is a highly recursive operation that can be very time consuming with complex tables.")
+	"accessor int	count();" TAG("Returns the number of values currently stored in the table.")
 	"function table merge(const table t1, const table t2, merger fn);" TAG("Merges the given tables according to the specified delegate and returns a new table. The function works as follows: First a reference table is created that contains all keys from both tables, but not their values. Then the reference table is iterated recursively. For every key in the reference table, the table::merger delegate is called. The current key, both source tables and a result table are passed to the delegate. The delegate defines how values from either or both source tables are stored in the result table.")
 ;
 
@@ -326,6 +329,9 @@ static JILError TableCallMember(NTLInstance* pInst, JILLong funcID, JILTable* _t
 			NTLFreeHandle(ps, pH);
 			break;
 		}
+		case kCount:
+			NTLReturnInt(ps, _this->count);
+			break;
 		default:
 			result = JIL_ERR_Invalid_Function_Index;
 			break;
@@ -355,6 +361,7 @@ JILTable* JILTable_NewManaged(JILState* pVM)
 	_this->pState = pVM;
 	_this->pNode = NULL;
 	_this->mode = kTableModeManaged;
+	_this->count = 0;
 	return _this;
 }
 
@@ -370,6 +377,7 @@ JILTable* JILTable_NewNativeUnmanaged(JILState* pVM)
 	_this->pState = pVM;
 	_this->pNode = NULL;
 	_this->mode = kTableModeNativeUnmanaged;
+	_this->count = 0;
 	return _this;
 }
 
@@ -385,6 +393,7 @@ JILTable* JILTable_NewNativeManaged(JILState* pVM, JILTableDestructor pDestructo
 	_this->pState = pVM;
 	_this->pNode = NULL;
 	_this->mode = kTableModeNativeManaged;
+	_this->count = 0;
 	return _this;
 }
 
@@ -619,6 +628,7 @@ void JILTable_SetItem(JILTable* _this, const JILChar* pKey, JILUnknown* pData)
 		JILLong c;
 		JILTableNode* pNode;
 		JILTableNode** ppNode;
+		JILUnknown* data0;
 		JILState* pVM = _this->pState;
 
 		if( _this->pNode == NULL )
@@ -644,16 +654,16 @@ void JILTable_SetItem(JILTable* _this, const JILChar* pKey, JILUnknown* pData)
 			}
 			pNode = *ppNode;
 		}
+		data0 = pNode->pData;
 		if( _this->mode == kTableModeManaged )
 		{
-			JILHandle* ph = (JILHandle*)pData;
-			if( NTLHandleToTypeID(pVM, ph) == type_null )
-				ph = NULL;
+			if( NTLHandleToTypeID(pVM, (JILHandle*)pData) == type_null )
+				pData = NULL;
 			else
-				NTLReferHandle(pVM, ph);
+				NTLReferHandle(pVM, (JILHandle*)pData);
 			if( pNode->pData )
 				NTLFreeHandle(pVM, ((JILHandle*)pNode->pData));
-			pNode->pData = ph;
+			pNode->pData = pData;
 		}
 		else if( _this->mode == kTableModeNativeManaged )
 		{
@@ -665,6 +675,11 @@ void JILTable_SetItem(JILTable* _this, const JILChar* pKey, JILUnknown* pData)
 		{
 			pNode->pData = pData;
 		}
+		// statistics...
+		if( data0 == NULL && pData != NULL )
+			_this->count++;
+		else if( data0 != NULL && pData == NULL )
+			_this->count--;
 	}
 }
 
@@ -900,6 +915,7 @@ static JILError AddToListRecursive(const JILTableNode* pNode, JILString* pKey, J
 		if( pNode->pData )
 		{
 			pKey->string[pos] = 0;
+			pKey->length = pos;
 			pKeyStr = JILString_Copy(pKey);
 			hNewKey = NTLNewHandleForObject(ps, type_string, pKeyStr);
 			JILList_Add(pList, hNewKey, pNode->pData);
@@ -945,6 +961,7 @@ static JILError MergeNodeRecursive(const JILTableNode* pNode, JILTableMergeData*
 		if( pNode->pData )
 		{
 			pKey->string[pos] = 0;
+			pKey->length = pos;
 			pKeyStr = JILString_Copy(pKey);
 			hNewKey = NTLNewHandleForObject(ps, type_string, pKeyStr);
 			hException = JILCallFunction(ps, pData->hDelegate, 4,
