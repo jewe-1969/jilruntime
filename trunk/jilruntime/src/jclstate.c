@@ -2125,9 +2125,10 @@ static JILError IsIdentifierUsed(JCLState* _this, JILLong whatIsDefined, JILLong
 				}
 			}
 			// try classes
+			/*TODO: See if we can allow member variables with same name as a class
 			FindClass(_this, pName, &pClass);
 			if( pClass )
-				return JCL_ERR_Identifier_Already_Defined;
+				return JCL_ERR_Identifier_Already_Defined;*/
 			break;
 		case kClassFunc:
 		case kClassMethod:
