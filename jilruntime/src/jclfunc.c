@@ -1107,7 +1107,7 @@ static void DeleteCode(CodeBlock* _this, JILLong delPoint, JILLong numInts)
 		}
 	}
 	// move memory
-	memmove(_this->array + delPoint, _this->array + delPoint + numInts, (_this->count - delPoint) * sizeof(JILLong));
+	memmove(_this->array + delPoint, _this->array + delPoint + numInts, (_this->count - delPoint - numInts) * sizeof(JILLong));
 	_this->count -= numInts;
 }
 

@@ -887,14 +887,17 @@ JILLong JILString_FindCharR(const JILString* _this, JILLong chr, JILLong index)
 JILLong JILString_FindString(const JILString* _this, const JILString* other, JILLong index)
 {
 	JILLong result = -1;
-	if( index < 0 )
-		index = 0;
-	if( index < _this->length )
+	if( other->length )
 	{
-		char* pos = strstr( _this->string + index, JILString_String(other) );
-		if( pos )
+		if( index < 0 )
+			index = 0;
+		if( index < _this->length )
 		{
-			result = (JILLong) (pos - _this->string);
+			char* pos = strstr( _this->string + index, JILString_String(other) );
+			if( pos )
+			{
+				result = (JILLong) (pos - _this->string);
+			}
 		}
 	}
 	return result;
@@ -909,22 +912,25 @@ JILLong JILString_FindString(const JILString* _this, const JILString* other, JIL
 JILLong JILString_FindStringR(const JILString* _this, const JILString* other, JILLong index)
 {
 	JILLong result = -1;
-	index = _this->length - index;
-	if( index < 0 )
-		index = 0;
-	if( index < _this->length )
+	if( other->length )
 	{
-		char* pos;
-		JILString* thisCopy = JILString_Reverse(_this);
-		JILString* othrCopy = JILString_Reverse(other);
-		pos = strstr( thisCopy->string + index, JILString_String(othrCopy) );
-		if( pos )
+		index = _this->length - index;
+		if( index < 0 )
+			index = 0;
+		if( index < _this->length )
 		{
-			pos += othrCopy->length;
-			result = thisCopy->length - ((JILLong)(pos - thisCopy->string));
+			char* pos;
+			JILString* thisCopy = JILString_Reverse(_this);
+			JILString* othrCopy = JILString_Reverse(other);
+			pos = strstr( thisCopy->string + index, JILString_String(othrCopy) );
+			if( pos )
+			{
+				pos += othrCopy->length;
+				result = thisCopy->length - ((JILLong)(pos - thisCopy->string));
+			}
+			JILString_Delete(thisCopy);
+			JILString_Delete(othrCopy);
 		}
-		JILString_Delete(thisCopy);
-		JILString_Delete(othrCopy);
 	}
 	return result;
 }

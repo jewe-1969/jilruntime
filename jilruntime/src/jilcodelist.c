@@ -59,6 +59,7 @@ static JILLong	JILStrEquNoCase		(const JILChar* str1, const JILChar* str2);
 static void		JILGetCalln			(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr);
 static void		JILGetJsr			(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr);
 static void		JILGetNewctx		(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr);
+static void		JILGetNewdg			(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr);
 
 //------------------------------------------------------------------------------
 // JILGetInstructionSize
@@ -161,6 +162,7 @@ void JILListCode(JILState* pState, JILLong from, JILLong to, JILLong extInfo)
 	JILLong size;
 	JILChar str[kMaxStringLength];
 
+	str[0] = 0;
 	if( from > pState->vmpCodeSegment->usedSize )
 		from = pState->vmpCodeSegment->usedSize;
 	if( to > pState->vmpCodeSegment->usedSize )
@@ -205,6 +207,8 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 	JILChar pString[kMaxStringLength];
 
 	pComment[0] = 0;
+	pString[0] = 0;
+	pOutput[0] = 0;
 	JILSnprintf(pString, kMaxStringLength, "%d", address);
 	JILTabTo(pString, kMaxStringLength, 8);
 	err = JILGetMemory( pState, address, &opcode, 1 );
@@ -239,8 +243,10 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 				JILGetJsr(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_newctx:
-				JILStrcpy(pComment, kMaxStringLength, "cofunction ");
-				JILGetNewctx(pState, pComment + 11, 117, address);
+				JILGetNewctx(pState, pComment, kMaxStringLength, address);
+				break;
+			case op_newdg:
+				JILGetNewdg(pState, pComment, kMaxStringLength, address);
 				break;
 		}
 		if( *pComment && extInfo )
@@ -278,6 +284,9 @@ JILLong JILListHandleByIndex(JILState* pState, JILLong hObj, JILChar* pString, J
 	JILHandle* pHandle = &handle;
 	JILChar tempstr[32];
 
+	tempstr[0] = 0;
+	pString[0] = 0;
+	pComment[0] = 0;
 	if( isData )
 		err = JILGetDataHandle( pState, hObj, &handle );
 	else
@@ -345,6 +354,8 @@ JILLong JILListHandle(JILState* pState, JILHandle* pHandle, JILChar* pString, JI
 {
 	JILChar tempstr[32];
 	JILLong type = pHandle->type;
+	tempstr[0] = 0;
+	pString[0] = 0;
 	switch( type )
 	{
 		case type_null:
@@ -396,6 +407,7 @@ void JILListCallStack(JILState* pState, JILLong maxTraceback)
 		return;
 
 	// show current program counter
+	buf[0] = 0;
 	pContext = pState->vmpContext;
 	addr = pContext->vmProgramCounter;
 	JILGetFunctionName(pState, buf, kMaxStringLength, addr);
@@ -438,6 +450,7 @@ void JILOutputCrashLog(JILState* ps)
 	JILFuncInfo* pFuncInfo;
 	JILChar str[kMaxStringLength];
 
+	str[0] = 0;
 	if( ps->errException != 0 )
 	{
 		JILMessageLog(ps, "\n*** VIRTUAL MACHINE EXCEPTION AT %d: %d %s ***\n\n",
@@ -501,6 +514,7 @@ JILLong JILGetFunctionName(JILState* pState, JILChar* pDst, JILLong maxLength, J
 	JCLString* className = NEW(JCLString);
 	JCLString* funcName = NEW(JCLString);
 
+	pDst[0] = 0;
 	JILGetFunctionByAddr(pState, addr, &pFuncInfo);
 	if( pFuncInfo )
 	{
@@ -528,6 +542,9 @@ static JILLong JILListOperand(JILState* pState, JILLong address, JILLong adr, JI
 	JILLong err;
 	JILChar tempstr[32];
 	JILChar buf[32];
+	tempstr[0] = 0;
+	buf[0] = 0;
+	pComment[0] = 0;
 	switch( type )
 	{
 		case ot_number:
@@ -746,33 +763,24 @@ static int JILStrEquNoCase(const char* str1, const char* str2)
 static void JILGetCalln(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr)
 {
 	JILFuncInfo* pFuncInfo;
-	JCLString* className;
-	JCLString* funcName;
 	JILLong type = 0;
 	JILLong index = 0;
 	JILLong offset;
-	className = NEW(JCLString);
-	funcName = NEW(JCLString);
+
+	pDst[0] = 0;
 	if( JILGetMemory(pState, addr + 1, &type, 1) )
-		goto error;
+		return;
 	if( JILGetMemory(pState, addr + 2, &index, 1) )
-		goto error;
+		return;
 
 	JILGetFunctionByIndex(pState, type, index, &pFuncInfo);
 	if( pFuncInfo )
 	{
 		offset = pState->vmpTypeInfoSegment[pFuncInfo->type].offsetName;
-		JCLSetString(className, JILCStrGetString(pState, offset));
-		JCLSetString(funcName, JILCStrGetString(pState, pFuncInfo->offsetName));
-		JCLAppend(className, "::");
-		JCLAppend(className, JCLGetString(funcName));
-		JCLSetString(funcName, JCLGetString(className));
-		JILStrcpy(pDst, maxLen, JCLGetString(funcName));
+		JILSnprintf(pDst, maxLen, "%s::%s",
+			JILCStrGetString(pState, offset),
+			JILCStrGetString(pState, pFuncInfo->offsetName));
 	}
-
-error:
-	DELETE( className );
-	DELETE( funcName );
 }
 
 //------------------------------------------------------------------------------
@@ -782,6 +790,7 @@ error:
 static void JILGetJsr(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr)
 {
 	JILLong destAddr = 0;
+	pDst[0] = 0;
 	if( JILGetMemory(pState, addr + 1, &destAddr, 1) )
 		return;
 	JILGetFunctionName(pState, pDst, maxLen, destAddr);
@@ -795,9 +804,44 @@ static void JILGetNewctx(JILState* pState, JILChar* pDst, JILLong maxLen, JILLon
 {
 	JILFuncInfo* pFuncInfo = pState->vmpFuncSegment->pData;
 	JILLong funcIndex = 0;
+	JILLong offset;
+	pDst[0] = 0;
 	if( JILGetMemory(pState, addr + 2, &funcIndex, 1) )
 		return;
-	JILGetFunctionName(pState, pDst, maxLen, pFuncInfo[funcIndex].codeAddr);
+	if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
+		return;
+	pFuncInfo = pState->vmpFuncSegment->pData + funcIndex;
+	offset = pState->vmpTypeInfoSegment[pFuncInfo->type].offsetName;
+	JILSnprintf(pDst, maxLen, "cofunction %s::%s",
+		JILCStrGetString(pState, offset),
+		JILCStrGetString(pState, pFuncInfo->offsetName));
+}
+
+//------------------------------------------------------------------------------
+// JILGetNewdg
+//------------------------------------------------------------------------------
+
+static void JILGetNewdg(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong addr)
+{
+	JILFuncInfo* pFuncInfo;
+	JILLong type = 0;
+	JILLong funcIndex = 0;
+	JILLong offset;
+
+	pDst[0] = 0;
+	if( JILGetMemory(pState, addr + 1, &type, 1) )
+		return;
+	if( JILGetMemory(pState, addr + 2, &funcIndex, 1) )
+		return;
+	if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
+		return;
+
+	pFuncInfo = pState->vmpFuncSegment->pData + funcIndex;
+	offset = pState->vmpTypeInfoSegment[pFuncInfo->type].offsetName;
+	JILSnprintf(pDst, maxLen, "delegate %s (%s::%s)",
+		JILGetHandleTypeName(pState, type),
+		JILCStrGetString(pState, offset),
+		JILCStrGetString(pState, pFuncInfo->offsetName));
 }
 
 //------------------------------------------------------------------------------
