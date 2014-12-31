@@ -117,6 +117,14 @@ void					JILFreeContext			(JILState* pState, JILContext* pContext);
 JILError				JILMarkContext			(JILState* pState, JILContext* pContext);
 
 //------------------------------------------------------------------------------
+// JILIsBaseType
+//------------------------------------------------------------------------------
+// Checks if 'base' is a super-class of 'type', or in other words, if 'type'
+// directly or indirectly inherited 'base'.
+
+JILBool					JILIsBaseType			(JILState* ps, JILLong base, JILLong type);
+
+//------------------------------------------------------------------------------
 // JILRTCheck
 //------------------------------------------------------------------------------
 // Perform a realtime type check. Checks if pObj is related to 'type'. If this

@@ -17,6 +17,7 @@
 
 #include "jilallocators.h"
 #include "jilhandle.h"
+#include "jilmachine.h"
 
 //------------------------------------------------------------------------------
 // externals
@@ -165,7 +166,7 @@ JILArray* JILAllocFactory(JILState* pState, JILLong interfaceId)
 	for( clas = 0; clas < pState->vmUsedTypeInfoSegSize; clas++ )
 	{
 		pType = JILTypeInfoFromType(pState, clas);
-		if( pType->family == tf_class && pType->base == interfaceId )
+		if( pType->family == tf_class && JILIsBaseType(pState, interfaceId, clas))
 		{
 			JILHandle* pH = NTLNewObject(pState, pType->type);
 			JILArray_ArrMove(pArr, pH);
