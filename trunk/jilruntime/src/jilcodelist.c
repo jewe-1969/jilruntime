@@ -544,7 +544,6 @@ static JILLong JILListOperand(JILState* pState, JILLong address, JILLong adr, JI
 	JILChar buf[32];
 	tempstr[0] = 0;
 	buf[0] = 0;
-	pComment[0] = 0;
 	switch( type )
 	{
 		case ot_number:
