@@ -613,12 +613,35 @@ static JILLong JILInitNativeType(JILState* pState, JILTypeInfo* pTypeInfo, JILLo
 }
 
 //------------------------------------------------------------------------------
+// JILIsBaseType
+//------------------------------------------------------------------------------
+
+JILBool JILIsBaseType(JILState* ps, JILLong base, JILLong type)
+{
+	JILTypeInfo* pTypeInfo;
+	if( type == base )
+		return JILTrue;
+	pTypeInfo = JILTypeInfoFromType(ps, type);
+	while( pTypeInfo->base )
+	{
+		if( pTypeInfo->base == base )
+			return JILTrue;
+		pTypeInfo = JILTypeInfoFromType(ps, pTypeInfo->base);
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
 // JILRTCheck
 //------------------------------------------------------------------------------
 
 JILBool JILRTCheck(JILState* ps, JILLong type, JILHandle* pObj)
 {
-	if( pObj->type == type_null )
+	if( pObj->type == type )
+	{
+		return JILFalse;
+	}
+	else if( pObj->type == type_null )
 	{
 		return JILFalse;
 	}
@@ -628,7 +651,7 @@ JILBool JILRTCheck(JILState* ps, JILLong type, JILHandle* pObj)
 	}
 	else
 	{
-		return (pObj->type != type);
+		return !JILIsBaseType(ps, type, pObj->type);
 	}
 }
 

@@ -149,7 +149,7 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					// check if we have a class
 					JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(typeInfo->family != tf_class, JIL_VM_Unsupported_Type) );
 					// check if the types match
-					JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(hObj != typeInfo->type && hObj != typeInfo->base, JIL_VM_Type_Mismatch) );
+					JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(!JILIsBaseType(pState, hObj, handle1->type), JIL_VM_Type_Mismatch) );
 					if( typeInfo->isNative )
 					{
 						// call native callback proc

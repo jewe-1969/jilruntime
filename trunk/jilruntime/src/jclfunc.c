@@ -254,6 +254,8 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miClassID = 0;
 	_this->miLnkAddr = 0;
 	_this->miLnkDelegate = -1;
+	_this->miLnkMethod = -1;
+	_this->miLnkBaseVar = 0;
 	_this->miRetFlag = JILFalse;
 	_this->miYieldFlag = JILFalse;
 	_this->miMethod = JILFalse;
@@ -262,9 +264,11 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miAccessor = JILFalse;
 	_this->miCofunc = JILFalse;
 	_this->miAnonymous = JILFalse;
-	_this->miLinked = JILFalse;
 	_this->miExplicit = JILFalse;
 	_this->miStrict = JILFalse;
+	_this->miVirtual = JILFalse;
+	_this->miNoOverride = JILFalse;
+	_this->miLinked = JILFalse;
 	_this->miNaked = JILFalse;
 	_this->miOptLevel = 0;
 
@@ -311,6 +315,8 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miClassID = src->miClassID;
 	_this->miLnkAddr = src->miLnkAddr;
 	_this->miLnkDelegate = src->miLnkDelegate;
+	_this->miLnkMethod = src->miLnkMethod;
+	_this->miLnkBaseVar = src->miLnkBaseVar;
 	_this->miRetFlag = src->miRetFlag;
 	_this->miMethod = src->miMethod;
 	_this->miCtor = src->miCtor;
@@ -318,11 +324,13 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miAccessor = src->miAccessor;
 	_this->miCofunc = src->miCofunc;
 	_this->miAnonymous = src->miAnonymous;
-	_this->miLinked = src->miLinked;
-	_this->miNaked = src->miNaked;
 	_this->miExplicit = src->miExplicit;
 	_this->miOptLevel = src->miOptLevel;
-	_this->miStrict= src->miStrict;
+	_this->miStrict = src->miStrict;
+	_this->miVirtual = src->miVirtual;
+	_this->miNoOverride = src->miNoOverride;
+	_this->miLinked = src->miLinked;
+	_this->miNaked = src->miNaked;
 
 	for( i = 0; i < kNumRegisters; i++ )
 	{
@@ -344,9 +352,9 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 	{
 		// generate "stub" if function has no body
 		Array_JILLong* pCode = _this->mipCode;
-		if( !pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0) )
+		if( !pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0) )
 		{
-			if( _this->miLnkDelegate < 0 )
+			if( _this->miLnkDelegate < 0 && _this->miLnkMethod < 0 )
 			{
 				JCLString* declString = NEW(JCLString);
 				_this->ToString(_this, pCompiler, declString, kCompact);
@@ -362,12 +370,17 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 				pCode->Set(pCode, 4, op_bra);
 				pCode->Set(pCode, 5, -1);
 			}
-			else if( _this->miLnkDelegate >= 0 )
+			else if( _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 )
 			{
 				int n = 0;
 				int i;
-				pCode->Set(pCode, n++, op_push_r);
-				pCode->Set(pCode, n++, 0);
+				int j = 0;
+				if( _this->miMethod )
+				{
+					pCode->Set(pCode, n++, op_push_r);
+					pCode->Set(pCode, n++, 0);
+					j++;
+				}
 				if( _this->mipArgs->Count(_this->mipArgs) )
 				{
 					if( _this->mipArgs->Count(_this->mipArgs) > 1 )
@@ -382,21 +395,25 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 					for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
 					{
 						pCode->Set(pCode, n++, op_move_ss);
-						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs) + 1 + i);
+						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs) + j + i);
 						pCode->Set(pCode, n++, i);
 					}
 				}
-				if( _this->miAccessor )
+				if( _this->miLnkMethod >= 0 )
 				{
-					// directly call base class accessor
+					// directly call base class method
+					JCLFunc* baseFunc;
 					JCLClass* pClass = GetClass(pCompiler, _this->miClassID);
-					pCode->Set(pCode, n++, op_move_dr);		// move 0(r0), r0
-					pCode->Set(pCode, n++, 0);
-					pCode->Set(pCode, n++, 0);
-					pCode->Set(pCode, n++, 0);
-					pCode->Set(pCode, n++, op_callm);		// callm type, func
-					pCode->Set(pCode, n++, pClass->miBaseType);
-					pCode->Set(pCode, n++, _this->miLnkDelegate);
+					if( _this->miMethod )
+					{
+						pCode->Set(pCode, n++, op_move_dr);		// move (r0+base), r0
+						pCode->Set(pCode, n++, 0);
+						pCode->Set(pCode, n++, _this->miLnkBaseVar);
+						pCode->Set(pCode, n++, 0);
+					}
+					baseFunc = GetFunc(pCompiler, pClass->miBaseType, _this->miLnkMethod);
+					pCode->Set(pCode, n++, op_calls);
+					pCode->Set(pCode, n++, baseFunc->miHandle);
 				}
 				else
 				{
@@ -417,8 +434,11 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 						pCode->Set(pCode, n++, op_pop);
 					}
 				}
-				pCode->Set(pCode, n++, op_pop_r);
-				pCode->Set(pCode, n++, 0);
+				if( _this->miMethod )
+				{
+					pCode->Set(pCode, n++, op_pop_r);
+					pCode->Set(pCode, n++, 0);
+				}
 				pCode->Set(pCode, n++, op_ret);
 			}
 			else

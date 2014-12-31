@@ -39,7 +39,8 @@ enum
 	kModiNativeBinding = 1,		// classes only, used as 'tag' for native binding generator
 	kModiExtern = 2,
 	kModiStrict = 4,
-	kModiNativeInterface = 8	// interface only
+	kModiNativeInterface = 8,	// interface only
+	kModiVirtual = 16
 };
 
 //------------------------------------------------------------------------------

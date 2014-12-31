@@ -107,7 +107,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Function_Ref_Illegal,		"Cannot take function reference from this type of function",
 	0,	JCL_ERR_No_Suitable_Delegate,		"No delegate defined that matches function signature",
 	0,	JCL_ERR_Invalid_Variable_Call,		"Variable is not a delegate or cofunction thread",
-	0,	JCL_ERR_Hybrid_Expected,			"Expected 'hybrid' while defining class constructor",
+	0,	JCL_ERR_Hybrid_Expected,			"Keyword expected while defining class constructor",
 	0,	JCL_ERR_Cofunction_In_NTL,			"Illegal 'cofunction' in native type",
 	0,	JCL_ERR_Unnamed_Delegate_Argument,	"Unnamed argument in delegate declaration",
 	0,	JCL_ERR_Anon_Func_In_Init_Block,	"Anonymous delegate not supported in initializer block",
@@ -118,6 +118,9 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Goto_Without_Context,		"Goto without clause",
 	0,	JCL_ERR_Function_In_Namespace,		"Function in namespace not supported",
 	0,	JCL_ERR_Feature_Not_Available,		"The requested feature is not available",
+	0,	JCL_ERR_Cannot_Extend_Native_Class,	"Cannot extend native class",
+	0,	JCL_ERR_Function_No_Override,		"Function is not overridable",
+	0,	JCL_ERR_Variable_Read_Only,			"Variable is read-only",
 
 	// Compiler warnings
 	2,	JCL_WARN_Imp_Conv_From_Var,			"Conversion from typeless to type",

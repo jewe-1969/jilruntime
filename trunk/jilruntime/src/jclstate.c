@@ -41,6 +41,7 @@ COMPILER TODO:
 	* enum
 
 	Future ideas:
+	* It would be easy to support 'readonly' variables now
 	* Add macro JIL_ENABLE_COMPILER to allow building a compiler-free library
 	* Indexer function: object[index] is compiled as call to method <type> indexer (int i);
 	* Native structures: struct MyStruct { int a; float b; string c; } (object that is binary compatible to a C-Struct and can be manipulated
@@ -151,7 +152,8 @@ enum
 	kAccessor	= 1 << 2,
 	kCofunction	= 1 << 3,
 	kExplicit	= 1 << 4,
-	kStrict		= 1 << 5
+	kStrict		= 1 << 5,
+	kVirtual	= 1 << 6
 };
 
 // enum for IsIdentifierUsed()
@@ -267,6 +269,7 @@ static JILBool		IsGlobalScope		(JCLState*, JILLong);
 static JILBool		IsClassToken		(JILLong);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
+static JILBool		IsExtendingClass	(JCLState*, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
@@ -372,13 +375,15 @@ static JILError		cg_call_delegate	(JCLState*, JCLVar*);
 static JILError		p_root				(JCLState*);
 static JILError		p_class				(JCLState*, JILLong);
 static JILError		p_class_modifier	(JCLState*, JILLong);
-static JILError		p_class_inherit		(JCLState*, JCLClass*);
+static JILError		p_class_implements	(JCLState*, JCLClass*);
+static JILError		p_class_extends		(JCLState*, JCLClass*);
 static JILError		p_class_hybrid		(JCLState*, JCLClass*);
 static JILError		p_function			(JCLState*, JILLong, JILBool);
 static JILError		p_function_body		(JCLState*);
 static JILError		p_function_pass		(JCLState*);
 static JILError		p_sub_functions		(JCLState*);
 static JILError		p_function_hybrid	(JCLState*, JCLFunc*);
+static JILError		p_function_extends	(JCLState*, JCLFunc*);
 static JILError		p_block				(JCLState*, JILBool*);
 static JILError		p_statement			(JCLState*, Array_JCLVar*, JILBool*);
 static JILError		p_local_decl		(JCLState*, Array_JCLVar*, JCLVar*);
@@ -440,6 +445,7 @@ static JILError		p_variable_call		(JCLState*, Array_JCLVar*, const JCLString*, J
 static JILError		p_cofunction_resume	(JCLState*, JCLVar*, JCLVar*, JCLVar*, TypeInfo*);
 static JILError		p_delegate_call		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar*, JCLVar*, TypeInfo*, JILLong);
 static JILError		p_strict			(JCLState*);
+static JILError		p_virtual			(JCLState*, JILLong);
 static JILError		p_function_literal	(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILLong, JILLong);
 static JILError		p_selftest			(JCLState*, Array_JCLVar*);
 static JILError		p_tag				(JCLState*, JCLString*);
@@ -1759,6 +1765,7 @@ static JCLVar* MakeThisVar(JCLState* _this, JILLong typeID)
 	pThis->miIndex = 0;						// always r0
 	pThis->miInited = JILTrue;
 	pThis->miUnique = JILTrue;
+	pThis->miReadOnly = JILTrue;
 	return pThis;
 }
 
@@ -3321,18 +3328,35 @@ static JILBool IsSuperClass(JCLState* _this, JILLong type1, JILLong type2)
 // IsSubClass
 //------------------------------------------------------------------------------
 // Checks if type1 is a sub-class of type2. In other words, checks if type1
-// has inherited type2.
+// has directly or indirectly inherited type2.
 
 static JILBool IsSubClass(JCLState* _this, JILLong type1, JILLong type2)
 {
 	if( IsClassType(_this, type1) && IsClassType(_this, type2) )
 	{
 		JCLClass* pClass = GetClass(_this, type1);
-		if( pClass )
+		while( pClass && pClass->miBaseType != 0 )
 		{
 			if( pClass->miBaseType == type2 )
 				return JILTrue;
+			pClass = GetClass(_this, pClass->miBaseType);
 		}
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// IsExtendingClass
+//------------------------------------------------------------------------------
+// Checks if the given type is a class that extends another class.
+
+static JILBool IsExtendingClass(JCLState* _this, JILLong type)
+{
+	JCLClass* pClass = GetClass(_this, type);
+	if( pClass && pClass->miFamily == tf_class)
+	{
+		pClass = GetClass(_this, pClass->miBaseType);
+		return (pClass && pClass->miFamily == tf_class);
 	}
 	return JILFalse;
 }
@@ -4225,6 +4249,9 @@ static JILError p_root(JCLState* _this)
 			case tk_strict:
 				err = p_strict( _this );
 				break;
+			case tk_virtual:
+				err = p_virtual( _this, 0 );
+				break;
 			case tk__selftest:
 				err = p_selftest( _this, NULL );
 				break;
@@ -4276,6 +4303,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	JILLong classIdx;
 	JILLong savePos;
 	JILLong strict;
+	JILLong virtua;
 
 	pVar = NEW(JCLVar);
 	pClassName = NEW(JCLString);
@@ -4284,6 +4312,7 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
+	virtua = (modifier & kModiVirtual) ? kVirtual : 0;
 	oldClass = _this->miClass;
 	pOldNameStack = _this->mipUseNamespace;
 	pOldUsing = _this->mipUsing;
@@ -4346,17 +4375,28 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	ERROR_IF(err, err, pToken, goto exit);
 	if( tokenID == tk_semicolon )
 		goto exit;
-	if( tokenID == tk_colon )
+	if( tokenID == tk_colon || tokenID == tk_hybrid )
 	{
-		err = p_class_inherit(_this, pClass);
-		if( err )
-			goto exit;
-		err = pFile->GetToken(pFile, pToken, &tokenID);
-		ERROR_IF(err, err, pToken, goto exit);
+		if( tokenID == tk_colon )
+		{
+			err = p_class_implements(_this, pClass);
+			if( err )
+				goto exit;
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+		}
+		if( tokenID == tk_hybrid )
+		{
+			err = p_class_hybrid(_this, pClass);
+			if( err )
+				goto exit;
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+		}
 	}
-	if( tokenID == tk_hybrid )
+	else if( tokenID == tk_extends )
 	{
-		err = p_class_hybrid(_this, pClass);
+		err = p_class_extends(_this, pClass);
 		if( err )
 			goto exit;
 		err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -4393,13 +4433,13 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 				err = p_function( _this, kFunction | kCofunction | strict, JILFalse );
 				break;
 			case tk_method:
-				err = p_function( _this, kMethod | strict, JILFalse );
+				err = p_function( _this, kMethod | strict | virtua, JILFalse );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor | strict, JILFalse );
+				err = p_function( _this, kMethod | kAccessor | strict | virtua, JILFalse );
 				break;
 			case tk_explicit:
-				err = p_function( _this, kMethod | kExplicit | strict, JILFalse );
+				err = p_function( _this, kMethod | kExplicit | strict | virtua, JILFalse );
 				break;
 			case tk_delegate:
 				err = p_delegate( _this );
@@ -4412,6 +4452,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 				break;
 			case tk_strict:
 				err = p_strict( _this );
+				break;
+			case tk_virtual:
+				err = p_virtual( _this, 0 );
 				break;
 			default:
 			{
@@ -4484,11 +4527,11 @@ exit:
 }
 
 //------------------------------------------------------------------------------
-// p_class_inherit
+// p_class_implements
 //------------------------------------------------------------------------------
-// Parse interface inheritance of a class.
+// Parse interface implementation of a class.
 
-static JILError p_class_inherit(JCLState* _this, JCLClass* pClass)
+static JILError p_class_implements(JCLState* _this, JCLClass* pClass)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
@@ -4564,6 +4607,145 @@ exit:
 }
 
 //------------------------------------------------------------------------------
+// p_class_extends
+//------------------------------------------------------------------------------
+// Parse extension of base class (single inheritance).
+// TODO: How to detect if argument list differs from inherited function? e.g. base::foo(int i) -> this::foo(float f)
+// TODO: How to remove unused inherited constructors? (ctors from super-super-class)
+// TODO: How to remove unused inherited anonymous local functions?
+
+static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLString* pBaseName;
+	JCLString* pClassName;
+	JCLClass* pSrcClass;
+	JCLFunc* pFunc;
+	JCLFunc* pSFunc;
+	JCLVar* pBaseVar;
+	JCLVar* pOldBase;
+	JILState* pMachine;
+	JILLong i;
+	JILLong classIdx;
+	JILBool bStrict;
+	JILBool bVirtual;
+	JILTypeInfo* pTI;
+
+	pFile = _this->mipFile;
+	pBaseName = NEW(JCLString);
+	classIdx = pClass->miType;
+	pClassName = pClass->mipName;
+	pBaseVar = NEW(JCLVar);
+	pMachine = _this->mipMachine;
+	bStrict = (pClass->miModifier & kModiStrict);
+	bVirtual = (pClass->miModifier & kModiVirtual);
+
+	// we expect an identifier
+	err = p_partial_identifier(_this, pBaseName);
+	ERROR_IF(err, err, pBaseName, goto exit);
+	FindInNamespace(_this, pBaseName, &pSrcClass);
+	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
+	ERROR_IF(pSrcClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pBaseName, goto exit);
+	ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
+	ERROR_IF(IsClassNative(pSrcClass) || IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pBaseName, goto exit);
+
+	if( _this->miPass == kPassPrecompile )
+	{
+		// inherit from base
+		pClass->miBaseType = pSrcClass->miType;
+		// copy all member variables from base
+		pClass->mipVars->Copy(pClass->mipVars, pSrcClass->mipVars); // TODO: Do we need to check for duplicate variable names?
+		// hide any 'base' variable we may have inherited
+		JCLSetString(pBaseVar->mipName, "base");
+		pOldBase = FindMemberVar(_this, pClass->miType, pBaseVar->mipName);
+		if( pOldBase )
+			JCLSetString(pOldBase->mipName, "*base");
+		// create "base" variable in this class
+		pBaseVar->miType = pSrcClass->miType;
+		pBaseVar->miRef = JILTrue;
+		pBaseVar->miWeak = JILTrue;
+		pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
+		pBaseVar->miReadOnly = JILTrue;
+		err = AddMemberVar(_this, pClass->miType, pBaseVar);
+		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
+		// copy over all function declarations from source class
+		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
+		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
+		{
+			pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
+			// set class index
+			pFunc->miClassID = pClass->miType;
+			// set strict modifier
+			pFunc->miStrict |= bStrict;
+			// set virtual modifier
+			pFunc->miVirtual |= bVirtual;
+			// store function index for link process
+			pFunc->miLnkMethod = pFunc->miFuncIdx;
+			// set 'base' variable index
+			pFunc->miLnkBaseVar = pBaseVar->miMember;
+			// special treatment for ctors
+			if( pFunc->miCtor )
+			{
+				// virtual contructor? (interface ctor)
+				if( pFunc->miVirtual )
+				{
+					// create new function for the old constructor
+					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
+					pSFunc->Copy(pSFunc, pFunc);
+					// make it normal method
+					pSFunc->miCtor = JILFalse;
+					pSFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
+					pSFunc->miNoOverride = JILTrue; // function is not overridable
+					// add to function segment
+					err = JILCreateFunction(pMachine, pClass->miType, pClass->mipFuncs->Count(pClass->mipFuncs) - 1, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
+					ERROR_IF(err, err, NULL, goto exit);
+					// update constructor name
+					RemoveParentNamespace(pFunc->mipName, pClassName);
+					// if method is copy-constructor, set source type to inheriting class
+					if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
+					{
+						JCLVar* pArg1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
+						if (pArg1->miType == pClass->miBaseType)
+						{
+							pArg1->miType = pClass->miType;
+							pClass->miMethodInfo.cctor = pFunc->miFuncIdx;
+						}
+					}
+					else if (pFunc->mipArgs->Count(pFunc->mipArgs) == 0)
+					{
+						pClass->miMethodInfo.ctor = pFunc->miFuncIdx;
+					}
+					pFunc->miLnkMethod = -1;
+					pFunc->miLnkBaseVar = 0;
+				}
+				else
+				{
+					// make old constructors normal methods
+					pFunc->miCtor = JILFalse;
+					pFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
+					pFunc->miNoOverride = JILTrue; // function is not overridable
+				}
+			}
+			// add to function segment
+			err = JILCreateFunction(pMachine, pClass->miType, i, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
+			ERROR_IF(err, err, NULL, goto exit);
+		}
+		pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
+		// class inherits class body
+		pClass->miHasBody = JILTrue;
+		// update base-type identifier in JILTypeInfo
+		pTI = JILTypeInfoFromType(pMachine, pClass->miType);
+		pTI->base = pClass->miBaseType;
+	}
+
+exit:
+	DELETE( pBaseName );
+	DELETE( pBaseVar );
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // p_class_hybrid
 //------------------------------------------------------------------------------
 // Parse "hybrid inheritance" of a class.
@@ -4609,6 +4791,8 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 		// create "base" variable in this class
 		pBaseVar->miType = srcType;
 		pBaseVar->miRef = JILTrue;
+		pBaseVar->miNonVT = JILTrue;
+		pBaseVar->miReadOnly = JILTrue;
 		JCLSetString(pBaseVar->mipName, "base");
 		err = AddMemberVar(_this, dstType, pBaseVar);
 		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
@@ -4667,7 +4851,7 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 					{
 						ERROR_IF(!pInFunc->miAccessor || pInFunc->miCtor, err, pFunc->mipName, goto exit);
 						// store the function index in the function prototype for link process
-						pInFunc->miLnkDelegate = funcIdx;
+						pInFunc->miLnkMethod = funcIdx;
 					}
 				}
 			}
@@ -4791,6 +4975,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	pFunc->miCofunc = (fnKind & kCofunction);
 	pFunc->miExplicit = (fnKind & kExplicit);
 	pFunc->miStrict = (fnKind & kStrict);
+	pFunc->miVirtual = (fnKind & kVirtual);
 	pFunc->miOptLevel = GetOptions(_this)->miOptimizeLevel;
 	pClass->miHasMethod = (fnKind & (kAccessor | kMethod));
 	removeFunc = JILTrue;
@@ -4979,10 +5164,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 		SetCompileContext(_this, classIdx, pFunc->miFuncIdx);
 	}
-	// check for ";" or "{" or "hybrid"
+	// check for ";" or "{" or "hybrid" or "extends"
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( (tokenID == tk_curly_open || tokenID == tk_hybrid) && _this->miPass == kPassCompile )
+	if( (tokenID == tk_curly_open || tokenID == tk_hybrid || tokenID == tk_extends) && _this->miPass == kPassCompile )
 	{
 		JCLVar* src;
 		JCLVar* dst;
@@ -4993,7 +5178,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		// check if class is a native type (we NEED this so native types can't specify script code in their class declaration)
 		if( IsClassNative(pClass) )
 			ERROR(JCL_ERR_Cannot_Reimplement_NTL, pClass->mipName, goto exit);
-		// try to find the prototype (it MUST exist, cos pre-compile should have created it!)
+		// try to find the prototype (it MUST exist, pre-compile should have created it!)
 		err = FindPrototype(_this, pFunc, &pFunc2);
 		ERROR_IF(err, err, pFunc->mipName, goto exit);
 		// function already has a body?
@@ -5022,7 +5207,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		if( err )
 			goto exit;
 	}
-	else if( tokenID == tk_semicolon || tokenID == tk_hybrid || _this->miPass == kPassPrecompile )
+	else if( tokenID == tk_semicolon || tokenID == tk_hybrid || tokenID == tk_extends || _this->miPass == kPassPrecompile )
 	{
 		JCLFunc* pFunc2;
 		if( tokenID == tk_semicolon )
@@ -5041,6 +5226,16 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			{
 				err = pFile->GetToken(pFile, pToken, &tokenID);
 				ERROR_IF(err, err, pToken, goto exit);
+				err = p_skip_braces(_this, tk_round_open, tk_round_close);
+				ERROR_IF(err, err, NULL, goto exit);
+			}
+			else if( tokenID == tk_extends )
+			{
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
 				err = p_skip_braces(_this, tk_round_open, tk_round_close);
 				ERROR_IF(err, err, NULL, goto exit);
 			}
@@ -5086,8 +5281,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 		else if( err == JCL_No_Error )
 		{
+			ERROR_IF(pFunc2->miNoOverride, JCL_ERR_Function_No_Override, pFunc2->mipName, goto exit);
 			// take over strict attribute from new prototype
 			pFunc2->miStrict |= pFunc->miStrict;
+			pFunc2->miVirtual |= pFunc->miVirtual;
 			// copy new tag if there is one
 			if( JCLGetLength(pFunc->mipTag) > 0 )
 				pFunc2->mipTag->Copy(pFunc2->mipTag, pFunc->mipTag);
@@ -5236,7 +5433,8 @@ static JILError p_function_pass(JCLState* _this)
 			// expect "hybrid"
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
-			ERROR_IF(tokenID != tk_hybrid, JCL_ERR_Hybrid_Expected, pFunc->mipName, goto exit);
+			JCLSetString(pToken, "hybrid");
+			ERROR_IF(tokenID != tk_hybrid, JCL_ERR_Hybrid_Expected, pToken, goto exit);
 			// expect "("
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
@@ -5249,6 +5447,18 @@ static JILError p_function_pass(JCLState* _this)
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
 			ERROR_IF(tokenID != tk_round_close, JCL_ERR_Unexpected_Token, pToken, goto exit);
+		}
+		else if( IsExtendingClass(_this, pFunc->miClassID) )
+		{
+			// expect "extends"
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			JCLSetString(pToken, "extends");
+			ERROR_IF(tokenID != tk_extends, JCL_ERR_Hybrid_Expected, pToken, goto exit);
+			// generate constructor base call
+			err = p_function_extends(_this, pFunc);
+			if( err)
+				goto exit;
 		}
 	}
 	// parse block (function body)
@@ -5534,6 +5744,72 @@ exit:
 	FreeTempVar(_this, &pTempDel);
 	FreeLocalVars(_this, pLocals);
 	DELETE( pLocals );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_function_extends
+//------------------------------------------------------------------------------
+// Generate code for base constructor call.
+
+static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
+{
+	JILError err = JCL_No_Error;
+	Array_JCLVar* pLocals;
+	JCLClass* pClass;
+	JCLClass* pSrcClass;
+	JCLFile* pFile;
+	JCLVar* pThis;
+	JCLVar* pBase;
+	JCLString* pToken;
+	JCLString* pBaseName;
+	TypeInfo outType;
+	JILLong tokenID;
+	JILLong i;
+
+	pToken = NEW(JCLString);
+	pBaseName = NEW(JCLString);
+	pLocals = NEW(Array_JCLVar);
+	pClass = GetClass(_this, pFunc->miClassID);
+	pSrcClass = GetClass(_this, pClass->miBaseType);
+	pFile = _this->mipFile;
+	JCLClrTypeInfo(&outType);
+
+	// get base constuctor name
+	err = pFile->GetToken(pFile, pBaseName, &tokenID);
+	ERROR_IF(err, err, pBaseName, goto exit);
+	ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pBaseName, goto exit);
+
+	// make sure it's the name of the base class!
+	RemoveParentNamespace(pToken, pSrcClass->mipName);
+	ERROR_IF(!JCLCompare(pToken, pBaseName), JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
+
+	// move 'this' into 'base'
+	JCLSetString(pToken, "this");
+	pThis = FindLocalVar(_this, pToken);
+	JCLSetString(pToken, "base");
+	pBase = FindMemberVar(_this, pClass->miType, pToken);
+	err = cg_move_var(_this, pThis, pBase);
+	ERROR_IF(err, err, NULL, goto exit);
+	pBase->miInited = JILTrue;
+
+	// call specified constructor
+	err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, 0);
+	if( err )
+		goto exit;
+
+	// mark all inherited member variables as initialized
+	for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
+	{
+		JCLVar* pVar = pClass->mipVars->Get(pClass->mipVars, i);
+		pVar->miInited = JILTrue;
+	}
+
+exit:
+	FreeLocalVars(_this, pLocals);
+	DELETE( pLocals );
+	DELETE( pToken );
+	DELETE( pBaseName );
 	return err;
 }
 
@@ -8246,17 +8522,14 @@ static JILError p_assignment(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 	JCLFile* pFile;
 	JCLVar* pTempVar = NULL;
 	JCLString* pToken;
-	JCLString* pThis;
 	JILLong tokenID;
 	TypeInfo outType;
 
-	pThis = NEW(JCLString);
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
-	JCLSetString(pThis, "this");
 	JCLClrTypeInfo( &outType );
 
-	ERROR_IF(JCLCompare(pLVar->mipName, pThis), JCL_ERR_Not_An_LValue, pThis, goto exit);
+	ERROR_IF(pLVar->miReadOnly && pLVar->miUsage == kUsageVar, JCL_ERR_Variable_Read_Only, pLVar->mipName, goto exit);
 	ERROR_IF(IsTempVar(pLVar), JCL_ERR_Not_An_LValue, NULL, goto exit);
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
@@ -8292,7 +8565,6 @@ static JILError p_assignment(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLV
 
 exit:
 	FreeTempVar(_this, &pTempVar);
-	DELETE( pThis );
 	DELETE( pToken );
 	return err;
 }
@@ -8541,9 +8813,8 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 			}
 			else
 			{
-				// if calling through interface, we must use generic call method!
-				// TODO: For now this is sufficient. To support true inheritance, we would need to use generic call also if callee inherits an interface.
-				if( pClass->miFamily == tf_interface )
+				// if calling virtual method, we must use generic call
+				if( pFunc->miVirtual && !pObj->miNonVT )
 					cg_call_member(_this, pObj->miType, pFunc->miFuncIdx);
 				else
 					cg_call_static(_this, pFunc->miHandle);		// use cheaper call
@@ -8557,7 +8828,11 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 		}
 		else
 		{
-			cg_call_static(_this, pFunc->miHandle);
+			// if calling virtual method, we must use generic call
+			if( pFunc->miVirtual )
+				cg_call_member(_this, classIdx, pFunc->miFuncIdx);
+			else
+				cg_call_static(_this, pFunc->miHandle);		// use cheaper call
 		}
 	}
 	// pop arguments from stack
@@ -10776,6 +11051,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	JILLong classIdx;
 	JILLong savePos;
 	JILLong strict;
+	JILLong virtua;
 	JILLong oldClass;
 
 	pClassName = NEW(JCLString);
@@ -10783,6 +11059,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	pOldNS = GetCurrentNamespace(_this);
 	pFile = _this->mipFile;
 	strict = (modifier & kModiStrict) ? kStrict : 0;
+	virtua = kVirtual; // interface methods are always virtual
 	oldClass = _this->miClass;
 
 	// we expect to find a class name
@@ -10857,10 +11134,10 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 		switch( tokenID )
 		{
 			case tk_method:
-				err = p_function( _this, kMethod | strict, JILTrue );
+				err = p_function( _this, kMethod | strict | virtua, JILTrue );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor | strict, JILTrue );
+				err = p_function( _this, kMethod | kAccessor | strict | virtua, JILTrue );
 				break;
 			default:
 				ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -12177,6 +12454,55 @@ static JILError p_strict(JCLState* _this)
 			break;
 		case tk_explicit:
 			err = p_function( _this, kMethod | kExplicit | kStrict, JILFalse );
+			break;
+		case tk_virtual:
+			err = p_virtual( _this, kModiStrict );
+			break;
+		default:
+			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
+	}
+
+exit:
+	DELETE( pToken );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_virtual
+//------------------------------------------------------------------------------
+// Parse the virtual keyword.
+
+static JILError p_virtual(JCLState* _this, JILLong modifier)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JILLong tokenID;
+	JCLString* pToken;
+	JILLong fnKind = 0;
+
+	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+
+	if( modifier & kModiStrict )
+		fnKind |= kStrict;
+
+	// get next token
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+
+	switch( tokenID )
+	{
+		case tk_class:
+			err = p_class( _this, modifier | kModiVirtual );
+			break;
+		case tk_method:
+			err = p_function( _this, kMethod | fnKind | kVirtual, JILFalse );
+			break;
+		case tk_accessor:
+			err = p_function( _this, kMethod | kAccessor | fnKind | kVirtual, JILFalse );
+			break;
+		case tk_explicit:
+			err = p_function( _this, kMethod | kExplicit | fnKind | kVirtual, JILFalse );
 			break;
 		default:
 			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);

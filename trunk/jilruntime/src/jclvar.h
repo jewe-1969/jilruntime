@@ -73,6 +73,8 @@ DECL_CLASS( JCLVar )
 	JILBool				miOnStack;		// var is currently on SimStack
 	JILBool				miTypeCast;		// type-cast operator was encountered (for 'explicit')
 	JILBool				miHidden;		// marked as hidden (can't be found when searching for a variable)
+	JILBool				miNonVT;		// method calls via this variable are NEVER virtual
+	JILBool				miReadOnly;		// variable cannot be L-value in an assignment
 
 END_CLASS( JCLVar )
 
