@@ -49,6 +49,7 @@ void create_JCLLiteral( JCLLiteral* _this )
 	_this->miLocator = 0;
 	_this->miMethod = JILFalse;
 	_this->mipFile = NULL;
+	_this->mipStack = NEW(Array_JCLVar);
 }
 
 //------------------------------------------------------------------------------
@@ -59,6 +60,7 @@ void create_JCLLiteral( JCLLiteral* _this )
 void destroy_JCLLiteral( JCLLiteral* _this )
 {
 	DELETE( _this->miString );
+	DELETE( _this->mipStack );
 }
 
 //------------------------------------------------------------------------------
@@ -77,6 +79,7 @@ void copy_JCLLiteral( JCLLiteral* _this, const JCLLiteral* src )
 	_this->miLocator = src->miLocator;
 	_this->miMethod = src->miMethod;
 	_this->mipFile = src->mipFile;
+	_this->mipStack->Copy(_this->mipStack, src->mipStack);
 }
 
 /******************************************************************************/
@@ -275,6 +278,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miLinked = JILFalse;
 	_this->miNaked = JILFalse;
 	_this->miOptLevel = 0;
+	_this->mipParentStack = NULL;
 
 	for( i = 0; i < kNumRegisters; i++ )
 	{
@@ -338,6 +342,7 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miNoOverride = src->miNoOverride;
 	_this->miLinked = src->miLinked;
 	_this->miNaked = src->miNaked;
+	_this->mipParentStack = src->mipParentStack;
 
 	for( i = 0; i < kNumRegisters; i++ )
 	{
@@ -673,7 +678,7 @@ typedef struct
 //------------------------------------------------------------------------------
 // Returns the number of registers that need to be saved to the stack.
 
-static int GetNumRegsToSave(JCLFunc* pFunc)
+JILEXTERN JILLong GetNumRegsToSave(JCLFunc* pFunc)
 {
 	JILLong j;
 	JILLong numRegs = 0;
@@ -2189,6 +2194,11 @@ static void FixStackOffsetsInBranch(CodeBlock* _this, JILLong addr, JILLong stop
 			}
 			subAddr += JILGetOperandSize(instrInfo->opType[i]);
 		}
+		// special case closure
+		if( opcode == op_newdgc )
+		{
+			_this->array[opaddr + 2] += fixup;
+		}
 		// take into account push/pop and branches
 		if( GetStackModifier(_this, opaddr, &modiAmount) )
 		{
@@ -3240,7 +3250,7 @@ static JILError optimizeCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 	JILError err = JCL_No_Error;
 	OptimizeReport report = {0};
 	JILLong optLevel = _this->miOptLevel;
-	JILLong localVarMode = GetOptions(pCompiler)->miLocalVarMode;
+	JILLong localVarMode = kLocalStack;
 	JCLString* pFuncName = NEW(JCLString);
 
 	pCompiler->miOptSizeBefore += _this->mipCode->count * sizeof(JILLong);

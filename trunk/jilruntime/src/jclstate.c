@@ -100,8 +100,8 @@ static const JILLong kFileBufferSize = 1024;	// used by p_import()
 const JILChar* kNameGlobalNamespace = "global";
 const JILChar* kNameGlobalScope = "global::";
 const JILChar* kNameGlobalClass = "global";
-const JILChar* kNameGlobalInitFunction = "__init";
-const JILChar* kNameAnonymousFunction = "__anonymous_function_%x";
+const JILChar* kNameGlobalInitFunction = "init@0";
+const JILChar* kNameAnonymousFunction = "anon@%d";
 
 //------------------------------------------------------------------------------
 // Debug variables
@@ -184,6 +184,7 @@ JILEXTERN const JCLErrorInfo	JCLErrorStrings			[JCL_Num_Compiler_Codes];
 JILEXTERN JILLong				JILGetInstructionSize	(JILLong opcode);
 JILEXTERN JILError				JILHandleRuntimeOptions	(JILState*, const JILChar*, const JILChar*);
 JILEXTERN JILLong				GetFuncInfoFlags		(JCLFunc* func);
+JILEXTERN JILLong				GetNumRegsToSave		(JCLFunc* pFunc);
 
 //------------------------------------------------------------------------------
 // various helper functions
@@ -366,6 +367,7 @@ static JILError		cg_convert_to_type	(JCLState*, JCLVar*, JILLong);
 static JILError		cg_convert_compare	(JCLState*, JCLVar*, JCLVar*);
 static JILError		cg_convert_calc		(JCLState*, JCLVar*, JCLVar*);
 static JILError		cg_new_delegate		(JCLState*, JILLong, JCLVar*, JCLVar*);
+static JILError		cg_new_closure		(JCLState*, JILLong, JILLong, JCLVar*, JCLVar*);
 static JILError		cg_call_delegate	(JCLState*, JCLVar*);
 
 //------------------------------------------------------------------------------
@@ -513,6 +515,9 @@ void create_JCLState( JCLState* _this )
 	_this->miOptSavedInstr = 0;
 	_this->miOptSizeBefore = 0;
 	_this->miOptSizeAfter = 0;
+	_this->mipNull = NEW(JCLVar);
+	_this->mipNull->miMode = kModeStack;
+	_this->mipNull->miHidden = JILTrue;
 }
 
 //------------------------------------------------------------------------------
@@ -538,6 +543,7 @@ void destroy_JCLState( JCLState* _this )
 	DELETE( _this->mipUsing );
 	// free options
 	DELETE( _this->mipOptionStack );
+	DELETE( _this->mipNull );
 }
 
 //------------------------------------------------------------------------------
@@ -1397,15 +1403,19 @@ static void SimStackFixup(JCLState* _this, JILLong offset)
 	int i;
 	for( i = _this->miStackPos; i < kSimStackSize; i++ )
 	{
-		if( _this->mipStack[i] )
+		JCLVar* pVar = _this->mipStack[i];
+		if( pVar )
 		{
-			_this->mipStack[i]->miIndex += offset;
+			pVar->miIndex += offset;
 			// safety test...
-			if( _this->mipStack[i]->miIndex < 0
-			||	(_this->mipStack[i]->miIndex + _this->miStackPos) > kSimStackSize
-			|| _this->mipStack[i]->miMode != kModeStack )
+			if( pVar->miIndex < 0
+			||	(pVar->miIndex + _this->miStackPos) > kSimStackSize
+			|| pVar->miMode != kModeStack )
 			{
-				FATALERROR("SimStackFixup", "Inconsistent stack variable detected", return);
+				if( !pVar->miParentStack )
+				{
+					FATALERROR("SimStackFixup", "Inconsistent stack variable detected", return);
+				}
 			}
 		}
 	}
@@ -2038,6 +2048,18 @@ static JCLFunc* CurrentFunc(JCLState* _this)
 static JCLFunc* CurrentOutFunc(JCLState* _this)
 {
 	return GetFunc(_this, _this->miOutputClass, _this->miOutputFunc);
+}
+
+//------------------------------------------------------------------------------
+// GetParentStackSize
+//------------------------------------------------------------------------------
+
+static JILLong GetParentStackSize(JCLState* _this)
+{
+	if( CurrentFunc(_this)->mipParentStack )
+		return CurrentFunc(_this)->mipParentStack->Count(CurrentFunc(_this)->mipParentStack);
+	else
+		return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -5578,6 +5600,13 @@ static JILError p_function_pass(JCLState* _this)
 	pFunc = CurrentFunc(_this);
 	pFunc->miRetFlag = JILFalse;
 	pFunc->miYieldFlag = JILFalse;
+	// in case of closure push parent stack onto simulated stack
+	if( pFunc->mipParentStack )
+	{
+		pArgs = pFunc->mipParentStack;
+		for( i = pArgs->Count(pArgs) - 1; i >= 0; i-- )
+			_this->mipStack[-- _this->miStackPos] = pArgs->Get(pArgs, i); // we cannot use SimStackPush() for this!
+	}
 	// push arguments in reverse order onto simulated stack
 	pArgs = pFunc->mipArgs;
 	for( i = pArgs->Count(pArgs) - 1; i >= 0; i-- )
@@ -5695,9 +5724,10 @@ static JILError p_function_pass(JCLState* _this)
 			{
 				// Unroll entire stack
 				JILLong numStack = kSimStackSize - _this->miStackPos;	// number of items on stack
-				numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);						// minus arguments
+				numStack -= GetParentStackSize(_this);					// minus parent stack
+				numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);		// minus arguments
 				if( numStack < 0 )
-					FATALERROREXIT("p_function_pass", "No. of items on stack is negative");
+					FATALERROREXIT("p_function_pass", "Number of items on stack is negative");
 				if( numStack )
 				{
 					// pop all local variables from stack
@@ -5716,6 +5746,8 @@ static JILError p_function_pass(JCLState* _this)
 			}
 		}
 	}
+	// pop parent stack from simulated stack (we cannot use SimStackPop() for this)
+	_this->miStackPos += GetParentStackSize(_this);
 
 exit:
 	DELETE( pToken2 );
@@ -5731,7 +5763,7 @@ exit:
 static JILError p_sub_functions(JCLState* _this)
 {
 	JILError err = JCL_No_Error;
-	JILLong i;
+	JILLong i, n;
 	JILLong funcIdx;
 	JILLong savePos;
 	JCLFunc* pCurrentFunc;
@@ -5745,6 +5777,8 @@ static JILError p_sub_functions(JCLState* _this)
 	Array_JCLLiteral* pLiterals;
 	JCLString* pToken;
 	JILLong tokenID;
+	JILLong numRegsToSave;
+	JILLong numParentArgs;
 
 	// if we don't have an init function yet, bail
 	if( _this->miPass == kPassPrecompile || NumFuncs(_this, type_global) == 0 )
@@ -5757,6 +5791,8 @@ static JILError p_sub_functions(JCLState* _this)
 	pCurrentFunc = CurrentOutFunc(_this);
 	pLiterals = pCurrentFunc->mipLiterals;
 	savePos = pOldFile->GetLocator(pOldFile);
+	numRegsToSave = GetNumRegsToSave(pCurrentFunc);
+	numParentArgs = pCurrentFunc->mipArgs->Count(pCurrentFunc->mipArgs);
 
 	for( i = 0; i < pLiterals->Count(pLiterals); i++ )
 	{
@@ -5766,7 +5802,7 @@ static JILError p_sub_functions(JCLState* _this)
 			pDelegate = GetClass(_this, pLit->miType)->mipFuncType;
 			funcIdx = NumFuncs(_this, pClass->miType);
 			// generate function name
-			JCLFormat(pName, kNameAnonymousFunction, funcIdx);
+			JCLFormat(pName, kNameAnonymousFunction, JILGetNumFunctions(_this->mipMachine));
 			// create function
 			pNewFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 			pNewFunc->miFuncIdx = funcIdx;
@@ -5780,11 +5816,8 @@ static JILError p_sub_functions(JCLState* _this)
 			// create function handle
 			err = JILCreateFunction(_this->mipMachine, pClass->miType, pNewFunc->miFuncIdx, GetFuncInfoFlags(pNewFunc), JCLGetString(pNewFunc->mipName), &(pNewFunc->miHandle));
 			ERROR_IF(err, err, NULL, goto exit);
-			// use function handle or method index?
-			if( pLit->miMethod )
-				pLit->miHandle = pNewFunc->miFuncIdx;
-			else
-				pLit->miHandle = pNewFunc->miHandle;
+			// use function handle
+			pLit->miHandle = pNewFunc->miHandle;
 			// set code locator to start of sub function
 			pFile = pLit->mipFile;
 			pFile->SetLocator(pFile, pLit->miLocator);
@@ -5821,9 +5854,20 @@ static JILError p_sub_functions(JCLState* _this)
 			{
 				pFile->SetLocator(pFile, pLit->miLocator);
 			}
+			// process parent stack variables
+			n = pLit->mipStack->Count(pLit->mipStack) - numParentArgs;
+			for( i = 0; i < pLit->mipStack->Count(pLit->mipStack); i++ )
+			{
+				JCLVar* pVar = pLit->mipStack->Get(pLit->mipStack, i);
+				if( i >= n )
+					pVar->miIndex += numRegsToSave;
+				pVar->miParentStack = JILTrue;
+			}
 			// now compile to the new function
 			SetCompileContext(_this, pClass->miType, funcIdx);
+			CurrentFunc(_this)->mipParentStack = pLit->mipStack;
 			err = p_function_body(_this);
+			CurrentFunc(_this)->mipParentStack = NULL;
 			if( err )
 				goto exit;
 		}
@@ -6290,7 +6334,7 @@ static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVa
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	JCLClrTypeInfo( &outType );
-	localVarMode = GetOptions(_this)->miLocalVarMode;
+	localVarMode = kLocalStack; //GetOptions(_this)->miLocalVarMode;
 
 	for(;;)
 	{
@@ -6469,6 +6513,7 @@ static JILError p_return(JCLState* _this, Array_JCLVar* pLocals)
 no_expr:
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
+	numStack -= GetParentStackSize(_this);					// minus parent stack
 	numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);		// minus arguments
 	if( numStack < 0 )
 		FATALERROREXIT("p_return", "Number of items on stack is negative");
@@ -6536,6 +6581,7 @@ static JILError p_throw(JCLState* _this, Array_JCLVar* pLocals)
 
 	// get number of items on stack
 	numStack = kSimStackSize - _this->miStackPos;
+	numStack -= GetParentStackSize(_this);					// minus parent stack
 	numStack -= pFunc->mipArgs->Count(pFunc->mipArgs);		// minus arguments
 	if( numStack < 0 )
 		FATALERROREXIT("p_throw", "Number of items on stack is negative");
@@ -13692,6 +13738,8 @@ static JILError cg_load_func_literal(JCLState* _this, JILLong codeLocator, JCLVa
 	JCLLiteral* pLit;
 	JCLVar* pWorkVar;
 	JCLFunc* pFunc;
+	JILLong i;
+	JILLong sp;
 
 	if( TypeFamily(_this, pLVar->miType) != tf_delegate )
 	{
@@ -13713,8 +13761,9 @@ static JILError cg_load_func_literal(JCLState* _this, JILLong codeLocator, JCLVa
 	}
 
 	// create function delegate
-	codePos = GetCodeLocator(_this) + 2;
-	err = cg_new_delegate(_this, 0, pObj, pWorkVar);
+	sp = kSimStackSize - _this->miStackPos;
+	codePos = GetCodeLocator(_this) + 3;
+	err = cg_new_closure(_this, sp, 0, pObj, pWorkVar);
 	if( err )
 		goto exit;
 
@@ -13726,6 +13775,15 @@ static JILError cg_load_func_literal(JCLState* _this, JILLong codeLocator, JCLVa
 	pLit->miLocator = codeLocator;
 	pLit->miMethod = (pObj != NULL);
 	pLit->mipFile = _this->mipFile;
+
+	for( i = 0; i < sp; i++ )
+	{
+		JCLVar* pSrc = _this->mipStack[_this->miStackPos + i];
+		JCLVar* pDst = pLit->mipStack->New(pLit->mipStack);
+		if( pSrc == NULL )
+			pSrc = _this->mipNull;
+		pDst->Copy(pDst, pSrc);
+	}
 
 exit:
 	return err;
@@ -17017,6 +17075,66 @@ static JILError cg_new_delegate(JCLState* _this, JILLong funcIdx, JCLVar* pObj, 
 		cg_opcode(_this, funcIdx);
 		cg_opcode(_this, pNewDst->miIndex);
 	}
+	if( pNewDst != pDst )
+	{
+		err = cg_move_var(_this, pNewDst, pDst);
+		if( err )
+			goto exit;
+	}
+	pDst->miUnique = JILTrue;
+
+exit:
+	FreeTempVar(_this, &pTmpObj);
+	FreeTempVar(_this, &pTmpDst);
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// cg_new_closure
+//------------------------------------------------------------------------------
+
+static JILError cg_new_closure(JCLState* _this, JILLong stackSize, JILLong hFunction, JCLVar* pObj, JCLVar* pDst)
+{
+	JILError err = JCL_No_Error;
+	JCLVar* pTmpObj = NULL;
+	JCLVar* pTmpDst = NULL;
+	JCLVar* pNewDst = pDst;
+
+	err = cg_dst_assign_rule(_this, pDst);
+	if( err )
+		goto exit;
+	if( TypeFamily(_this, pDst->miType) != tf_delegate )
+	{
+		err = JCL_ERR_Incompatible_Type;
+		goto exit;
+	}
+	if( pObj && pObj->miMode != kModeRegister )
+	{
+		if( TypeFamily(_this, pObj->miType) != tf_class )
+		{
+			err = JCL_ERR_Incompatible_Type;
+			goto exit;
+		}
+		err = MakeTempVar(_this, &pTmpObj, pObj);
+		if( err )
+			goto exit;
+		err = cg_move_var(_this, pObj, pTmpObj);
+		if( err )
+			goto exit;
+		pObj = pTmpObj;
+	}
+	if( pDst->miMode != kModeRegister )
+	{
+		err = MakeTempVar(_this, &pTmpDst, pDst);
+		if( err )
+			goto exit;
+		pNewDst = pTmpDst;
+	}
+	cg_opcode(_this, op_newdgc);
+	cg_opcode(_this, pNewDst->miType);
+	cg_opcode(_this, stackSize);
+	cg_opcode(_this, hFunction);
+	cg_opcode(_this, pNewDst->miIndex);
 	if( pNewDst != pDst )
 	{
 		err = cg_move_var(_this, pNewDst, pDst);

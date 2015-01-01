@@ -69,6 +69,13 @@ JILString*			JILAllocStringFromCStr	(JILState* pState, JILLong offsetString);
 JILDelegate*		JILAllocDelegate		(JILState* pState, JILLong index, JILHandle* pObject);
 
 //------------------------------------------------------------------------------
+// JILAllocClosure
+//------------------------------------------------------------------------------
+/// Allocates a JIL closure object.
+
+JILDelegate*		JILAllocClosure			(JILState* pState, JILLong stackSize, JILLong addr, JILHandle* pObject);
+
+//------------------------------------------------------------------------------
 // JILAllocDelegate
 //------------------------------------------------------------------------------
 /// Frees a JIL delegate object.

@@ -76,9 +76,9 @@ JILEXTERN const JILChar*	kNameGlobalClass;
 // static functions
 //------------------------------------------------------------------------------
 
-static void		JCLPostLink			(JCLState*);
 static JILError	JCLAddGlobals		(JILState*);
 static JILError JCLSetWorkingDir	(const JILChar* pPath);
+static JILError JCLPostLink			(JCLState* _this);
 
 //------------------------------------------------------------------------------
 // JCLBeginCompile
@@ -267,7 +267,7 @@ JILError JCLLink(JILState* pVM)
 					err = JILSetMemory(pVM, address, pCode->array, pCode->count);
 					if( err )
 						goto exit;
-					err = JILSetFunctionAddress(pVM, pFunc->miHandle, address, pCode->count);
+					err = JILSetFunctionAddress(pVM, pFunc->miHandle, address, pCode->count, pFunc->mipArgs->Count(pFunc->mipArgs));
 					if( err )
 						goto exit;
 				}
@@ -738,71 +738,6 @@ JILError JCLFreeCompiler(JILState* pVM)
 }
 
 //------------------------------------------------------------------------------
-// JCLPostLink															[static]
-//------------------------------------------------------------------------------
-// Substitute all 'calls' instructions by cheaper 'jsr' instructions.
-
-static void JCLPostLink(JCLState* _this)
-{
-	JILLong c;
-	JILLong f;
-	JILLong i;
-	JILLong l;
-	JILLong o;
-	JILLong addr;
-	JCLFunc* pFunc;
-	Array_JILLong* pCode;
-
-	addr = 0;
-	for( c = 0; c < NumClasses(_this); c++ )
-	{
-		for( f = 0; f < NumFuncs(_this, c); f++ )
-		{
-			pFunc = GetFunc(_this, c, f);
-			pCode = pFunc->mipCode;
-			for( i = 0; i < pCode->count; i += l )
-			{
-				o = pCode->Get(pCode, i);
-				l = JILGetInstructionSize(o);
-				if( l == 0 )
-					break;
-				if( o == op_calls )
-				{
-					JILLong c2;
-					JILLong f2;
-					JILLong faddr = 0;
-					JCLFunc* pFunc2;
-					JILLong hFunc = pCode->Get(pCode, i + 1);
-					for( c2 = 0; c2 < NumClasses(_this); c2++ )
-					{
-						for( f2 = 0; f2 < NumFuncs(_this, c2); f2++ )
-						{
-							pFunc2 = GetFunc(_this, c2, f2);
-							if( pFunc2->miHandle == hFunc )
-							{
-								faddr = pFunc2->miLnkAddr;
-								break;
-							}
-						}
-					}
-					if( faddr )
-					{
-						JILLong cod[2] = { op_jsr, 0 };
-						cod[1] = faddr;
-						JILSetMemory(_this->mipMachine, addr + i, cod, 2);
-					}
-					else
-					{
-						JILMessageLog(_this->mipMachine, "Error in JCLPostLink(): Function handle %d not found at code location %d\n", hFunc, addr + i);
-					}
-				}
-			}
-			addr += pCode->count;
-		}
-	}
-}
-
-//------------------------------------------------------------------------------
 // JILInitializeCompiler
 //------------------------------------------------------------------------------
 
@@ -913,4 +848,49 @@ void JCLGetAbsolutePath(JCLState* _this, JCLString* pOut, const JCLString* instr
 	{
 		JCLSetString(pOut, JCLGetString(pIn));
 	}
+}
+
+//------------------------------------------------------------------------------
+// JCLPostLink															[static]
+//------------------------------------------------------------------------------
+// Substitute all 'calls' instructions by cheaper 'jsr' instructions.
+
+static JILError JCLPostLink(JCLState* _this)
+{
+	JILLong c;
+	JILLong f;
+	JILLong i;
+	JILLong l;
+	JILLong o;
+	JILLong addr;
+	JCLFunc* pFunc;
+	Array_JILLong* pCode;
+	JILFuncInfo* pFuncInfo;
+	JILState* ps = _this->mipMachine;
+
+	addr = 0;
+	for( c = 0; c < NumClasses(_this); c++ )
+	{
+		for( f = 0; f < NumFuncs(_this, c); f++ )
+		{
+			pFunc = GetFunc(_this, c, f);
+			pCode = pFunc->mipCode;
+			for( i = 0; i < pCode->count; i += l )
+			{
+				o = pCode->Get(pCode, i);
+				l = JILGetInstructionSize(o);
+				if( l == 0 )
+					break;
+				if( o == op_calls )
+				{
+					JILLong cod[2] = { op_jsr, 0 };
+					pFuncInfo = ps->vmpFuncSegment->pData + pCode->Get(pCode, i + 1);
+					cod[1] = pFuncInfo->codeAddr;
+					JILSetMemory(ps, addr + i, cod, 2);
+				}
+			}
+			addr += pCode->count;
+		}
+	}
+	return JCL_No_Error;
 }

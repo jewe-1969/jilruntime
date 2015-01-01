@@ -766,50 +766,11 @@
 	if(handle1->type == type_null) { JIL_STORE_HANDLE(pState, (pContext->vmppRegister + 1), *pState->vmppHandles); JIL_IEND }\
 	JIL_INSERT_DEBUG_CODE( typeInfo = JILTypeInfoFromType(pState, handle1->type) );\
 	JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(typeInfo->family != tf_delegate, JIL_VM_Unsupported_Type) );\
-	i = JILGetDelegateHandle(handle1)->pDelegate->index;\
-	handle2 = JILGetDelegateHandle(handle1)->pDelegate->pObject;\
-	if( handle2 )\
-	{\
-		typeInfo = JILTypeInfoFromType(pState, handle2->type);\
-		JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(typeInfo->family != tf_class, JIL_VM_Unsupported_Type) )\
-		if( typeInfo->isNative )\
-		{\
-			pState->errProgramCounter = pContext->vmProgramCounter = programCounter;\
-			JIL_PUSH_CS(programCounter + instruction_size)\
-			result = CallNTLCallMember(typeInfo, i, JILGetNObjectHandle(handle2)->ptr);\
-			JIL_POP_CS(i)\
-			JIL_THROW( result )\
-			JIL_IEND\
-		}\
-		else\
-		{\
-			JILLong* pVt = JILCStrGetVTable(pState, typeInfo->offsetVtab);\
-			funcInfo = pState->vmpFuncSegment->pData + pVt[i];\
-			JIL_PUSH_CS( programCounter + instruction_size )\
-			programCounter = funcInfo->codeAddr;\
-			JIL_STORE_HANDLE(pState, pContext->vmppRegister, handle2); /*MODIFY R0*/ \
-			JIL_IENDBR\
-		}\
-	}\
-	else\
-	{\
-		funcInfo = pState->vmpFuncSegment->pData + i;\
-		typeInfo = JILTypeInfoFromType(pState, funcInfo->type);\
-		if( typeInfo->isNative )\
-		{\
-			pState->errProgramCounter = pContext->vmProgramCounter = programCounter;\
-			JIL_PUSH_CS(programCounter + instruction_size)\
-			result = CallNTLCallStatic(typeInfo, funcInfo->memberIdx);\
-			JIL_POP_CS(i)\
-			JIL_THROW( result )\
-			JIL_IEND\
-		}\
-		else\
-		{\
-			JIL_PUSH_CS( programCounter + instruction_size )\
-			programCounter = funcInfo->codeAddr;\
-			JIL_IENDBR\
-		}\
-	}
+	pState->errProgramCounter = pContext->vmProgramCounter = programCounter;\
+	JIL_PUSH_CS(programCounter + instruction_size)\
+	result = JILCallDelegate(pState, handle1);\
+	JIL_POP_CS(i)\
+	JIL_THROW( result )\
+	JIL_IEND
 
 #endif	// #ifndef JILOPMACROS_H

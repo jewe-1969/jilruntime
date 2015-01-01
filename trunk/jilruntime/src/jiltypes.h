@@ -118,6 +118,7 @@ typedef struct JILListItem			JILListItem;
 typedef struct JILIterator			JILIterator;
 typedef struct JILFuncInfo			JILFuncInfo;
 typedef struct JILDataHandle		JILDataHandle;
+typedef struct JILClosure			JILClosure;
 typedef struct JILDelegate			JILDelegate;
 typedef struct JILMethodInfo		JILMethodInfo;
 typedef struct JILRuntimeException	JILRuntimeException;
@@ -339,6 +340,7 @@ struct JILFuncInfo
 	JILLong				flags;		///< The function type, this is a bitfield, @see enum JILFuncInfoFlags
 	JILLong				codeAddr;	///< The code address of the function
 	JILLong				codeSize;	///< The size of the function in instruction words, or 0 if native function
+	JILLong				args;		///< The number of arguments the function expects on the stack
 	JILLong				memberIdx;	///< The member index of the function or method
 	JILLong				offsetName;	///< Offset to the function name in the CStr segment
 };
@@ -385,6 +387,18 @@ struct JILMemStats
 };
 
 //------------------------------------------------------------------------------
+// struct JILClosure
+//------------------------------------------------------------------------------
+/// Additional data for 'closure' delegates, which are anonymous local functions
+/// and methods that have access to the parent function's stack.
+
+struct JILClosure
+{
+	JILLong				stackSize;		///< size of the parent function's stack
+	JILHandle**			ppStack;		///< snapshot of the parent function's stack
+};
+
+//------------------------------------------------------------------------------
 // struct JILDelegate
 //------------------------------------------------------------------------------
 /// This small struct describes a delegate, which represents a first class
@@ -396,6 +410,7 @@ struct JILDelegate
 {
 	JILLong				index;			///< method index in case of an instance member function, otherwise global function index
 	JILHandle*			pObject;		///< 'this' reference in case of an instance member function, otherwise NULL
+	JILClosure*			pClosure;		///< if the delegate is a closure, contains the parent function's stack, else NULL
 };
 
 //------------------------------------------------------------------------------

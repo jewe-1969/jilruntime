@@ -1347,6 +1347,19 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					JILRelease(pState, pNewHandle);
 					pNewHandle = NULL;
 					JIL_IEND
+				case op_newdgc:
+					JIL_IBEGIN( 5 )
+					pNewHandle = JILGetNewHandle(pState);
+					hObj = JIL_GET_DATA(pState);
+					i = JIL_GET_DATA(pState);
+					offs = JIL_GET_DATA(pState);
+					JIL_LEA_R(pContext, operand1);
+					pNewHandle->type = hObj;
+					JILGetDelegateHandle(pNewHandle)->pDelegate = JILAllocClosure(pState, i, offs, pContext->vmppRegister[0]);
+					JIL_STORE_HANDLE(pState, operand1, pNewHandle);
+					JILRelease(pState, pNewHandle);
+					pNewHandle = NULL;
+					JIL_IEND
 				default:
 					JIL_IBEGIN( 1 )
 					JIL_THROW( JIL_VM_Illegal_Instruction )

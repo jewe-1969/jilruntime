@@ -535,6 +535,9 @@ enum
 	op_calli,
 	op_dcvt,
 
+	// extensions 2015-01-01
+	op_newdgc,
+
 	JILNumOpcodes
 };
 
