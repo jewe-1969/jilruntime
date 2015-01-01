@@ -65,6 +65,8 @@ DECL_CLASS( JCLFunc )
 	JILLong				miLnkDelegate;	// link-to-delegate: index of member variable holding delegate
 	JILLong				miLnkMethod;	// link-to-method: index of method / accessor to call
 	JILLong				miLnkBaseVar;	// index of 'base' variable for link code generation
+	JILLong				miLnkRelIdx;	// index of source function for code relocation
+	JILLong				miLnkVarOffset;	// variable relocation offset
 	JILBool				miRetFlag;		// encountered return statement
 	JILBool				miYieldFlag;	// encountered yield statement
 	JILBool				miMethod;		// is a member function

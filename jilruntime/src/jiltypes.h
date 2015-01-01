@@ -95,7 +95,8 @@ typedef enum
 	fi_cofunc		= 1 << 4,	///< method is cofunction
 	fi_anonymous	= 1 << 5,	///< anonymous local method or function
 	fi_explicit		= 1 << 6,	///< constructor / convertor is explicit
-	fi_strict		= 1 << 7	///< method is strict
+	fi_strict		= 1 << 7,	///< method is strict
+	fi_virtual		= 1 << 8	///< method is virtual
 
 } JILFuncInfoFlags;
 

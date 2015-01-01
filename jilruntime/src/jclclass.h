@@ -62,7 +62,7 @@ DECL_CLASS( JCLClass )
 	JCLString*			mipName;		// class name
 	JCLString*			mipTag;			// tag string
 	JILLong				miType;			// type identifier
-	JILLong				miBaseType;		// base interface typeID, if this class is inherited, otherwise 0
+	JILLong				miBaseType;		// base typeID, if this class is inherited, otherwise 0
 	JILLong				miHybridBase;	// typeID of base class if class is "hybrid", otherwise 0
 	JILLong				miParentType;	// typeID of parent class of this type
 	JILLong				miFamily;		// type family, see enum JILTypeFamily
@@ -75,6 +75,7 @@ DECL_CLASS( JCLClass )
 	Array_JCLFunc*		mipFuncs;		// member functions
 	Array_JCLVar*		mipVars;		// member variables
 	Array_JCLString*	mipAlias;		// aliases for this type
+	Array_JILLong*		mipInherits;	// type IDs of inherited classes
 	JCLFuncType*		mipFuncType;	// signature of a delegate or cofunction type
 	JILMethodInfo		miMethodInfo;	// info about special methods like ctor, copy-ctor and dtor
 

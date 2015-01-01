@@ -51,6 +51,7 @@ void create_JCLClass( JCLClass* _this )
 	_this->mipFuncs = NEW(Array_JCLFunc);
 	_this->mipVars = NEW(Array_JCLVar);
 	_this->mipAlias = NEW(Array_JCLString);
+	_this->mipInherits = NEW(Array_JILLong);
 	_this->mipFuncType = NEW(JCLFuncType);
 	_this->miMethodInfo.ctor = -1;
 	_this->miMethodInfo.cctor = -1;
@@ -70,6 +71,7 @@ void destroy_JCLClass( JCLClass* _this )
 	DELETE( _this->mipFuncs );
 	DELETE( _this->mipVars );
 	DELETE( _this->mipAlias );
+	DELETE( _this->mipInherits );
 	DELETE( _this->mipFuncType );
 }
 
@@ -96,6 +98,7 @@ void copy_JCLClass( JCLClass* _this, const JCLClass* src )
 	_this->mipFuncs->Copy(_this->mipFuncs, src->mipFuncs);
 	_this->mipVars->Copy(_this->mipVars, src->mipVars);
 	_this->mipAlias->Copy(_this->mipAlias, src->mipAlias);
+	_this->mipInherits->Copy(_this->mipInherits, src->mipInherits);
 	_this->mipFuncType->Copy(_this->mipFuncType, src->mipFuncType);
 	_this->miMethodInfo.ctor = src->miMethodInfo.ctor;
 	_this->miMethodInfo.cctor = src->miMethodInfo.cctor;

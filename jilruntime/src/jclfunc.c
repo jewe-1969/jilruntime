@@ -228,6 +228,7 @@ static JCLString* toString_JCLFunc		(JCLFunc*, JCLState*, JCLString*, JILLong);
 static JCLString* toXml_JCLFunc			(JCLFunc*, JCLState*, JCLString*);
 static JILError DebugListFunction		(JCLFunc*, JCLState*);
 static JILError InsertRegisterSaving	(JCLFunc*, JCLState*);
+static JILError RelocateFunction		(JCLFunc*, JCLFunc*, JCLState*);
 
 //------------------------------------------------------------------------------
 // JCLFunc
@@ -256,6 +257,8 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miLnkDelegate = -1;
 	_this->miLnkMethod = -1;
 	_this->miLnkBaseVar = 0;
+	_this->miLnkRelIdx = -1;
+	_this->miLnkVarOffset = 0;
 	_this->miRetFlag = JILFalse;
 	_this->miYieldFlag = JILFalse;
 	_this->miMethod = JILFalse;
@@ -317,6 +320,8 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miLnkDelegate = src->miLnkDelegate;
 	_this->miLnkMethod = src->miLnkMethod;
 	_this->miLnkBaseVar = src->miLnkBaseVar;
+	_this->miLnkRelIdx = src->miLnkRelIdx;
+	_this->miLnkVarOffset = src->miLnkVarOffset;
 	_this->miRetFlag = src->miRetFlag;
 	_this->miMethod = src->miMethod;
 	_this->miCtor = src->miCtor;
@@ -342,7 +347,6 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 //------------------------------------------------------------------------------
 // JCLFunc::LinkCode
 //------------------------------------------------------------------------------
-// 
 
 static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 {
@@ -352,9 +356,9 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 	{
 		// generate "stub" if function has no body
 		Array_JILLong* pCode = _this->mipCode;
-		if( !pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0) )
+		if( !pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 || _this->miLnkRelIdx >= 0) )
 		{
-			if( _this->miLnkDelegate < 0 && _this->miLnkMethod < 0 )
+			if( _this->miLnkDelegate < 0 && _this->miLnkMethod < 0 && _this->miLnkRelIdx < 0 )
 			{
 				JCLString* declString = NEW(JCLString);
 				_this->ToString(_this, pCompiler, declString, kCompact);
@@ -369,6 +373,10 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 				pCode->Set(pCode, 3, op_yield);
 				pCode->Set(pCode, 4, op_bra);
 				pCode->Set(pCode, 5, -1);
+			}
+			else if( _this->miLnkRelIdx >= 0 )
+			{
+				return RelocateFunction(_this, GetFunc(pCompiler, _this->miLnkBaseVar, _this->miLnkRelIdx), pCompiler);
 			}
 			else if( _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 )
 			{
@@ -624,6 +632,7 @@ JILLong GetFuncInfoFlags(JCLFunc* func)
 	if( func->miAnonymous )	flags |= fi_anonymous;
 	if( func->miExplicit )	flags |= fi_explicit;
 	if( func->miStrict )	flags |= fi_strict;
+	if( func->miVirtual )	flags |= fi_virtual;
 	return flags;
 }
 
@@ -3312,4 +3321,79 @@ static JILError optimizeCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 exit:
 	DELETE( pFuncName );
 	return err;
+}
+
+//------------------------------------------------------------------------------
+// JCLFunc::RelocateFunction
+//------------------------------------------------------------------------------
+
+static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState* pCompiler)
+{
+	JILLong opaddr, opsize, opcode, i;
+	JILLong srcType = pSrcFunc->miClassID;
+	JILLong dstType = pDstFunc->miClassID;
+	JILLong varOffset = pDstFunc->miLnkVarOffset;
+	JILLong dstFuncIdx = pDstFunc->miFuncIdx;
+	OpcodeInfo info;
+	CodeBlock* _this = pDstFunc->mipCode;
+	const JILInstrInfo* pInfo;
+	JILBool bUpdate;
+
+	// copy entire code from source function
+	pDstFunc->mipCode->Copy(pDstFunc->mipCode, pSrcFunc->mipCode);
+
+	// go through code and relocate variable offsets, function indexes and type IDs
+	for( opaddr = 0; opaddr < _this->count; opaddr += opsize )
+	{
+		opcode = _this->array[opaddr];
+		opsize = JILGetInstructionSize(opcode);
+		if( GetOpcodeInfo(_this, opaddr, &info) )
+		{
+			bUpdate = JILFalse;
+			if( opcode == op_callm )
+			{
+				info.operand[0].data[0] = dstType;
+				info.operand[1].data[0] = dstFuncIdx;
+				bUpdate = JILTrue;
+			}
+			else
+			{
+				pInfo = JILGetInfoFromOpcode(opcode);
+				for( i = 0; i < pInfo->numOperands; i++ )
+				{
+					if( info.operand[i].type == ot_type )
+					{
+						if( info.operand[i].data[0] == srcType )
+						{
+							// replace type
+							info.operand[i].data[0] = dstType;
+							bUpdate = JILTrue;
+						}
+					}
+					else if( info.operand[i].type == ot_ead )
+					{
+						if( info.operand[i].data[0] == 0 ) // R0?
+						{
+							// relocate member variable access
+							info.operand[i].data[1] += varOffset;
+							bUpdate = JILTrue;
+						}
+					}
+				}
+			}
+			if( bUpdate )
+			{
+				JILLong buf[8];
+				JILLong bsize = 0;
+				if( CreateInstruction(&info, buf, &bsize) )
+				{
+					if( bsize != opsize )
+						return JIL_ERR_Generic_Error;
+					memcpy(_this->array + opaddr, buf, bsize * sizeof(JILLong));
+				}
+			}
+		}
+	}
+	pDstFunc->miLinked = JILTrue;
+	return 0;
 }
