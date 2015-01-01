@@ -71,6 +71,7 @@ DECL_CLASS( JCLVar )
 	JILBool				miUnique;		// temp var already copied
 	JILBool				miConstP;		// member access: object is const
 	JILBool				miOnStack;		// var is currently on SimStack
+	JILBool				miParentStack;	// var is from parent stack (closure)
 	JILBool				miTypeCast;		// type-cast operator was encountered (for 'explicit')
 	JILBool				miHidden;		// marked as hidden (can't be found when searching for a variable)
 	JILBool				miNonVT;		// method calls via this variable are NEVER virtual

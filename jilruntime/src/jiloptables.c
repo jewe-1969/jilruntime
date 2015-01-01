@@ -536,5 +536,8 @@ const JILInstrInfo g_InstructionInfo[JILNumOpcodes] =
 	// extensions 2014-04
 	op_alloci,      3, 2,   ot_type,    ot_ear,     ot_none,    ot_none,    "alloci",
 	op_calli,       3, 2,   ot_type,    ot_number,  ot_none,    ot_none,    "calli",
-	op_dcvt,        4, 3,   ot_type,    ot_ear,     ot_ear,     ot_none,    "dcvt"
+	op_dcvt,        4, 3,   ot_type,    ot_ear,     ot_ear,     ot_none,    "dcvt",
+
+	// extensions 2015-01-01
+	op_newdgc,      5, 4,   ot_type,    ot_number,  ot_number,  ot_ear,     "newdgc"
 };

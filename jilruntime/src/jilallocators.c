@@ -136,9 +136,45 @@ JILDelegate* JILAllocDelegate(JILState* pState, JILLong index, JILHandle* pObjec
 	JILDelegate* pDel = (JILDelegate*) pState->vmMalloc(pState, sizeof(JILDelegate));
 	pDel->index = index;
 	pDel->pObject = pObject;
+	pDel->pClosure = NULL;
 	if( pObject )
 		JILAddRef(pObject);
 	return pDel;
+}
+
+//------------------------------------------------------------------------------
+// JILAllocClosure
+//------------------------------------------------------------------------------
+// Allocates a JIL closure object.
+
+JILDelegate* JILAllocClosure(JILState* pState, JILLong stackSize, JILLong addr, JILHandle* pObject)
+{
+	JILDelegate* pDelegate;
+	JILByte* ptr;
+	JILHandle** src;
+	JILHandle** dst;
+	JILLong i;
+	JILLong size = sizeof(JILDelegate) + sizeof(JILClosure) + stackSize * sizeof(JILHandle*);
+
+	ptr = (JILByte*) pState->vmMalloc(pState, size);
+	pDelegate = (JILDelegate*) ptr;
+	ptr += sizeof(JILDelegate);
+	pDelegate->pClosure = (JILClosure*) ptr;
+	ptr += sizeof(JILClosure);
+	pDelegate->pClosure->stackSize = stackSize;
+	pDelegate->pClosure->ppStack = (JILHandle**) ptr;
+	pDelegate->index = addr;
+	pDelegate->pObject = pObject;
+	JILAddRef(pObject);
+
+	src = pState->vmpContext->vmppDataStack + pState->vmpContext->vmDataStackPointer;
+	dst = pDelegate->pClosure->ppStack;
+	for( i = 0; i < stackSize; i++ )
+	{
+		JILAddRef(*src);
+		*dst++ = *src++;
+	}
+	return pDelegate;
 }
 
 //------------------------------------------------------------------------------
@@ -150,6 +186,14 @@ void JILFreeDelegate(JILState* pState, JILDelegate* pDelegate)
 {
 	if( pDelegate->pObject )
 		JILRelease(pState, pDelegate->pObject)
+	if( pDelegate->pClosure )
+	{
+		JILLong i;
+		JILLong n = pDelegate->pClosure->stackSize;
+		JILHandle** src = pDelegate->pClosure->ppStack;
+		for( i = 0; i < n; i++ )
+			JILRelease(pState, *src++);
+	}
 	pState->vmFree(pState, pDelegate);
 }
 

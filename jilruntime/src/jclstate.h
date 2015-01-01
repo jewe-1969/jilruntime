@@ -86,6 +86,7 @@ DECL_CLASS( JCLState )
 	JILLong				miOptSizeBefore;			///< Optimization: Total code size before optimization (bytes)
 	JILLong				miOptSizeAfter;				///< Optimization: Total code size after optimization (bytes)
 	JCLFatalErrorHandler miFatalErrorHandler;		///< Fatal Error callback
+	JCLVar*				mipNull;					///< Dummy 'null' var used to reserve space on sim stack
 
 END_CLASS( JCLState )
 

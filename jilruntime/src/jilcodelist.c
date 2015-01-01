@@ -246,6 +246,8 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 				JILGetNewctx(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_newdg:
+			case op_newdgm:
+			case op_newdgc:
 				JILGetNewdg(pState, pComment, kMaxStringLength, address);
 				break;
 		}
@@ -826,15 +828,31 @@ static void JILGetNewdg(JILState* pState, JILChar* pDst, JILLong maxLen, JILLong
 	JILLong type = 0;
 	JILLong funcIndex = 0;
 	JILLong offset;
+	JILLong op = 0;
+	JILLong n;
 
 	pDst[0] = 0;
+	if( JILGetMemory(pState, addr, &op, 1) )
+		return;
 	if( JILGetMemory(pState, addr + 1, &type, 1) )
 		return;
-	if( JILGetMemory(pState, addr + 2, &funcIndex, 1) )
+	n = (op == op_newdgc) ? 3 : 2;
+	if( JILGetMemory(pState, addr + n, &funcIndex, 1) )
 		return;
-	if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
-		return;
-
+	if( op == op_newdgm )
+	{
+		JILLong* pVt;
+		JILTypeInfo* pti = pState->vmpTypeInfoSegment + type;
+		if( pti->isNative || pti->family != tf_class )
+			return;
+		pVt = JILCStrGetVTable(pState, pti->offsetVtab);
+		funcIndex = pVt[funcIndex];
+	}
+	else
+	{
+		if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
+			return;
+	}
 	pFuncInfo = pState->vmpFuncSegment->pData + funcIndex;
 	offset = pState->vmpTypeInfoSegment[pFuncInfo->type].offsetName;
 	JILSnprintf(pDst, maxLen, "delegate %s (%s::%s)",

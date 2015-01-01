@@ -47,7 +47,6 @@ DECL_CLASS( JCLOption )
 
 	JILBool				miVerboseEnable;	///< output additional info
 	JILBool				miWarningLevel;		///< output warnings
-	JILLong				miLocalVarMode;		///< local variable code generation mode
 	JILLong				miOptimizeLevel;	///< optimization level
 	JILBool				miUseRTCHK;			///< use runtime type checking
 	JILBool				miAllowFileImport;	///< allow import of additional scripts from local filesys

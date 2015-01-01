@@ -77,7 +77,6 @@ static const JILChar* kFileNameChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abc
 //------------------------------------------------------------------------------
 
 static JILError	SetStdIntValue			(JILLong*, JILLong, JILLong, JCLString*);
-static JILError	SetLocalVarMode			(JCLOption*, JCLString*);
 static JILError SetFileExt				(JCLOption*, JCLString*);
 static JILError SetErrorFormat			(JCLOption*, JCLString*);
 static JILError parseOption_JCLOption	(JCLOption*, const JCLString*, JILOptionHandler, JILUnknown*);
@@ -102,12 +101,10 @@ void create_JCLOption( JCLOption* _this )
 #ifdef _DEBUG
 	_this->miWarningLevel = 4;
 	_this->miOptimizeLevel = 0;
-	_this->miLocalVarMode = kLocalAuto;
 	_this->miVerboseEnable = JILTrue;
 #else
 	_this->miWarningLevel = 3;
 	_this->miOptimizeLevel = 3;
-	_this->miLocalVarMode = kLocalStack;
 	_this->miVerboseEnable = JILFalse;
 #endif
 }
@@ -131,7 +128,6 @@ void copy_JCLOption(JCLOption* _this, const JCLOption* src)
 {
 	_this->miVerboseEnable = src->miVerboseEnable;
 	_this->miWarningLevel = src->miWarningLevel;
-	_this->miLocalVarMode = src->miLocalVarMode;
 	_this->miOptimizeLevel = src->miOptimizeLevel;
 	_this->miUseRTCHK = src->miUseRTCHK;
 	_this->miAllowFileImport = src->miAllowFileImport;
@@ -180,9 +176,6 @@ static JILError parseOption_JCLOption(JCLOption* _this, const JCLString* str, JI
 		case opt_warn_enable:
 			err = SetStdIntValue(&_this->miWarningLevel, 0, 4, pValue);
 			break;
-		case opt_locals_on_stack:
-			err = SetLocalVarMode(_this, pValue);
-			break;
 		case opt_optimize_level:
 			err = SetOptLevel(_this, pValue);
 			break;
@@ -226,27 +219,6 @@ static JILError SetStdIntValue(JILLong* pResult, JILLong min, JILLong max, JCLSt
 		if( lValue >= min && lValue <= max )
 		{
 			*pResult = lValue;
-			err = JCL_No_Error;
-		}
-	}
-	return err;
-}
-
-//------------------------------------------------------------------------------
-// SetLocalVarMode
-//------------------------------------------------------------------------------
-
-static JILError SetLocalVarMode(JCLOption* _this, JCLString* pValue)
-{
-	JILError err = JCL_WARN_Invalid_Option_Value;
-	JILChar* pStopPos;
-	// try to convert value string to a long
-	JILLong lValue = strtol(JCLGetString(pValue), &pStopPos, 0);
-	if( pStopPos != JCLGetString(pValue) )
-	{
-		if( lValue == 0 || lValue == 1 )
-		{
-			_this->miLocalVarMode = lValue ? kLocalStack : kLocalAuto;
 			err = JCL_No_Error;
 		}
 	}
@@ -314,8 +286,6 @@ static JILError SetOptLevel(JCLOption* _this, JCLString* pValue)
 		if( lValue >= 0 && lValue <= 3 )
 		{
 			_this->miOptimizeLevel = lValue;
-			if( lValue == 3 )
-				_this->miLocalVarMode = kLocalStack;
 			err = JCL_No_Error;
 		}
 	}

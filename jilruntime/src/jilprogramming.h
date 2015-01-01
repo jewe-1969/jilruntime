@@ -84,6 +84,14 @@ JILEXTERN JILLong		JILGetFunctionByAddr	(JILState* pState, JILLong addr, JILFunc
 JILEXTERN JILLong		JILGetFunctionByIndex	(JILState* pState, JILLong type, JILLong index, JILFuncInfo** ppOut);
 
 //------------------------------------------------------------------------------
+// JILGetNumFunctions
+//------------------------------------------------------------------------------
+/// Returns the number of functions currently stored in the runtime's function
+/// segment.
+
+JILEXTERN JILLong		JILGetNumFunctions		(JILState* pState);
+
+//------------------------------------------------------------------------------
 // JILSetFunctionAddress
 //------------------------------------------------------------------------------
 /// This can be called to change the code address of an already existing function.
@@ -91,7 +99,7 @@ JILEXTERN JILLong		JILGetFunctionByIndex	(JILState* pState, JILLong type, JILLon
 /// The address is a zero-based offset into the code segment, counted in
 /// instruction words (an instruction word is an int).
 
-JILEXTERN JILError		JILSetFunctionAddress	(JILState* pState, JILLong funcIndex, JILLong address, JILLong size);
+JILEXTERN JILError		JILSetFunctionAddress	(JILState* pState, JILLong funcIndex, JILLong address, JILLong size, JILLong args);
 
 //------------------------------------------------------------------------------
 // JILCreateType

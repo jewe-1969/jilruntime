@@ -29,6 +29,7 @@ static JILLong JILExecuteByteCode	(JILState*, JILContext*, JILLong, JILHandle*);
 static JILLong JILInitNativeType	(JILState*, JILTypeInfo*, JILLong);
 static JILError JILCallFunc			(JILState* pState, JILLong hFunction);
 static JILError JILCallMethod		(JILState* pState, JILHandle* object, JILLong nIndex);
+static JILError JILCallClosure		(JILState* pState, JILDelegate* pDelegate);
 
 //------------------------------------------------------------------------------
 // External references
@@ -238,7 +239,11 @@ JILError JILCallDelegate(JILState* pState, JILHandle* pDelegate)
 		return JIL_ERR_Invalid_Handle_Type;
 	// get delegate and call
 	pdg = JILGetDelegateHandle(pDelegate)->pDelegate;
-	if( pdg->pObject )
+	if( pdg->pClosure )
+	{
+		result = JILCallClosure(pState, pdg);
+	}
+	else if( pdg->pObject )
 	{
 		result = JILCallMethod(pState, pdg->pObject, pdg->index);
 	}
@@ -246,6 +251,50 @@ JILError JILCallDelegate(JILState* pState, JILHandle* pDelegate)
 	{
 		result = JILCallFunc(pState, pdg->index);
 	}
+	return result;
+}
+
+//------------------------------------------------------------------------------
+// JILCallClosure
+//------------------------------------------------------------------------------
+
+static JILError JILCallClosure(JILState* pState, JILDelegate* pDelegate)
+{
+	JILError result;
+	JILFuncInfo* pFuncInfo = pState->vmpFuncSegment->pData + pDelegate->index;
+	JILHandle** saveSP = pState->vmpContext->vmppDataStack + pState->vmpContext->vmDataStackPointer;
+	JILHandle** psp;
+	JILLong oldSP = pState->vmpContext->vmDataStackPointer;
+	JILLong i;
+	JILLong n;
+	if( pState->vmpContext->vmProgramCounter >= 7740 && pState->vmpContext->vmProgramCounter < 7756)
+		n = 0;
+	// push parent stack onto stack
+	n = pDelegate->pClosure->stackSize;
+	psp = pDelegate->pClosure->ppStack + n - 1;
+	for( i = 0; i < n; i++ )
+	{
+		JILAddRef(*psp);
+		pState->vmpContext->vmppDataStack[--pState->vmpContext->vmDataStackPointer] = *psp--;
+		if( pState->vmpContext->vmDataStackPointer < 0 )
+			return JIL_VM_Stack_Overflow;
+	}
+	// push function arguments back to top of stack
+	n = pFuncInfo->args;
+	psp = saveSP + n - 1;
+	for( i = 0; i < n; i++ )
+	{
+		JILAddRef(*psp);
+		pState->vmpContext->vmppDataStack[--pState->vmpContext->vmDataStackPointer] = *psp--;
+		if( pState->vmpContext->vmDataStackPointer < 0 )
+			return JIL_VM_Stack_Overflow;
+	}
+	// execute the bytecode
+	result = JILExecuteByteCode(pState, pState->vmpContext, pFuncInfo->codeAddr, pDelegate->pObject);
+	// pop everything from stack
+	for( i = pState->vmpContext->vmDataStackPointer; i < oldSP; i++ )
+		JILRelease(pState, pState->vmpContext->vmppDataStack[i]);
+	pState->vmpContext->vmDataStackPointer = oldSP;
 	return result;
 }
 

@@ -37,8 +37,9 @@ DECL_CLASS( JCLLiteral )
 	JILFloat			miFloat;	// float value in case of float literals
 	JCLString*			miString;	// string constant in case of string literals
 	JILLong				miLocator;	// character position of code block in source file (for anonymous delegates)
-	JILBool				miMethod;	// anonymous delegate is method
+	JILBool				miMethod;	// anonymous delegate is method or closure
 	struct JCLFile*		mipFile;	// source file (for anonymous delegates)
+	Array_JCLVar*		mipStack;	// stack context in case of closure
 
 END_CLASS( JCLLiteral )
 
@@ -87,6 +88,7 @@ DECL_CLASS( JCLFunc )
 	Array_JCLVar*		mipArgs;		// function argument list
 	Array_JILLong*		mipCode;		// buffer to compile code to
 	Array_JCLLiteral*	mipLiterals;	// literals
+	Array_JCLVar*		mipParentStack;	// parent stack in case of closure
 	JILLong				miLocalRegs[kNumRegisters];	// regs used for local variables
 	JILLong				miRegUsage[kNumRegisters];	// counts how often regs were allocated in function
 
