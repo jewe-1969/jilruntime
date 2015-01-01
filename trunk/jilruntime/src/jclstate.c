@@ -4616,147 +4616,6 @@ exit:
 }
 
 //------------------------------------------------------------------------------
-// p_class_extends
-//------------------------------------------------------------------------------
-// Parse extension of base class (single inheritance).
-// TODO: How to detect if argument list differs from inherited function? e.g. base::foo(int i) -> this::foo(float f)
-// TODO: How to remove unused inherited constructors? (ctors from super-super-class)
-// TODO: How to remove unused inherited anonymous local functions?
-
-static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
-{
-	JILError err = JCL_No_Error;
-	JCLFile* pFile;
-	JCLString* pBaseName;
-	JCLString* pClassName;
-	JCLClass* pSrcClass;
-	JCLFunc* pFunc;
-	JCLFunc* pSFunc;
-	JCLVar* pBaseVar;
-	JCLVar* pOldBase;
-	JILState* pMachine;
-	JILLong i;
-	JILLong classIdx;
-	JILBool bStrict;
-	JILBool bVirtual;
-	JILTypeInfo* pTI;
-
-	pFile = _this->mipFile;
-	pBaseName = NEW(JCLString);
-	classIdx = pClass->miType;
-	pClassName = pClass->mipName;
-	pBaseVar = NEW(JCLVar);
-	pMachine = _this->mipMachine;
-	bStrict = (pClass->miModifier & kModiStrict);
-	bVirtual = (pClass->miModifier & kModiVirtual);
-
-	// we expect an identifier
-	err = p_partial_identifier(_this, pBaseName);
-	ERROR_IF(err, err, pBaseName, goto exit);
-	FindInNamespace(_this, pBaseName, &pSrcClass);
-	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
-	ERROR_IF(pSrcClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pBaseName, goto exit);
-	ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
-	ERROR_IF(IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pClass->mipName, goto exit);
-	ERROR_IF(IsClassNative(pSrcClass), JCL_ERR_Cannot_Extend_Native_Class, pSrcClass->mipName, goto exit);
-
-	if( _this->miPass == kPassPrecompile )
-	{
-		// inherit from base
-		pClass->miBaseType = pSrcClass->miType;
-		// copy all member variables from base
-		pClass->mipVars->Copy(pClass->mipVars, pSrcClass->mipVars); // TODO: Do we need to check for duplicate variable names?
-		// hide any 'base' variable we may have inherited
-		JCLSetString(pBaseVar->mipName, "base");
-		pOldBase = FindMemberVar(_this, pClass->miType, pBaseVar->mipName);
-		if( pOldBase )
-			JCLSetString(pOldBase->mipName, "*base");
-		// create "base" variable in this class
-		pBaseVar->miType = pSrcClass->miType;
-		pBaseVar->miRef = JILTrue;
-		pBaseVar->miWeak = JILTrue;
-		pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
-		pBaseVar->miReadOnly = JILTrue;
-		err = AddMemberVar(_this, pClass->miType, pBaseVar);
-		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
-		// copy over all function declarations from source class
-		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
-		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
-		{
-			pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
-			// set class index
-			pFunc->miClassID = pClass->miType;
-			// set strict modifier
-			pFunc->miStrict |= bStrict;
-			// set virtual modifier
-			pFunc->miVirtual |= bVirtual;
-			// store function index for link process
-			pFunc->miLnkMethod = pFunc->miFuncIdx;
-			// set 'base' variable index
-			pFunc->miLnkBaseVar = pBaseVar->miMember;
-			// special treatment for ctors
-			if( pFunc->miCtor )
-			{
-				// virtual contructor? (interface ctor)
-				if( pFunc->miVirtual )
-				{
-					// create new function for the old constructor
-					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
-					pSFunc->Copy(pSFunc, pFunc);
-					// make it normal method
-					pSFunc->miCtor = JILFalse;
-					pSFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
-					pSFunc->miNoOverride = JILTrue; // function is not overridable
-					// add to function segment
-					err = JILCreateFunction(pMachine, pClass->miType, pClass->mipFuncs->Count(pClass->mipFuncs) - 1, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
-					ERROR_IF(err, err, NULL, goto exit);
-					// update constructor name
-					RemoveParentNamespace(pFunc->mipName, pClassName);
-					// if method is copy-constructor, set source type to inheriting class
-					if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
-					{
-						JCLVar* pArg1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
-						if (pArg1->miType == pClass->miBaseType)
-						{
-							pArg1->miType = pClass->miType;
-							pClass->miMethodInfo.cctor = pFunc->miFuncIdx;
-						}
-					}
-					else if (pFunc->mipArgs->Count(pFunc->mipArgs) == 0)
-					{
-						pClass->miMethodInfo.ctor = pFunc->miFuncIdx;
-					}
-					pFunc->miLnkMethod = -1;
-					pFunc->miLnkBaseVar = 0;
-				}
-				else
-				{
-					// make old constructors normal methods
-					pFunc->miCtor = JILFalse;
-					pFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
-					pFunc->miNoOverride = JILTrue; // function is not overridable
-				}
-			}
-			// add to function segment
-			err = JILCreateFunction(pMachine, pClass->miType, i, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
-			ERROR_IF(err, err, NULL, goto exit);
-		}
-		if( JCLGetLength(pClass->mipTag) == 0 )
-			pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
-		// class inherits class body
-		pClass->miHasBody = JILTrue;
-		// update base-type identifier in JILTypeInfo
-		pTI = JILTypeInfoFromType(pMachine, pClass->miType);
-		pTI->base = pClass->miBaseType;
-	}
-
-exit:
-	DELETE( pBaseName );
-	DELETE( pBaseVar );
-	return err;
-}
-
-//------------------------------------------------------------------------------
 // p_class_hybrid
 //------------------------------------------------------------------------------
 // Parse "hybrid inheritance" of a class.
@@ -4879,6 +4738,145 @@ exit:
 }
 
 //------------------------------------------------------------------------------
+// p_class_extends
+//------------------------------------------------------------------------------
+// Parse extension of base class (single inheritance).
+// TODO: How to detect if argument list differs from inherited function? e.g. base::foo(int i) -> this::foo(float f)
+// TODO: How to remove unused inherited constructors? (ctors from super-super-class)
+// TODO: How to remove unused inherited anonymous local functions?
+// TODO: Do we need to check for duplicate variable names?
+
+static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLString* pBaseName;
+	JCLString* pClassName;
+	JCLClass* pSrcClass;
+	JCLFunc* pFunc;
+	JCLFunc* pSFunc;
+	JCLVar* pBaseVar;
+	JCLVar* pOldBase;
+	JILState* pMachine;
+	JILLong i;
+	JILLong classIdx;
+	JILBool bStrict;
+	JILBool bVirtual;
+	JILTypeInfo* pTI;
+
+	pFile = _this->mipFile;
+	pBaseName = NEW(JCLString);
+	classIdx = pClass->miType;
+	pClassName = pClass->mipName;
+	pBaseVar = NEW(JCLVar);
+	pMachine = _this->mipMachine;
+	bStrict = (pClass->miModifier & kModiStrict);
+	bVirtual = (pClass->miModifier & kModiVirtual);
+
+	// we expect an identifier
+	err = p_partial_identifier(_this, pBaseName);
+	ERROR_IF(err, err, pBaseName, goto exit);
+	FindInNamespace(_this, pBaseName, &pSrcClass);
+	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
+	ERROR_IF(pSrcClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pBaseName, goto exit);
+	ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
+	ERROR_IF(IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pClass->mipName, goto exit);
+	ERROR_IF(IsClassNative(pSrcClass), JCL_ERR_Cannot_Extend_Native_Class, pSrcClass->mipName, goto exit);
+
+	if( _this->miPass == kPassPrecompile )
+	{
+		// inherit from base
+		pClass->miBaseType = pSrcClass->miType;
+		// copy all member variables from base
+		pClass->mipVars->Copy(pClass->mipVars, pSrcClass->mipVars);
+		// hide any 'base' variable we may have inherited
+		JCLSetString(pBaseVar->mipName, "base");
+		pOldBase = FindMemberVar(_this, pClass->miType, pBaseVar->mipName);
+		if( pOldBase )
+			JCLSetString(pOldBase->mipName, "*base");
+		// create "base" variable in this class
+		pBaseVar->miType = pSrcClass->miType;
+		pBaseVar->miRef = JILTrue;
+		pBaseVar->miWeak = JILTrue;
+		pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
+		pBaseVar->miReadOnly = JILTrue;
+		err = AddMemberVar(_this, pClass->miType, pBaseVar);
+		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
+		// copy over all function declarations from source class
+		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
+		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
+		{
+			pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
+			// set class index
+			pFunc->miClassID = pClass->miType;
+			// set strict modifier
+			pFunc->miStrict |= bStrict;
+			// set virtual modifier
+			pFunc->miVirtual |= bVirtual;
+			// store function index for link process
+			pFunc->miLnkMethod = pFunc->miFuncIdx;
+			// set 'base' variable index
+			pFunc->miLnkBaseVar = pBaseVar->miMember;
+			// special treatment for ctors
+			if( pFunc->miCtor )
+			{
+				// virtual contructor? (interface ctor)
+				if( pFunc->miVirtual )
+				{
+					// create new function for the old constructor
+					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
+					pSFunc->Copy(pSFunc, pFunc);
+					// make it normal method
+					pSFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
+					pSFunc->miNoOverride = JILTrue; // function is not overridable
+					// add to function segment
+					err = JILCreateFunction(pMachine, pClass->miType, pClass->mipFuncs->Count(pClass->mipFuncs) - 1, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
+					ERROR_IF(err, err, NULL, goto exit);
+					// update constructor name
+					RemoveParentNamespace(pFunc->mipName, pClassName);
+					// if method is copy-constructor, set source type to inheriting class
+					if (pFunc->mipArgs->Count(pFunc->mipArgs) == 1)
+					{
+						JCLVar* pArg1 = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
+						if (pArg1->miType == pClass->miBaseType)
+						{
+							pArg1->miType = pClass->miType;
+							pClass->miMethodInfo.cctor = pFunc->miFuncIdx;
+						}
+					}
+					else if (pFunc->mipArgs->Count(pFunc->mipArgs) == 0)
+					{
+						pClass->miMethodInfo.ctor = pFunc->miFuncIdx;
+					}
+					pFunc->miLnkMethod = -1;
+					pFunc->miLnkBaseVar = 0;
+				}
+				else
+				{
+					pFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
+					pFunc->miNoOverride = JILTrue; // function is not overridable
+				}
+			}
+			// add to function segment
+			err = JILCreateFunction(pMachine, pClass->miType, i, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
+			ERROR_IF(err, err, NULL, goto exit);
+		}
+		if( JCLGetLength(pClass->mipTag) == 0 )
+			pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
+		// class inherits class body
+		pClass->miHasBody = JILTrue;
+		// update base-type identifier in JILTypeInfo
+		pTI = JILTypeInfoFromType(pMachine, pClass->miType);
+		pTI->base = pClass->miBaseType;
+	}
+
+exit:
+	DELETE( pBaseName );
+	DELETE( pBaseVar );
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // p_class_inherits
 //------------------------------------------------------------------------------
 // Parse class inheritance / mix-in class.
@@ -4973,7 +4971,6 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				// special treatment if method is constructor
 				if( pFunc->miCtor )
 				{
-					pFunc->miCtor = JILFalse;		// make old ctor normal method
 					pFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
 					pFunc->miNoOverride = JILTrue;	// function is not overridable
 				}
@@ -5971,7 +5968,7 @@ static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
 	pBase->miInited = JILTrue;
 
 	// call specified constructor
-	err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, 0);
+	err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, kOnlyCtor);
 	if( err )
 		goto exit;
 
@@ -6036,7 +6033,7 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 		ERROR_IF(i == pClass->mipInherits->count, JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
 
 		// call specified constructor
-		err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, 0);
+		err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, kOnlyCtor);
 		if( err )
 			goto exit;
 
