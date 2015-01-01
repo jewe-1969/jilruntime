@@ -256,6 +256,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miLnkAddr = 0;
 	_this->miLnkDelegate = -1;
 	_this->miLnkMethod = -1;
+	_this->miLnkClass = 0;
 	_this->miLnkBaseVar = 0;
 	_this->miLnkRelIdx = -1;
 	_this->miLnkVarOffset = 0;
@@ -319,6 +320,7 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miLnkAddr = src->miLnkAddr;
 	_this->miLnkDelegate = src->miLnkDelegate;
 	_this->miLnkMethod = src->miLnkMethod;
+	_this->miLnkClass = src->miLnkClass;
 	_this->miLnkBaseVar = src->miLnkBaseVar;
 	_this->miLnkRelIdx = src->miLnkRelIdx;
 	_this->miLnkVarOffset = src->miLnkVarOffset;
@@ -376,7 +378,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 			}
 			else if( _this->miLnkRelIdx >= 0 )
 			{
-				return RelocateFunction(_this, GetFunc(pCompiler, _this->miLnkBaseVar, _this->miLnkRelIdx), pCompiler);
+				return RelocateFunction(_this, GetFunc(pCompiler, _this->miLnkClass, _this->miLnkRelIdx), pCompiler);
 			}
 			else if( _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 )
 			{
@@ -419,7 +421,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 						pCode->Set(pCode, n++, _this->miLnkBaseVar);
 						pCode->Set(pCode, n++, 0);
 					}
-					baseFunc = GetFunc(pCompiler, pClass->miBaseType, _this->miLnkMethod);
+					baseFunc = GetFunc(pCompiler, _this->miLnkClass, _this->miLnkMethod);
 					pCode->Set(pCode, n++, op_calls);
 					pCode->Set(pCode, n++, baseFunc->miHandle);
 				}

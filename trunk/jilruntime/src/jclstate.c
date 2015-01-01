@@ -4722,6 +4722,7 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 						ERROR_IF(!pInFunc->miAccessor || pInFunc->miCtor, err, pFunc->mipName, goto exit);
 						// store the function index in the function prototype for link process
 						pInFunc->miLnkMethod = funcIdx;
+						pInFunc->miLnkClass = pSrcClass->miType;
 					}
 				}
 			}
@@ -4815,6 +4816,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			pFunc->miVirtual |= bVirtual;
 			// store function index for link process
 			pFunc->miLnkMethod = pFunc->miFuncIdx;
+			pFunc->miLnkClass = pSrcClass->miType;
 			// set 'base' variable index
 			pFunc->miLnkBaseVar = pBaseVar->miMember;
 			// special treatment for ctors
@@ -4966,8 +4968,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				pFunc->miLnkVarOffset = varRelOffset;
 				// set relocation index
 				pFunc->miLnkRelIdx = pSFunc->miFuncIdx;
-				// set relocation base
-				pFunc->miLnkBaseVar = pSrcClass->miType;
+				pFunc->miLnkClass = pSrcClass->miType;
 				// special treatment if method is constructor
 				if( pFunc->miCtor )
 				{

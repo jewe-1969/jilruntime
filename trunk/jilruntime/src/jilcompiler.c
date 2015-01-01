@@ -793,7 +793,7 @@ static void JCLPostLink(JCLState* _this)
 					}
 					else
 					{
-						JILMessageLog(_this->mipMachine, "Error in JCLPostLink(): Function handle %d not found!\n", hFunc);
+						JILMessageLog(_this->mipMachine, "Error in JCLPostLink(): Function handle %d not found at code location %d\n", hFunc, addr + i);
 					}
 				}
 			}
