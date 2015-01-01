@@ -378,12 +378,14 @@ static JILError		p_class_modifier	(JCLState*, JILLong);
 static JILError		p_class_implements	(JCLState*, JCLClass*);
 static JILError		p_class_extends		(JCLState*, JCLClass*);
 static JILError		p_class_hybrid		(JCLState*, JCLClass*);
+static JILError		p_class_inherits	(JCLState*, JCLClass*);
 static JILError		p_function			(JCLState*, JILLong, JILBool);
 static JILError		p_function_body		(JCLState*);
 static JILError		p_function_pass		(JCLState*);
 static JILError		p_sub_functions		(JCLState*);
 static JILError		p_function_hybrid	(JCLState*, JCLFunc*);
 static JILError		p_function_extends	(JCLState*, JCLFunc*);
+static JILError		p_function_inherits	(JCLState*, JCLFunc*);
 static JILError		p_block				(JCLState*, JILBool*);
 static JILError		p_statement			(JCLState*, Array_JCLVar*, JILBool*);
 static JILError		p_local_decl		(JCLState*, Array_JCLVar*, JCLVar*);
@@ -4402,7 +4404,14 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
 	}
-	// we expect to see a "{"
+	if( tokenID == tk_inherits )
+	{
+		err = p_class_inherits(_this, pClass);
+		if( err )
+			goto exit;
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+	}	// we expect to see a "{"
 	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	pClass->miHasBody = JILTrue;
@@ -4648,7 +4657,8 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 	ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
 	ERROR_IF(pSrcClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pBaseName, goto exit);
 	ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
-	ERROR_IF(IsClassNative(pSrcClass) || IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pBaseName, goto exit);
+	ERROR_IF(IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pClass->mipName, goto exit);
+	ERROR_IF(IsClassNative(pSrcClass), JCL_ERR_Cannot_Extend_Native_Class, pSrcClass->mipName, goto exit);
 
 	if( _this->miPass == kPassPrecompile )
 	{
@@ -4731,7 +4741,8 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			err = JILCreateFunction(pMachine, pClass->miType, i, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
 			ERROR_IF(err, err, NULL, goto exit);
 		}
-		pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
+		if( JCLGetLength(pClass->mipTag) == 0 )
+			pClass->mipTag->Copy(pClass->mipTag, pSrcClass->mipTag);
 		// class inherits class body
 		pClass->miHasBody = JILTrue;
 		// update base-type identifier in JILTypeInfo
@@ -4864,6 +4875,131 @@ exit:
 	DELETE( pBaseName );
 	DELETE( pVar );
 	DELETE( pBaseVar );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_class_inherits
+//------------------------------------------------------------------------------
+// Parse class inheritance / mix-in class.
+
+static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JCLString* pBaseName;
+	JCLString* pClassName;
+	JCLString* pToken;
+	JCLClass* pSrcClass;
+	JCLFunc* pFunc;
+	JCLFunc* pSFunc;
+	JILState* pMachine;
+	JILLong i;
+	JILLong classIdx;
+	JILLong tokenID;
+	JILLong varRelOffset;
+	JILLong savePos;
+	JILBool bStrict;
+	JILBool bVirtual;
+	JILBool bAddFn;
+
+	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+	pBaseName = NEW(JCLString);
+	classIdx = pClass->miType;
+	pClassName = pClass->mipName;
+	pMachine = _this->mipMachine;
+	bStrict = (pClass->miModifier & kModiStrict);
+	bVirtual = (pClass->miModifier & kModiVirtual);
+
+	for(;;)
+	{
+		// we expect an identifier
+		err = p_partial_identifier(_this, pBaseName);
+		ERROR_IF(err, err, pBaseName, goto exit);
+		FindInNamespace(_this, pBaseName, &pSrcClass);
+		ERROR_IF(!pSrcClass, JCL_ERR_Undefined_Identifier, pBaseName, goto exit);
+		ERROR_IF(pSrcClass->miFamily != tf_class, JCL_ERR_Type_Not_Class, pBaseName, goto exit);
+		ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
+		ERROR_IF(IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pClass->mipName, goto exit);
+		ERROR_IF(IsClassNative(pSrcClass), JCL_ERR_Cannot_Extend_Native_Class, pSrcClass->mipName, goto exit);
+
+		if( _this->miPass == kPassPrecompile )
+		{
+			// copy all member variables from base
+			varRelOffset = pClass->mipVars->Count(pClass->mipVars);
+			for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
+			{
+				JCLVar* pDst;
+				JCLVar* pSrc = pSrcClass->mipVars->Get(pSrcClass->mipVars, i);
+				pDst = pClass->mipVars->New(pClass->mipVars);
+				pDst->Copy(pDst, pSrc);
+				if( pDst->miUsage == kUsageVar && pDst->miMode == kModeMember )
+					pDst->miMember += varRelOffset;
+				// replace source type by destination type
+				if( pDst->miType == pSrcClass->miType )
+					pDst->miType = pClass->miType;
+				else if( pDst->miElemType == pSrcClass->miType )
+					pDst->miElemType = pClass->miType;
+			}
+			// copy and relocate all functions from source class
+			for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
+			{
+				// get source function
+				pSFunc = pSrcClass->mipFuncs->Get(pSrcClass->mipFuncs, i);
+				// try find it in this class
+				bAddFn = JILFalse;
+				FindDiscreteFunction(_this, pClass->miType, pSFunc->mipName, pSFunc->mipResult, pSFunc->mipArgs, &pFunc);
+				if( pFunc == NULL )
+				{
+					// not found - create new function
+					pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
+					pFunc->Copy(pFunc, pSFunc);
+					pFunc->miFuncIdx = pClass->mipFuncs->Count(pClass->mipFuncs) - 1;
+					bAddFn = JILTrue;
+				}
+				// set class index
+				pFunc->miClassID = pClass->miType;
+				// set strict modifier
+				pFunc->miStrict |= bStrict;
+				// set virtual modifier
+				pFunc->miVirtual |= bVirtual;
+				// set variable relocation offset
+				pFunc->miLnkVarOffset = varRelOffset;
+				// set relocation index
+				pFunc->miLnkRelIdx = pSFunc->miFuncIdx;
+				// set relocation base
+				pFunc->miLnkBaseVar = pSrcClass->miType;
+				// special treatment if method is constructor
+				if( pFunc->miCtor )
+				{
+					pFunc->miCtor = JILFalse;		// make old ctor normal method
+					pFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
+					pFunc->miNoOverride = JILTrue;	// function is not overridable
+				}
+				if( bAddFn )
+				{
+					// add new function to function segment
+					err = JILCreateFunction(pMachine, pClass->miType, pFunc->miFuncIdx, GetFuncInfoFlags(pFunc), JCLGetString(pFunc->mipName), &(pFunc->miHandle));
+					ERROR_IF(err, err, NULL, goto exit);
+				}
+			}
+			pClass->mipInherits->Add(pClass->mipInherits, pSrcClass->miType);
+		}
+		savePos = pFile->GetLocator(pFile);
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, NULL, goto exit);
+		if( tokenID == tk_comma )
+			continue;
+		pFile->SetLocator(pFile, savePos);
+		break;
+	}
+	// class has a "body" now
+	pClass->miHasBody = JILTrue;
+
+exit:
+	DELETE( pBaseName );
+	DELETE( pToken );
 	return err;
 }
 
@@ -5167,7 +5303,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	// check for ";" or "{" or "hybrid" or "extends"
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( (tokenID == tk_curly_open || tokenID == tk_hybrid || tokenID == tk_extends) && _this->miPass == kPassCompile )
+	if( (tokenID == tk_curly_open || tokenID == tk_hybrid || tokenID == tk_extends || tokenID == tk_inherits) && _this->miPass == kPassCompile )
 	{
 		JCLVar* src;
 		JCLVar* dst;
@@ -5207,7 +5343,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		if( err )
 			goto exit;
 	}
-	else if( tokenID == tk_semicolon || tokenID == tk_hybrid || tokenID == tk_extends || _this->miPass == kPassPrecompile )
+	else if( tokenID == tk_semicolon || tokenID == tk_hybrid || tokenID == tk_extends || tokenID == tk_inherits || _this->miPass == kPassPrecompile )
 	{
 		JCLFunc* pFunc2;
 		if( tokenID == tk_semicolon )
@@ -5229,15 +5365,41 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 				err = p_skip_braces(_this, tk_round_open, tk_round_close);
 				ERROR_IF(err, err, NULL, goto exit);
 			}
-			else if( tokenID == tk_extends )
+			else
 			{
-				err = pFile->GetToken(pFile, pToken, &tokenID);
-				ERROR_IF(err, err, pToken, goto exit);
-				err = pFile->GetToken(pFile, pToken, &tokenID);
-				ERROR_IF(err, err, pToken, goto exit);
-				ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
-				err = p_skip_braces(_this, tk_round_open, tk_round_close);
-				ERROR_IF(err, err, NULL, goto exit);
+				if( tokenID == tk_extends )
+				{
+					err = pFile->GetToken(pFile, pToken, &tokenID);
+					ERROR_IF(err, err, pToken, goto exit);
+					err = pFile->GetToken(pFile, pToken, &tokenID);
+					ERROR_IF(err, err, pToken, goto exit);
+					ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
+					err = p_skip_braces(_this, tk_round_open, tk_round_close);
+					ERROR_IF(err, err, NULL, goto exit);
+					err = pFile->PeekToken(pFile, pToken, &tokenID);
+					ERROR_IF(err, err, pToken, goto exit);
+				}
+				if( tokenID == tk_inherits )
+				{
+					JILLong savePos;
+					err = pFile->GetToken(pFile, pToken, &tokenID);
+					ERROR_IF(err, err, pToken, goto exit);
+					for(;;)
+					{
+						err = pFile->GetToken(pFile, pToken, &tokenID);
+						ERROR_IF(err, err, pToken, goto exit);
+						ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pToken, goto exit);
+						err = p_skip_braces(_this, tk_round_open, tk_round_close);
+						ERROR_IF(err, err, NULL, goto exit);
+						savePos = pFile->GetLocator(pFile);
+						err = pFile->GetToken(pFile, pToken, &tokenID);
+						ERROR_IF(err, err, pToken, goto exit);
+						if( tokenID == tk_comma )
+							continue;
+						pFile->SetLocator(pFile, savePos);
+						break;
+					}
+				}
 			}
 			// skip code block
 			err = p_skip_block(_this);
@@ -5448,17 +5610,32 @@ static JILError p_function_pass(JCLState* _this)
 			ERROR_IF(err, err, pToken, goto exit);
 			ERROR_IF(tokenID != tk_round_close, JCL_ERR_Unexpected_Token, pToken, goto exit);
 		}
-		else if( IsExtendingClass(_this, pFunc->miClassID) )
+		else
 		{
-			// expect "extends"
-			err = pFile->GetToken(pFile, pToken, &tokenID);
-			ERROR_IF(err, err, pToken, goto exit);
-			JCLSetString(pToken, "extends");
-			ERROR_IF(tokenID != tk_extends, JCL_ERR_Hybrid_Expected, pToken, goto exit);
-			// generate constructor base call
-			err = p_function_extends(_this, pFunc);
-			if( err)
-				goto exit;
+			if( IsExtendingClass(_this, pFunc->miClassID) )
+			{
+				// expect "extends"
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				JCLSetString(pToken, "extends");
+				ERROR_IF(tokenID != tk_extends, JCL_ERR_Hybrid_Expected, pToken, goto exit);
+				// generate constructor base call
+				err = p_function_extends(_this, pFunc);
+				if( err)
+					goto exit;
+			}
+			if( pClass->mipInherits->count )
+			{
+				// expect "inherits"
+				err = pFile->GetToken(pFile, pToken, &tokenID);
+				ERROR_IF(err, err, pToken, goto exit);
+				JCLSetString(pToken, "inherits");
+				ERROR_IF(tokenID != tk_inherits, JCL_ERR_Hybrid_Expected, pToken, goto exit);
+				// generate constructor base call
+				err = p_function_inherits(_this, pFunc);
+				if( err)
+					goto exit;
+			}
 		}
 	}
 	// parse block (function body)
@@ -5803,6 +5980,82 @@ static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
 	{
 		JCLVar* pVar = pClass->mipVars->Get(pClass->mipVars, i);
 		pVar->miInited = JILTrue;
+	}
+
+exit:
+	FreeLocalVars(_this, pLocals);
+	DELETE( pLocals );
+	DELETE( pToken );
+	DELETE( pBaseName );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_function_inherits
+//------------------------------------------------------------------------------
+// Generate code for inherited constructor call.
+// TODO: Notify user if base contructor call is missing (we'll get uninitialized member variables anyway, but would be nicer)
+
+static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
+{
+	JILError err = JCL_No_Error;
+	Array_JCLVar* pLocals;
+	JCLClass* pClass;
+	JCLClass* pSrcClass;
+	JCLFile* pFile;
+	JCLString* pToken;
+	JCLString* pBaseName;
+	TypeInfo outType;
+	JILLong tokenID;
+	JILLong i;
+	JILLong savePos;
+
+	pToken = NEW(JCLString);
+	pBaseName = NEW(JCLString);
+	pLocals = NEW(Array_JCLVar);
+	pClass = GetClass(_this, pFunc->miClassID);
+	pFile = _this->mipFile;
+
+	for(;;)
+	{
+		JCLClrTypeInfo(&outType);
+
+		// get base constuctor name
+		err = pFile->GetToken(pFile, pBaseName, &tokenID);
+		ERROR_IF(err, err, pBaseName, goto exit);
+		ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pBaseName, goto exit);
+
+		// make sure it's the name of a base class!
+		for( i = 0; i < pClass->mipInherits->count; i++ )
+		{
+			pSrcClass = GetClass(_this, pClass->mipInherits->Get(pClass->mipInherits, i));
+			RemoveParentNamespace(pToken, pSrcClass->mipName);
+			if( JCLCompare(pToken, pBaseName) )
+				break;
+		}
+		ERROR_IF(i == pClass->mipInherits->count, JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
+
+		// call specified constructor
+		err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, 0);
+		if( err )
+			goto exit;
+
+		// mark all inherited member variables as initialized
+		for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
+		{
+			JCLVar* pVar = pSrcClass->mipVars->Get(pSrcClass->mipVars, i);
+			pVar = FindMemberVar(_this, pClass->miType, pVar->mipName);
+			ERROR_IF(pVar == NULL, JCL_ERR_Undefined_Identifier, pVar->mipName, goto exit);
+			pVar->miInited = JILTrue;
+		}
+
+		savePos = pFile->GetLocator(pFile);
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+		if( tokenID == tk_comma )
+			continue;
+		pFile->SetLocator(pFile, savePos);
+		break;
 	}
 
 exit:
