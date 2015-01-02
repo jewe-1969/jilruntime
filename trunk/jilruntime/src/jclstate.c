@@ -4835,7 +4835,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			// set strict modifier
 			pFunc->miStrict |= bStrict;
 			// set virtual modifier
-			pFunc->miVirtual |= bVirtual;
+			// pFunc->miVirtual |= bVirtual;   XXX: We don't want to make inherited methods virtual if this class is virtual
 			// store function index for link process
 			pFunc->miLnkMethod = pFunc->miFuncIdx;
 			pFunc->miLnkClass = pSrcClass->miType;
@@ -4984,8 +4984,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				pFunc->miClassID = pClass->miType;
 				// set strict modifier
 				pFunc->miStrict |= bStrict;
-				// set virtual modifier
-				pFunc->miVirtual |= bVirtual;
+				// pFunc->miVirtual |= bVirtual;   XXX: We don't want to make inherited methods virtual if this class is virtual
 				// set variable relocation offset
 				pFunc->miLnkVarOffset = varRelOffset;
 				// set relocation index
