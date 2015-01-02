@@ -186,7 +186,7 @@ JILError JCLLink(JILState* pVM)
 	JCLString* declString = NEW(JCLString);
 	JCLState* _this;
 	JILFloat time;
-	JILLong i;
+	JILLong i, bytes;
 	JILLong vtabSize;
 	JILLong* pVtable;
 
@@ -250,7 +250,7 @@ JILError JCLLink(JILState* pVM)
 				{
 					err = pFunc->LinkCode(pFunc, _this);
 					if( err )
-						break;
+						goto exit;
 					// ensure that the function has a body
 					pCode = pFunc->mipCode;
 					if( !pCode->count )
@@ -287,17 +287,15 @@ JILError JCLLink(JILState* pVM)
 exit:
 	FlushErrorsAndWarnings(_this);
 	// output details
+	bytes = _this->miOptSizeBefore;
 	if( _this->miOptSavedInstr )
 	{
 		JCLVerbosePrint(_this, "Saved %d instructions in total.\n", _this->miOptSavedInstr);
 		JCLVerbosePrint(_this, "Code size reduced from %d to %d bytes in total.\n", _this->miOptSizeBefore, _this->miOptSizeAfter);
-	}
-	else
-	{
-		JCLVerbosePrint(_this, "Created %d bytes of code in total.\n", _this->miOptSizeBefore);
+		bytes = _this->miOptSizeAfter;
 	}
 	time = (((JILFloat) clock()) - _this->miTimestamp) / ((JILFloat)CLOCKS_PER_SEC);
-	JCLVerbosePrint(_this, "%d Files, %d Errors, %d Warnings, %g seconds.\n", _this->miNumCompiles, _this->miNumErrors, _this->miNumWarnings, time);
+	JCLVerbosePrint(_this, "%d bytes, %d files, %d errors, %d warnings, %g seconds.\n", bytes, _this->miNumCompiles, _this->miNumErrors, _this->miNumWarnings, time);
 	DELETE( declString );
 	return err;
 }
