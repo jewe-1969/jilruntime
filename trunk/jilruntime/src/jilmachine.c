@@ -264,22 +264,21 @@ static JILError JILCallClosure(JILState* pState, JILDelegate* pDelegate)
 	JILFuncInfo* pFuncInfo = pState->vmpFuncSegment->pData + pDelegate->index;
 	JILHandle** saveSP = pState->vmpContext->vmppDataStack + pState->vmpContext->vmDataStackPointer;
 	JILHandle** psp;
+	JILHandle** pcl;
 	JILLong oldSP = pState->vmpContext->vmDataStackPointer;
 	JILLong i;
 	JILLong n;
-	if( pState->vmpContext->vmProgramCounter >= 7740 && pState->vmpContext->vmProgramCounter < 7756)
-		n = 0;
 	// push parent stack onto stack
 	n = pDelegate->pClosure->stackSize;
-	psp = pDelegate->pClosure->ppStack + n - 1;
+	pcl = pDelegate->pClosure->ppStack + n - 1;
 	for( i = 0; i < n; i++ )
 	{
-		JILAddRef(*psp);
-		pState->vmpContext->vmppDataStack[--pState->vmpContext->vmDataStackPointer] = *psp--;
+		JILAddRef(*pcl);
+		pState->vmpContext->vmppDataStack[--pState->vmpContext->vmDataStackPointer] = *pcl--;
 		if( pState->vmpContext->vmDataStackPointer < 0 )
 			return JIL_VM_Stack_Overflow;
 	}
-	// push function arguments back to top of stack
+	// shuffle function arguments back to top of stack
 	n = pFuncInfo->args;
 	psp = saveSP + n - 1;
 	for( i = 0; i < n; i++ )
@@ -291,9 +290,23 @@ static JILError JILCallClosure(JILState* pState, JILDelegate* pDelegate)
 	}
 	// execute the bytecode
 	result = JILExecuteByteCode(pState, pState->vmpContext, pFuncInfo->codeAddr, pDelegate->pObject);
+	// move stack back to closure
+	n = pDelegate->pClosure->stackSize;
+	psp = saveSP - n;
+	pcl = pDelegate->pClosure->ppStack;
+	for( i = 0; i < n; i++ )
+	{
+		JILAddRef(*psp);
+		JILRelease(pState, *pcl);
+		*pcl++ = *psp++;
+	}
 	// pop everything from stack
-	for( i = pState->vmpContext->vmDataStackPointer; i < oldSP; i++ )
-		JILRelease(pState, pState->vmpContext->vmppDataStack[i]);
+	n = oldSP - pState->vmpContext->vmDataStackPointer;
+	psp = pState->vmpContext->vmppDataStack + pState->vmpContext->vmDataStackPointer;
+	for( i = 0; i < n; i++ )
+	{
+		JILRelease(pState, *psp++);
+	}
 	pState->vmpContext->vmDataStackPointer = oldSP;
 	return result;
 }
