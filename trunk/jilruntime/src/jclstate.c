@@ -4850,6 +4850,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 					// create new function for the old constructor
 					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 					pSFunc->Copy(pSFunc, pFunc);
+					pSFunc->miLnkMethod = pFunc->miLnkMethod;
 					// make it normal method
 					pSFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
 					pSFunc->miNoOverride = JILTrue; // function is not overridable

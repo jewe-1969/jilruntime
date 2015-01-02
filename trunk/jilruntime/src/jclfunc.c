@@ -322,11 +322,8 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miFuncIdx = src->miFuncIdx;
 	_this->miClassID = src->miClassID;
 	_this->miLnkAddr = src->miLnkAddr;
-	_this->miLnkDelegate = src->miLnkDelegate;
-	_this->miLnkMethod = src->miLnkMethod;
 	_this->miLnkClass = src->miLnkClass;
 	_this->miLnkBaseVar = src->miLnkBaseVar;
-	_this->miLnkRelIdx = src->miLnkRelIdx;
 	_this->miLnkVarOffset = src->miLnkVarOffset;
 	_this->miRetFlag = src->miRetFlag;
 	_this->miMethod = src->miMethod;
@@ -343,6 +340,11 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miLinked = src->miLinked;
 	_this->miNaked = src->miNaked;
 	_this->mipParentStack = src->mipParentStack;
+
+	// make sure other classes do not inherit these
+	_this->miLnkDelegate = -1;
+	_this->miLnkMethod = -1;
+	_this->miLnkRelIdx = -1;
 
 	for( i = 0; i < kNumRegisters; i++ )
 	{
@@ -476,6 +478,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 		err = optimizeCode_JCLFunc(_this, pCompiler);
 		if( err )
 			goto exit;
+		// make sure we are not linked again
 		_this->miLinked = JILTrue;
 	}
 exit:
@@ -3336,6 +3339,26 @@ exit:
 }
 
 //------------------------------------------------------------------------------
+// JCLFunc::SearchFunction
+//------------------------------------------------------------------------------
+
+static JCLFunc* SearchFunction(JCLClass* pClass, JILLong srcType, JILLong srcFuncIdx)
+{
+	// Search a function in the given class
+	JCLFunc* pFunk;
+	JILLong i;
+	JILLong n = pClass->mipFuncs->Count(pClass->mipFuncs);
+	for( i = 0; i < n; i++ )
+	{
+		pFunk = pClass->mipFuncs->Get(pClass->mipFuncs, i);
+		if( pFunk->miLnkClass == srcType && pFunk->miLnkRelIdx == srcFuncIdx )
+			break;
+		pFunk = NULL;
+	}
+	return pFunk;
+}
+
+//------------------------------------------------------------------------------
 // JCLFunc::RelocateFunction
 //------------------------------------------------------------------------------
 
@@ -3348,10 +3371,15 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 	JILLong dstFuncIdx = pDstFunc->miFuncIdx;
 	OpcodeInfo info;
 	CodeBlock* _this = pDstFunc->mipCode;
-	const JILInstrInfo* pInfo;
 	JILState* pState = pCompiler->mipMachine;
+	JCLClass* pClass = GetClass(pCompiler, dstType);
+	const JILInstrInfo* pInfo;
 	JILFuncInfo* pfi;
+	JCLFunc* pFunc;
 	JILBool bUpdate;
+
+//	if(strcmp(JCLGetString(pSrcFunc->mipName), "DoEvents") == 0)
+//		bUpdate = 0;
 
 	// copy entire code from source function
 	pDstFunc->mipCode->Copy(pDstFunc->mipCode, pSrcFunc->mipCode);
@@ -3368,8 +3396,11 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 			{
 				if( info.operand[0].data[0] == srcType )
 				{
+					pFunc = SearchFunction(pClass, srcType, info.operand[1].data[0]);
+					if( pFunc == NULL )
+						return JIL_ERR_Generic_Error;
 					info.operand[0].data[0] = dstType;
-					info.operand[1].data[0] = dstFuncIdx;
+					info.operand[1].data[0] = pFunc->miFuncIdx;
 					bUpdate = JILTrue;
 				}
 			}
@@ -3378,19 +3409,33 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 				pfi = JILGetFunctionInfo(pState, info.operand[0].data[0]);
 				if( pfi->type == srcType )
 				{
-					// search class for this function to get the new function index
-					JCLFunc* pFunc;
-					JCLClass* pClass = GetClass(pCompiler, dstType);
-					for( i = 0; i < pClass->mipFuncs->Count(pClass->mipFuncs); i++ )
-					{
-						pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
-						if( pFunc->miLnkClass == srcType && pFunc->miLnkRelIdx == pfi->memberIdx )
-							break;
-						pFunc = NULL;
-					}
+					pFunc = SearchFunction(pClass, srcType, pfi->memberIdx);
 					if( pFunc == NULL )
 						return JIL_ERR_Generic_Error;
 					info.operand[0].data[0] = pFunc->miHandle;
+					bUpdate = JILTrue;
+				}
+			}
+			else if( opcode == op_newdgm )
+			{
+				if( info.operand[2].data[0] == 0 ) // R0?
+				{
+					pFunc = SearchFunction(pClass, srcType, info.operand[1].data[0]);
+					if( pFunc == NULL )
+						return JIL_ERR_Generic_Error;
+					info.operand[1].data[0] = pFunc->miFuncIdx;
+					bUpdate = JILTrue;
+				}
+			}
+			else if( opcode == op_newdg )
+			{
+				pfi = JILGetFunctionInfo(pState, info.operand[1].data[0]);
+				if( pfi->type == srcType )
+				{
+					pFunc = SearchFunction(pClass, srcType, pfi->memberIdx);
+					if( pFunc == NULL )
+						return JIL_ERR_Generic_Error;
+					info.operand[1].data[0] = pFunc->miHandle;
 					bUpdate = JILTrue;
 				}
 			}
