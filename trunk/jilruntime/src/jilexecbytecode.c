@@ -144,6 +144,8 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					i = JIL_GET_DATA(pState);
 					// get native object address from R0
 					handle1 = pContext->vmppRegister[0];
+					// throw if null
+					JIL_THROW_IF(handle1->type == type_null, JIL_VM_Null_Reference)
 					// get typeinfo from operand
 					typeInfo = JILTypeInfoFromType(pState, handle1->type);
 					// check if we have a class
@@ -278,30 +280,6 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					}
 					programCounter = offs;
 					JIL_IENDBR
-				case op_size:
-					JIL_IBEGIN( 3 )
-					offs = 0;
-					pNewHandle = JILGetNewHandle(pState);
-					JIL_LEA_R(pContext, operand1)
-					JIL_LEA_R(pContext, operand2)
-					handle1 = *operand1;
-					switch( handle1->type )
-					{
-						case type_string:
-							offs = JILGetStringHandle(handle1)->str->length;
-							break;
-						case type_array:
-							offs = JILGetArrayHandle(handle1)->arr->size;
-							break;
-						default:
-							JIL_THROW( JIL_VM_Unsupported_Type )
-					}
-					pNewHandle->type = type_int;
-					JILGetIntHandle(pNewHandle)->l = offs;
-					JIL_STORE_HANDLE(pState, operand2, pNewHandle);
-					JILRelease(pState, pNewHandle);
-					pNewHandle = NULL;
-					JIL_IEND
 				case op_type:
 					JIL_IBEGIN( 3 )
 					offs = 0;

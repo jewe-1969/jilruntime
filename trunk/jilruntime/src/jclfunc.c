@@ -1602,7 +1602,6 @@ static JILBool GetInstructionInitRegister(CodeBlock* _this, JILLong addr, JILLon
 		case op_alloci:
 		case op_cvf:
 		case op_cvl:
-		case op_size:
 		case op_snul_rr:
 		case op_type:
 			*regNum = _this->array[addr + 2];

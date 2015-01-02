@@ -42,7 +42,6 @@ const JILInstrInfo g_InstructionInfo[JILNumOpcodes] =
 	op_pushm,       2, 1,   ot_number,  ot_none,    ot_none,    ot_none,    "pushm",
 	op_pushr,       3, 1,   ot_regrng,  ot_none,    ot_none,    ot_none,    "pushr",
 	op_ret,         1, 0,   ot_none,    ot_none,    ot_none,    ot_none,    "ret",
-	op_size,        3, 2,   ot_ear,     ot_ear,     ot_none,    ot_none,    "size",
 	op_type,        3, 2,   ot_ear,     ot_ear,     ot_none,    ot_none,    "type",
 	op_dec_r,       2, 1,   ot_ear,     ot_none,    ot_none,    ot_none,    "dec",
 	op_dec_d,       3, 1,   ot_ead,     ot_none,    ot_none,    ot_none,    "dec",

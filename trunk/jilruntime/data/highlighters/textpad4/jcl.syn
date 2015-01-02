@@ -61,6 +61,7 @@ function
 goto
 hybrid
 if
+implements
 import
 inherits
 interface

@@ -42,6 +42,7 @@
 #define JIL_LEA_D(CONTEXT, OUTEA) \
 {\
 	pHObject = (JILHandleObject*)(CONTEXT->vmppRegister[*pInstruction++]);\
+	JIL_THROW_IF(pHObject->type == type_null, JIL_VM_Null_Reference)\
 	JIL_INSERT_DEBUG_CODE(\
 		typeInfo = JILTypeInfoFromType(pState, pHObject->type);\
 		JIL_THROW_IF(typeInfo->family != tf_class, JIL_VM_Unsupported_Type)\
@@ -61,6 +62,7 @@
 {\
 	pHArray = (JILHandleArray*)(CONTEXT->vmppRegister[*pInstruction++]);\
 	pHLong = (JILHandleInt*)(CONTEXT->vmppRegister[*pInstruction++]);\
+	JIL_THROW_IF(pHArray->type == type_null, JIL_VM_Null_Reference)\
 	JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(pHArray->type != type_array, JIL_VM_Unsupported_Type) )\
 	JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(pHLong->type != type_int,   JIL_VM_Unsupported_Type) )\
 	(OUTEA) = JILArray_GetEA(pHArray->arr, pHLong->l);\

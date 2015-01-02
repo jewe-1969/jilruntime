@@ -118,7 +118,7 @@ typedef enum
 	tk_do,
 	tk_else,
 	tk_explicit,
-	tk_extends,		// TODO: future
+	tk_extends,
 	tk_extern,
 	tk_false,
 	tk_for,
@@ -126,8 +126,9 @@ typedef enum
 	tk_goto,
 	tk_hybrid,
 	tk_if,
+	tk_implements,
 	tk_import,
-	tk_inherits,	// TODO: future
+	tk_inherits,
 	tk_interface,
 	tk_method,
 	tk_namespace,
@@ -147,7 +148,7 @@ typedef enum
 	tk_typeof,
 	tk_using,
 	tk_var,
-	tk_virtual,		// TODO: future
+	tk_virtual,
 	tk_weak,
 	tk_while,
 	tk_yield,

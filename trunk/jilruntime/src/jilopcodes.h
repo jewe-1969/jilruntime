@@ -39,7 +39,6 @@ enum
     op_pushm,
     op_pushr,
     op_ret,
-    op_size,
     op_type,
 	op_dec_r,
 	op_dec_d,
