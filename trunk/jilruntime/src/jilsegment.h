@@ -83,4 +83,12 @@
 		return JIL_No_Exception; \
 	}
 
+//------------------------------------------------------------------------------
+// Declare Segments
+//------------------------------------------------------------------------------
+
+DECL_SEGMENT( JILDataHandle )
+DECL_SEGMENT( JILLong )
+DECL_SEGMENT( JILFuncInfo )
+
 #endif	// #ifndef JILSEGMENT_H

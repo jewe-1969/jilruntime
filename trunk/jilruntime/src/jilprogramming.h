@@ -92,6 +92,16 @@ JILEXTERN JILLong		JILGetFunctionByIndex	(JILState* pState, JILLong type, JILLon
 JILEXTERN JILLong		JILGetNumFunctions		(JILState* pState);
 
 //------------------------------------------------------------------------------
+// JILGetFunctionInfo
+//------------------------------------------------------------------------------
+/// Retrieves the JILFuncInfo record from a function's unique index. This is not
+/// to be confused with the method index that identifies a function or method
+/// within a class. The function index is a global index assigned to every
+/// function recorded in the runtime.
+
+JILEXTERN JILFuncInfo*	JILGetFunctionInfo		(JILState* pState, JILLong funcIndex);
+
+//------------------------------------------------------------------------------
 // JILSetFunctionAddress
 //------------------------------------------------------------------------------
 /// This can be called to change the code address of an already existing function.

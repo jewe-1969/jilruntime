@@ -20,6 +20,7 @@
 #include "jiltypelist.h"
 #include "jilallocators.h"
 #include "jilcallntl.h"
+#include "jilprogramming.h"
 
 //------------------------------------------------------------------------------
 // static functions
@@ -150,11 +151,10 @@ static JILError JILCallFunc(JILState* pState, JILLong hFunction)
 	result = JILInitVM(pState);
 	if( result )
 		return result;
-	// ensure valid handle address
-	if( hFunction < 0 || hFunction >= pState->vmpFuncSegment->usedSize )
-		return JIL_ERR_Invalid_Function_Index;
 	// get function info
-	pFuncInfo = pState->vmpFuncSegment->pData + hFunction;
+	pFuncInfo = JILGetFunctionInfo(pState, hFunction);
+	if( pFuncInfo == NULL )
+		return JIL_ERR_Invalid_Function_Index;
 	// get type info
 	pTypeInfo = JILTypeInfoFromType(pState, pFuncInfo->type);
 	// native or script code?
@@ -197,12 +197,11 @@ static JILError JILCallMethod(JILState* pState, JILHandle* pObject, JILLong nInd
 	}
 	else
 	{
-		// ensure valid method index
-		if( nIndex < 0 || nIndex >= pTypeInfo->sizeVtab )
-			return JIL_ERR_Invalid_Member_Index;
 		// get function handle
 		pVt = JILCStrGetVTable(pState, pTypeInfo->offsetVtab);
-		pFuncInfo = pState->vmpFuncSegment->pData + pVt[nIndex];
+		pFuncInfo = JILGetFunctionInfo(pState, pVt[nIndex]);
+		if( pFuncInfo == NULL )
+			return JIL_ERR_Invalid_Member_Index;
 		// execute the bytecode
 		result = JILExecuteByteCode(pState, pState->vmpContext, pFuncInfo->codeAddr, pObject);
 	}
@@ -261,13 +260,17 @@ JILError JILCallDelegate(JILState* pState, JILHandle* pDelegate)
 static JILError JILCallClosure(JILState* pState, JILDelegate* pDelegate)
 {
 	JILError result;
-	JILFuncInfo* pFuncInfo = pState->vmpFuncSegment->pData + pDelegate->index;
+	JILFuncInfo* pFuncInfo;
 	JILHandle** saveSP = pState->vmpContext->vmppDataStack + pState->vmpContext->vmDataStackPointer;
 	JILHandle** psp;
 	JILHandle** pcl;
 	JILLong oldSP = pState->vmpContext->vmDataStackPointer;
 	JILLong i;
 	JILLong n;
+	// check function index
+	pFuncInfo = JILGetFunctionInfo(pState, pDelegate->index);
+	if( pFuncInfo == NULL )
+		return JIL_ERR_Invalid_Function_Index;
 	// push parent stack onto stack
 	n = pDelegate->pClosure->stackSize;
 	pcl = pDelegate->pClosure->ppStack + n - 1;
@@ -914,11 +917,3 @@ use_buf:
 	}
 	return err;
 }
-
-//------------------------------------------------------------------------------
-// Implement Segments
-//------------------------------------------------------------------------------
-
-IMPL_SEGMENT( JILDataHandle )
-IMPL_SEGMENT( JILLong )
-IMPL_SEGMENT( JILFuncInfo )

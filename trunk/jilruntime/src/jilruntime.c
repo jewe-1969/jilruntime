@@ -76,6 +76,14 @@ JILError JILTerminateRuntime(JILState*);
 const JILChar* JCLGetErrorString(JILError err);
 
 //------------------------------------------------------------------------------
+// Implement Segments
+//------------------------------------------------------------------------------
+
+IMPL_SEGMENT( JILDataHandle )
+IMPL_SEGMENT( JILLong )
+IMPL_SEGMENT( JILFuncInfo )
+
+//------------------------------------------------------------------------------
 // JILInitialize
 //------------------------------------------------------------------------------
 
@@ -731,7 +739,7 @@ JILFunctionTable* JILGetFunctionTable(JILState* pState, JILHandle* pObj)
 	// get function handles
 	for( fn = 0; fn < pState->vmpFuncSegment->usedSize; fn++ )
 	{
-		JILFuncInfo* pFunc = pState->vmpFuncSegment->pData + fn;
+		JILFuncInfo* pFunc = JILGetFunctionInfo(pState, fn);
 		if( pFunc->type == pObj->type )
 		{
 			JILHandle* pHandle = JILGetNewHandle(pState);
