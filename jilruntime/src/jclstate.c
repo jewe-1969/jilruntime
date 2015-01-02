@@ -4399,9 +4399,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	ERROR_IF(err, err, pToken, goto exit);
 	if( tokenID == tk_semicolon )
 		goto exit;
-	if( tokenID == tk_colon || tokenID == tk_hybrid )
+	if( tokenID == tk_colon || tokenID == tk_implements || tokenID == tk_hybrid )
 	{
-		if( tokenID == tk_colon )
+		if( tokenID == tk_colon || tokenID == tk_implements )
 		{
 			err = p_class_implements(_this, pClass);
 			if( err )

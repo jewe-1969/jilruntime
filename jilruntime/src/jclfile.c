@@ -50,6 +50,7 @@ const JCLToken kKeywordList[] =
 	tk_goto,		"goto",
 	tk_hybrid,		"hybrid",
 	tk_if,			"if",
+	tk_implements,	"implements",
 	tk_import,		"import",
 	tk_inherits,	"inherits",
 	tk_interface,	"interface",
