@@ -170,12 +170,4 @@ JILError				JILCallFactory			(JILState* ps, JILArray* pArr, JILLong funcIndex);
 
 JILError				JILDynamicConvert		(JILState* ps, JILLong dType, JILHandle* sObj, JILHandle** ppOut);
 
-//------------------------------------------------------------------------------
-// Declare Segments
-//------------------------------------------------------------------------------
-
-DECL_SEGMENT( JILDataHandle )
-DECL_SEGMENT( JILLong )
-DECL_SEGMENT( JILFuncInfo )
-
 #endif	// #ifndef JILMACHINE_H

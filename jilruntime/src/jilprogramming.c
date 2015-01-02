@@ -219,18 +219,29 @@ JILLong JILGetNumFunctions(JILState* pState)
 }
 
 //------------------------------------------------------------------------------
+// JILGetFunctionInfo
+//------------------------------------------------------------------------------
+
+JILFuncInfo* JILGetFunctionInfo(JILState* pState, JILLong funcIndex)
+{
+	if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
+		return NULL;
+	return pState->vmpFuncSegment->pData + funcIndex;
+}
+
+//------------------------------------------------------------------------------
 // JILSetFunctionAddress
 //------------------------------------------------------------------------------
 
 JILError JILSetFunctionAddress(JILState* pState, JILLong funcIndex, JILLong address, JILLong size, JILLong args)
 {
-	// ensure valid handle address
-	if( funcIndex < 0 || funcIndex >= pState->vmpFuncSegment->usedSize )
+	JILFuncInfo* pfi = JILGetFunctionInfo(pState, funcIndex);
+	if( pfi == NULL )
 		return JIL_ERR_Invalid_Function_Index;
 
-	pState->vmpFuncSegment->pData[funcIndex].codeAddr = address;
-	pState->vmpFuncSegment->pData[funcIndex].codeSize = size;
-	pState->vmpFuncSegment->pData[funcIndex].args = args;
+	pfi->codeAddr = address;
+	pfi->codeSize = size;
+	pfi->args = args;
 
 	return JIL_No_Exception;
 }

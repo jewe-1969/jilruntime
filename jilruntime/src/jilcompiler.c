@@ -884,7 +884,7 @@ static JILError JCLPostLink(JCLState* _this)
 				if( o == op_calls )
 				{
 					JILLong cod[2] = { op_jsr, 0 };
-					pFuncInfo = ps->vmpFuncSegment->pData + pCode->Get(pCode, i + 1);
+					pFuncInfo = JILGetFunctionInfo(ps, pCode->Get(pCode, i + 1));
 					cod[1] = pFuncInfo->codeAddr;
 					JILSetMemory(ps, addr + i, cod, 2);
 				}
