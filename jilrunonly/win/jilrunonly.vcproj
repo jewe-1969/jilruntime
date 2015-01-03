@@ -212,6 +212,10 @@
 			Name="jilruntime"
 			>
 			<File
+				RelativePath="..\..\jilruntime\src\bind_arraylist.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\jilruntime\src\bind_runtime.c"
 				>
 			</File>
@@ -281,6 +285,10 @@
 			</File>
 			<File
 				RelativePath="..\..\jilruntime\src\jilarray.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\jilruntime\src\jilarraylist.c"
 				>
 			</File>
 			<File
