@@ -144,18 +144,6 @@ enum
 	kOnlyCtor				= 1 << 1	// p_member_call()
 };
 
-// enum for p_function(), p_function_literal() and FindFuncRef()
-enum
-{
-	kFunction	= 1 << 0,
-	kMethod		= 1 << 1,
-	kAccessor	= 1 << 2,
-	kCofunction	= 1 << 3,
-	kExplicit	= 1 << 4,
-	kStrict		= 1 << 5,
-	kVirtual	= 1 << 6
-};
-
 // enum for IsIdentifierUsed()
 enum
 {
@@ -246,6 +234,8 @@ static JILBool		IsRegisterAccess	(const JCLVar*, JILLong);
 static JILBool		IsBasicType			(JILLong);
 static JILBool		IsComparableType	(JILLong);
 static JILBool		IsCalculatableType	(JILLong);
+static JILBool		IsFuncPrivate		(JCLState*, JCLFunc*);
+static JILBool		IsVarPrivate		(JCLState*, JCLVar*, JCLVar*);
 static void			DuplicateVar		(JCLVar**, const JCLVar*);
 static void			FreeDuplicate		(JCLVar**);
 static JILBool		IsOperatorToken		(JILLong);
@@ -450,6 +440,7 @@ static JILError		p_cofunction_resume	(JCLState*, JCLVar*, JCLVar*, JCLVar*, Type
 static JILError		p_delegate_call		(JCLState*, Array_JCLVar*, JCLVar*, JCLVar*, JCLVar*, TypeInfo*, JILLong);
 static JILError		p_strict			(JCLState*);
 static JILError		p_virtual			(JCLState*, JILLong);
+static JILError		p_private			(JCLState*, JILLong);
 static JILError		p_function_literal	(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**, JILLong, JILLong);
 static JILError		p_selftest			(JCLState*, Array_JCLVar*);
 static JILError		p_tag				(JCLState*, JCLString*);
@@ -1260,7 +1251,7 @@ static JILError FindConstructor(JCLState* _this, JCLVar* src, JCLVar* dst, JCLFu
 		for( i = 0; i < NumFuncs(_this, dst->miType); i++ )
 		{
 			pFunc = GetFunc(_this, dst->miType, i);
-			if( pFunc->miCtor && pFunc->mipArgs->Count(pFunc->mipArgs) == 1 )
+			if( pFunc->miCtor && !pFunc->miPrivate && pFunc->mipArgs->Count(pFunc->mipArgs) == 1 )
 			{
 				pArg = pFunc->mipArgs->Get(pFunc->mipArgs, 0);
 				if( ImpConvertible(_this, src, pArg) )
@@ -1294,7 +1285,7 @@ static JILError FindDefaultCtor(JCLState* _this, JCLVar* pVar, JCLFunc** ppFunc)
 		for( i = 0; i < NumFuncs(_this, pVar->miType); i++ )
 		{
 			pFunc = GetFunc(_this, pVar->miType, i);
-			if( pFunc->miCtor && pFunc->mipArgs->Count(pFunc->mipArgs) == 0 )
+			if( pFunc->miCtor && !pFunc->miPrivate && pFunc->mipArgs->Count(pFunc->mipArgs) == 0 )
 			{
 				// all is fine, return function
 				*ppFunc = pFunc;
@@ -2370,8 +2361,8 @@ static JCLVar* FindAnyVar(JCLState* _this, const JCLString* pName)
 // FindFuncRef
 //------------------------------------------------------------------------------
 // Find a global or class member function by name. This is specifically used
-// when taking a reference from a function or method. Specify kFunction and/or
-// kMethod flags for 'flags'.
+// when taking a reference from a function or method. Specify kModeFunction and/or
+// kModeMethod flags for 'flags'.
 
 static JILError FindFuncRef(JCLState* _this, JCLString* pName, JILLong typeID, JILLong flags, JCLVar* pResult, JCLFunc** ppFunc)
 {
@@ -2408,9 +2399,9 @@ static JILError FindFuncRef(JCLState* _this, JCLString* pName, JILLong typeID, J
 		return JCL_ERR_Function_Ref_Ambiguous;
 	if( pFunc->miCtor || pFunc->miConvertor || pFunc->miAccessor || pFunc->miCofunc )
 		return JCL_ERR_Function_Ref_Illegal;
-	if( !(flags & kMethod) && pFunc->miMethod )
+	if( !(flags & kModeMethod) && pFunc->miMethod )
 		return JCL_ERR_Function_Ref_Illegal;
-	if( !(flags & kFunction) && !pFunc->miMethod )
+	if( !(flags & kModeFunction) && !pFunc->miMethod )
 		return JCL_ERR_Function_Ref_Illegal;
 
 	// create signature from function
@@ -2457,21 +2448,21 @@ static JILError FindAnyFuncRef(JCLState* _this, JCLString* pName, JCLVar* pResul
 	// if not in global scope, try current class first
 	if( !IsGlobalScope(_this, _this->miClass) )
 	{
-		err = FindFuncRef( _this, pName, _this->miClass, kMethod | kFunction, pResult, ppFunc );
+		err = FindFuncRef( _this, pName, _this->miClass, kModeMethod | kModeFunction, pResult, ppFunc );
 		if( err != JCL_ERR_Undefined_Identifier )
 			return err;	// no need to check for ambiguous access in this case
 
 		// also try parent class
 		if( HasParentType(_this, _this->miClass) )
 		{
-			err = FindFuncRef( _this, pName, GetParentType(_this, _this->miClass), kMethod | kFunction, pResult, ppFunc );
+			err = FindFuncRef( _this, pName, GetParentType(_this, _this->miClass), kModeMethod | kModeFunction, pResult, ppFunc );
 			if( err != JCL_ERR_Undefined_Identifier )
 				return err;	// no need to check for ambiguous access in this case
 		}
 	}
 
 	// try global space
-	err = FindFuncRef( _this, pName, type_global, kFunction, pResult, ppFunc );
+	err = FindFuncRef( _this, pName, type_global, kModeFunction, pResult, ppFunc );
 	if( err && err != JCL_ERR_Undefined_Identifier )
 		return err;
 	if( err == JCL_No_Error )
@@ -2481,7 +2472,7 @@ static JILError FindAnyFuncRef(JCLState* _this, JCLString* pName, JCLVar* pResul
 	for( i = 0; i < pUsing->count; i++ )
 	{
 		typeID = pUsing->Get(pUsing, i);
-		err = FindFuncRef( _this, pName, typeID, kFunction, pResult, ppFunc );
+		err = FindFuncRef( _this, pName, typeID, kModeFunction, pResult, ppFunc );
 		if( err && err != JCL_ERR_Undefined_Identifier )
 			return err;
 		if( err == JCL_No_Error )
@@ -2834,6 +2825,26 @@ static JILBool IsCalculatableType(JILLong typeID)
 			return JILTrue;
 	}
 	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// IsFuncPrivate
+//------------------------------------------------------------------------------
+// Returns true if the given function is NOT accessible for the current class.
+
+static JILBool IsFuncPrivate(JCLState* _this, JCLFunc* pFunc)
+{
+	return (pFunc->miPrivate && pFunc->miClassID != _this->miClass);
+}
+
+//------------------------------------------------------------------------------
+// IsFuncPrivate
+//------------------------------------------------------------------------------
+// Returns true if the given variable is NOT accessible for the current class.
+
+static JILBool IsVarPrivate(JCLState* _this, JCLVar* pObj, JCLVar* pVar)
+{
+	return (pVar->miPrivate && pObj->miType != _this->miClass);
 }
 
 //------------------------------------------------------------------------------
@@ -3392,7 +3403,7 @@ static JILBool IsExtendingClass(JCLState* _this, JILLong type)
 
 static JILBool IsModifierNativeBinding(JCLClass* pClass)
 {
-	return ((pClass->miModifier & kModiNativeBinding) == kModiNativeBinding);
+	return ((pClass->miModifier & kModeNativeBinding) == kModeNativeBinding);
 }
 
 //------------------------------------------------------------------------------
@@ -3402,7 +3413,7 @@ static JILBool IsModifierNativeBinding(JCLClass* pClass)
 
 static JILBool IsModifierNativeInterface(JCLClass* pClass)
 {
-	return ((pClass->miModifier & kModiNativeInterface) == kModiNativeInterface);
+	return ((pClass->miModifier & kModeNativeInterface) == kModeNativeInterface);
 }
 
 //------------------------------------------------------------------------------
@@ -4241,28 +4252,25 @@ static JILError p_root(JCLState* _this)
 				err = p_interface( _this, 0 );
 				break;
 			case tk_function:
-				err = p_function( _this, kFunction, JILFalse );
+				err = p_function( _this, kModeFunction, JILFalse );
 				break;
 			case tk_cofunction:
-				err = p_function( _this, kFunction | kCofunction, JILFalse );
+				err = p_function( _this, kModeFunction | kModeCofunction, JILFalse );
 				break;
 			case tk_method:
-				err = p_function( _this, kMethod, JILFalse );
+				err = p_function( _this, kModeMethod, JILFalse );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor, JILFalse );
+				err = p_function( _this, kModeMethod | kModeAccessor, JILFalse );
 				break;
 			case tk_explicit:
-				err = p_function( _this, kMethod | kExplicit, JILFalse );
+				err = p_function( _this, kModeMethod | kModeExplicit, JILFalse );
 				break;
 			case tk_using:
 				err = p_using( _this );
 				break;
-			case tk_extern:
-				err = p_class_modifier( _this, kModiExtern );
-				break;
 			case tk_native:
-				err = p_class_modifier( _this, kModiNativeBinding );
+				err = p_class_modifier( _this, kModeNativeBinding );
 				break;
 			case tk_delegate:
 				err = p_delegate( _this );
@@ -4335,8 +4343,8 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 	pOldNS = GetCurrentNamespace(_this);
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
-	strict = (modifier & kModiStrict) ? kStrict : 0;
-	virtua = (modifier & kModiVirtual) ? kVirtual : 0;
+	strict = (modifier & kModeStrict);
+	virtua = (modifier & kModeVirtual);
 	oldClass = _this->miClass;
 	pOldNameStack = _this->mipUseNamespace;
 	pOldUsing = _this->mipUsing;
@@ -4458,19 +4466,19 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 				err = p_interface( _this, 0 );
 				break;
 			case tk_function:
-				err = p_function( _this, kFunction | strict, JILFalse );
+				err = p_function( _this, kModeFunction | strict, JILFalse );
 				break;
 			case tk_cofunction:
-				err = p_function( _this, kFunction | kCofunction | strict, JILFalse );
+				err = p_function( _this, kModeFunction | kModeCofunction | strict, JILFalse );
 				break;
 			case tk_method:
-				err = p_function( _this, kMethod | strict | virtua, JILFalse );
+				err = p_function( _this, kModeMethod | strict | virtua, JILFalse );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor | strict | virtua, JILFalse );
+				err = p_function( _this, kModeMethod | kModeAccessor | strict | virtua, JILFalse );
 				break;
 			case tk_explicit:
-				err = p_function( _this, kMethod | kExplicit | strict | virtua, JILFalse );
+				err = p_function( _this, kModeMethod | kModeExplicit | strict | virtua, JILFalse );
 				break;
 			case tk_delegate:
 				err = p_delegate( _this );
@@ -4486,6 +4494,9 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 				break;
 			case tk_virtual:
 				err = p_virtual( _this, 0 );
+				break;
+			case tk_private:
+				err = p_private( _this, 0 );
 				break;
 			default:
 			{
@@ -4547,8 +4558,8 @@ static JILError p_class_modifier(JCLState* _this, JILLong modifier)
 
 	if( tokenID == tk_class )
 		err = p_class(_this, modifier);
-	else if( modifier == kModiNativeBinding )
-		err = p_interface(_this, kModiNativeInterface);
+	else if( modifier == kModeNativeBinding )
+		err = p_interface(_this, kModeNativeInterface);
 	else
 		err = p_interface(_this, modifier);
 
@@ -4581,7 +4592,7 @@ static JILError p_class_implements(JCLState* _this, JCLClass* pClass)
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
 	pMachine = _this->mipMachine;
-	bStrict = (pClass->miModifier & kModiStrict);
+	bStrict = (pClass->miModifier & kModeStrict);
 
 	// we expect an identifier
 	err = p_partial_identifier(_this, pIfaceName);
@@ -4685,6 +4696,7 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 		pBaseVar->miRef = JILTrue;
 		pBaseVar->miNonVT = JILTrue;
 		pBaseVar->miReadOnly = JILTrue;
+		pBaseVar->miPrivate = JILTrue;
 		JCLSetString(pBaseVar->mipName, "base");
 		err = AddMemberVar(_this, dstType, pBaseVar);
 		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
@@ -4775,11 +4787,12 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 	JCLFile* pFile;
 	JCLString* pBaseName;
 	JCLString* pClassName;
+	JCLString* pMangle;
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
 	JCLVar* pBaseVar;
-	JCLVar* pOldBase;
+	JCLVar* pVar;
 	JILState* pMachine;
 	JILLong i;
 	JILLong classIdx;
@@ -4787,14 +4800,16 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 	JILBool bVirtual;
 	JILTypeInfo* pTI;
 
-	pFile = _this->mipFile;
 	pBaseName = NEW(JCLString);
+	pBaseVar = NEW(JCLVar);
+	pMangle = NEW(JCLString);
+	JCLSetString(pMangle, "@");
+	pFile = _this->mipFile;
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
-	pBaseVar = NEW(JCLVar);
 	pMachine = _this->mipMachine;
-	bStrict = (pClass->miModifier & kModiStrict);
-	bVirtual = (pClass->miModifier & kModiVirtual);
+	bStrict = (pClass->miModifier & kModeStrict);
+	bVirtual = (pClass->miModifier & kModeVirtual);
 
 	// we expect an identifier
 	err = p_partial_identifier(_this, pBaseName);
@@ -4811,18 +4826,21 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 		// inherit from base
 		pClass->miBaseType = pSrcClass->miType;
 		// copy all member variables from base
-		pClass->mipVars->Copy(pClass->mipVars, pSrcClass->mipVars);
-		// hide any 'base' variable we may have inherited
-		JCLSetString(pBaseVar->mipName, "base");
-		pOldBase = FindMemberVar(_this, pClass->miType, pBaseVar->mipName);
-		if( pOldBase )
-			JCLSetString(pOldBase->mipName, "*base");
+		for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
+		{
+			pVar = pClass->mipVars->New(pClass->mipVars);
+			pVar->Copy(pVar, pSrcClass->mipVars->Get(pSrcClass->mipVars, i));
+			if( pVar->miPrivate )
+				JCLInsert(pVar->mipName, pMangle, 0);
+		}
 		// create "base" variable in this class
+		JCLSetString(pBaseVar->mipName, "base");
 		pBaseVar->miType = pSrcClass->miType;
 		pBaseVar->miRef = JILTrue;
 		pBaseVar->miWeak = JILTrue;
 		pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
 		pBaseVar->miReadOnly = JILTrue;
+		pBaseVar->miPrivate = JILTrue;
 		err = AddMemberVar(_this, pClass->miType, pBaseVar);
 		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
 		// copy over all function declarations from source class
@@ -4841,6 +4859,9 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			pFunc->miLnkClass = pSrcClass->miType;
 			// set 'base' variable index
 			pFunc->miLnkBaseVar = pBaseVar->miMember;
+			// special treatment for private (mangle name so it's no longer accessible)
+			if( pFunc->miPrivate )
+				JCLInsert(pFunc->mipName, pMangle, 0);
 			// special treatment for ctors
 			if( pFunc->miCtor )
 			{
@@ -4852,8 +4873,9 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 					pSFunc->Copy(pSFunc, pFunc);
 					pSFunc->miLnkMethod = pFunc->miLnkMethod;
 					// make it normal method
-					pSFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
-					pSFunc->miNoOverride = JILTrue; // function is not overridable
+					pSFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
+					pSFunc->miNoOverride = JILTrue;	// function is not overridable
+					pSFunc->miPrivate = JILTrue;	// function is not callable
 					// add to function segment
 					err = JILCreateFunction(pMachine, pClass->miType, pClass->mipFuncs->Count(pClass->mipFuncs) - 1, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
 					ERROR_IF(err, err, NULL, goto exit);
@@ -4878,8 +4900,9 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 				}
 				else
 				{
-					pFunc->miVirtual = JILFalse; // base ctor MUST NOT be virtual!
-					pFunc->miNoOverride = JILTrue; // function is not overridable
+					pFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
+					pFunc->miNoOverride = JILTrue;	// function is not overridable
+					pFunc->miPrivate = JILTrue;		// function is not callable
 				}
 			}
 			// add to function segment
@@ -4898,6 +4921,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 exit:
 	DELETE( pBaseName );
 	DELETE( pBaseVar );
+	DELETE( pMangle );
 	return err;
 }
 
@@ -4913,6 +4937,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 	JCLString* pBaseName;
 	JCLString* pClassName;
 	JCLString* pToken;
+	JCLString* pMangle;
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
@@ -4926,14 +4951,16 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 	JILBool bVirtual;
 	JILBool bAddFn;
 
-	pFile = _this->mipFile;
 	pToken = NEW(JCLString);
 	pBaseName = NEW(JCLString);
+	pMangle = NEW(JCLString);
+	JCLSetString(pMangle, "@");
+	pFile = _this->mipFile;
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
 	pMachine = _this->mipMachine;
-	bStrict = (pClass->miModifier & kModiStrict);
-	bVirtual = (pClass->miModifier & kModiVirtual);
+	bStrict = (pClass->miModifier & kModeStrict);
+	bVirtual = (pClass->miModifier & kModeVirtual);
 
 	for(;;)
 	{
@@ -4957,6 +4984,8 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				JCLVar* pSrc = pSrcClass->mipVars->Get(pSrcClass->mipVars, i);
 				pDst = pClass->mipVars->New(pClass->mipVars);
 				pDst->Copy(pDst, pSrc);
+				if( pDst->miPrivate )
+					JCLInsert(pDst->mipName, pMangle, 0);
 				if( pDst->miUsage == kUsageVar && pDst->miMode == kModeMember )
 					pDst->miMember += varRelOffset;
 				// replace source type by destination type
@@ -4973,7 +5002,12 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				// try find it in this class
 				bAddFn = JILFalse;
 				FindDiscreteFunction(_this, pClass->miType, pSFunc->mipName, pSFunc->mipResult, pSFunc->mipArgs, &pFunc);
-				if( pFunc == NULL )
+				if( pFunc )
+				{
+					pSFunc->ToString(pSFunc, _this, pToken, kFullDecl|kCompact|kClearFirst);
+					ERROR_IF(pFunc->miLnkRelIdx >= 0, JCL_ERR_Identifier_Already_Defined, pToken, goto exit);
+				}
+				else
 				{
 					// not found - create new function
 					pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
@@ -4991,11 +5025,15 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				// set relocation index
 				pFunc->miLnkRelIdx = pSFunc->miFuncIdx;
 				pFunc->miLnkClass = pSrcClass->miType;
+				// special treatment for private
+				if( pFunc->miPrivate )
+					JCLInsert(pFunc->mipName, pMangle, 0);
 				// special treatment if method is constructor
 				if( pFunc->miCtor )
 				{
 					pFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
 					pFunc->miNoOverride = JILTrue;	// function is not overridable
+					pFunc->miPrivate = JILTrue;		// function is not callable
 				}
 				if( bAddFn )
 				{
@@ -5020,6 +5058,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 exit:
 	DELETE( pBaseName );
 	DELETE( pToken );
+	DELETE( pMangle );
 	return err;
 }
 
@@ -5112,7 +5151,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		SetCurrentNamespace(_this, pNamespace);
 		SetCompileContext(_this, pClass->miType, 0);
 	}
-	else if( IsGlobalScope(_this, _this->miClass) && (fnKind & kMethod) )
+	else if( IsGlobalScope(_this, _this->miClass) && (fnKind & kModeMethod) )
 	{
 		ERROR(JCL_ERR_Method_Outside_Class, pName, goto exit);
 	}
@@ -5126,14 +5165,15 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 	pFunc->miFuncIdx = funcIdx;
 	pFunc->miClassID = pClass->miType;
-	pFunc->miMethod = (fnKind & kMethod);
-	pFunc->miAccessor = (fnKind & kAccessor);
-	pFunc->miCofunc = (fnKind & kCofunction);
-	pFunc->miExplicit = (fnKind & kExplicit);
-	pFunc->miStrict = (fnKind & kStrict);
-	pFunc->miVirtual = (fnKind & kVirtual);
+	pFunc->miMethod = (fnKind & kModeMethod);
+	pFunc->miAccessor = (fnKind & kModeAccessor);
+	pFunc->miCofunc = (fnKind & kModeCofunction);
+	pFunc->miExplicit = (fnKind & kModeExplicit);
+	pFunc->miStrict = (fnKind & kModeStrict);
+	pFunc->miVirtual = (fnKind & kModeVirtual);
+	pFunc->miPrivate = (fnKind & kModePrivate);
 	pFunc->miOptLevel = GetOptions(_this)->miOptimizeLevel;
-	pClass->miHasMethod = (fnKind & (kAccessor | kMethod));
+	pClass->miHasMethod = (fnKind & (kModeAccessor | kModeMethod));
 	removeFunc = JILTrue;
 
 	// copy function name
@@ -5144,7 +5184,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 	if( !IsGlobalScope(_this, pClass->miType) )
 	{
 		// check for cofunction in native type
-		ERROR_IF((fnKind & kCofunction) && IsClassNative(pClass), JCL_ERR_Cofunction_In_NTL, pName, goto exit);
+		ERROR_IF((fnKind & kModeCofunction) && IsClassNative(pClass), JCL_ERR_Cofunction_In_NTL, pName, goto exit);
 		// compare function name with class name (constructor?)
 		if( CompareUnqualified(pClass->mipName, pFunc->mipName) )
 		{
@@ -5152,8 +5192,11 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			if( pFunc->mipResult->miMode != kModeUnused )
 				ERROR(JCL_ERR_Constructor_Not_Void, pFunc->mipName, goto exit);
 			// it also must be declared using the "method" keyword
-			if( !(fnKind & kMethod) || (fnKind & kAccessor) )
+			if( !(fnKind & kModeMethod) || (fnKind & kModeAccessor) )
 				ERROR(JCL_ERR_Constructor_Is_Function, pFunc->mipName, goto exit);
+			// it must not be private!
+			if( fnKind & kModePrivate )
+				ERROR(JCL_ERR_No_Access, pFunc->mipName, goto exit);
 			pFunc->miCtor = JILTrue;
 			pFunc->miStrict |= !IsClassNative(pClass);	// constructors always strict if not a native type
 			pClass->miHasCtor = JILTrue;
@@ -5165,7 +5208,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			if( pFunc->mipResult->miMode == kModeUnused )
 				ERROR(JCL_ERR_Convertor_Is_Void, NULL, goto exit);
 			// it also must be declared using the "method" keyword
-			if( !(fnKind & kMethod) || (fnKind & kAccessor) )
+			if( !(fnKind & kModeMethod) || (fnKind & kModeAccessor) )
 				ERROR(JCL_ERR_Convertor_Is_Function, NULL, goto exit);
 			pFunc->miConvertor = JILTrue;
 		}
@@ -5222,7 +5265,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 	}
 	// validate accessor function
-	if( fnKind & kAccessor )
+	if( fnKind & kModeAccessor )
 	{
 		JCLFunc* pAcc;
 		JILLong fn;
@@ -5937,14 +5980,14 @@ static JILError p_function_hybrid(JCLState* _this, JCLFunc* pFunc)
 			ERROR_IF(err, err, NULL, goto exit);
 			if( pSFunc->miMethod )
 			{
-				err = FindFuncRef(_this, pSFunc->mipName, pSrcClass->miType, kMethod, pTempDel, &pSFunc);
+				err = FindFuncRef(_this, pSFunc->mipName, pSrcClass->miType, kModeMethod, pTempDel, &pSFunc);
 				ERROR_IF(err, err, pSFunc->mipName, goto exit);
 				err = cg_new_delegate(_this, pSFunc->miFuncIdx, pTempVar, pTempDel);
 				ERROR_IF(err, err, NULL, goto exit);
 			}
 			else
 			{
-				err = FindFuncRef(_this, pSFunc->mipName, pSrcClass->miType, kFunction, pTempDel, &pSFunc);
+				err = FindFuncRef(_this, pSFunc->mipName, pSrcClass->miType, kModeFunction, pTempDel, &pSFunc);
 				ERROR_IF(err, err, pSFunc->mipName, goto exit);
 				err = cg_new_delegate(_this, pSFunc->miHandle, NULL, pTempDel);
 				ERROR_IF(err, err, NULL, goto exit);
@@ -6657,7 +6700,7 @@ static JILError p_expr_get_variable(JCLState* _this, JCLString* pName, JCLVar* p
 			err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
 			ERROR_IF(err, err, NULL, goto exit);
 			pVarOut = *ppVarOut;
-			err = FindFuncRef(_this, pName, _this->miClass, kMethod, pVarOut, &pFunc);
+			err = FindFuncRef(_this, pName, _this->miClass, kModeMethod, pVarOut, &pFunc);
 			ERROR_IF(err, JCL_ERR_Undefined_Identifier, pName, goto exit);
 			err = cg_new_delegate(_this, pFunc->miFuncIdx, pThis, pVarOut);
 			ERROR_IF(err, err, pName, goto exit);
@@ -6688,7 +6731,7 @@ static JILError p_expr_get_variable(JCLState* _this, JCLString* pName, JCLVar* p
 				JCLVar* pThis;
 				JCLSetString(pToken, "this");
 				pThis = FindLocalVar(_this, pToken);
-				err = FindFuncRef(_this, pName, _this->miClass, kMethod, pVarOut, &pFunc);
+				err = FindFuncRef(_this, pName, _this->miClass, kModeMethod, pVarOut, &pFunc);
 				ERROR_IF(err, err, pName, goto exit);
 				err = cg_new_delegate(_this, pFunc->miFuncIdx, pThis, pVarOut);
 				ERROR_IF(err, err, pName, goto exit);
@@ -6914,10 +6957,10 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 			err = p_sameref(_this, pLocals, pLVar, ppVarOut, ppTempVar);
 			break;
 		case tk_function:
-			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kFunction);
+			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kModeFunction);
 			break;
 		case tk_method:
-			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kMethod);
+			err = p_function_literal(_this, pLocals, pLVar, ppVarOut, ppTempVar, flags, kModeMethod);
 			break;
 		case tk_this:
 		{
@@ -6997,7 +7040,7 @@ static JILError p_expr_atomic(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pL
 						err = help_force_temp(_this, ppVarOut, pLVar, ppTempVar);
 						ERROR_IF(err, err, NULL, goto exit);
 						pVarOut = *ppVarOut;
-						err = FindFuncRef(_this, pToken, pClass->miType, kFunction, pVarOut, &pFunc);
+						err = FindFuncRef(_this, pToken, pClass->miType, kModeFunction, pVarOut, &pFunc);
 						ERROR_IF(err, err, NULL, goto exit);
 						err = cg_new_delegate(_this, pFunc->miHandle, NULL, pVarOut);
 						ERROR_IF(err, err, NULL, goto exit);
@@ -7170,7 +7213,7 @@ exit:
 //------------------------------------------------------------------------------
 // p_expr_get_member
 //------------------------------------------------------------------------------
-// Parse operator . (dot) in an expression.
+// Parse operator . in an expression.
 
 static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pLVar, JCLVar** ppVarOut, JCLVar** ppTempVar)
 {
@@ -7340,6 +7383,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 		FindAccessor(_this, pVarOut->miType, pToken, 0, &pFunc);
 		if( pFunc )
 		{
+			ERROR_IF(IsFuncPrivate(_this, pFunc), JCL_ERR_No_Access, pFunc->mipName, goto exit);
 			JCLClrTypeInfo( &outType );
 			err = p_accessor_call(_this, pLocals, pFunc, pVarOut, pLVar, &outType);
 			if( err )
@@ -7378,6 +7422,7 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 			JCLVar* pWorkVar = FindMemberVar(_this, pVarOut->miType, pToken);
 			if( pWorkVar )
 			{
+				ERROR_IF(IsVarPrivate(_this, pVarOut, pWorkVar), JCL_ERR_No_Access, pWorkVar->mipName, goto exit);
 				// dereference next level
 				pVarOut->miMode = kModeMember;
 				pVarOut->miMember = pWorkVar->miMember;
@@ -7388,8 +7433,9 @@ static JILError p_expr_get_member(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 			else
 			{
 				pVar->Copy(pVar, pVarOut);
-				err = FindFuncRef(_this, pToken, pVarOut->miType, kMethod, pVarOut, &pFunc);
+				err = FindFuncRef(_this, pToken, pVarOut->miType, kModeMethod, pVarOut, &pFunc);
 				ERROR_IF(err, err, pToken, goto exit);
+				ERROR_IF(IsFuncPrivate(_this, pFunc), JCL_ERR_No_Access, pFunc->mipName, goto exit);
 				err = cg_new_delegate(_this, pFunc->miFuncIdx, pVar, pVarOut);
 				ERROR_IF(err, err, pToken, goto exit);
 			}
@@ -9074,6 +9120,9 @@ static JILError p_member_call(JCLState* _this, Array_JCLVar* pLocals, JILLong cl
 	// check if calling method and object is not initialized
 	if( pFunc->miMethod && pObj && !IsSrcInited(pObj) )
 		ERROR(JCL_ERR_Var_Not_Initialized, pName, goto exit);
+	// disallow calling private functions (except when compiling base ctor call)
+	if( IsFuncPrivate(_this, pFunc) && pObj != NULL )
+		ERROR(JCL_ERR_No_Access, pName, goto exit);
 	// generate code for function call
 	if( pClass->miNative )
 	{
@@ -11355,8 +11404,8 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	pToken = NEW(JCLString);
 	pOldNS = GetCurrentNamespace(_this);
 	pFile = _this->mipFile;
-	strict = (modifier & kModiStrict) ? kStrict : 0;
-	virtua = kVirtual; // interface methods are always virtual
+	strict = (modifier & kModeStrict) ? kModeStrict : 0;
+	virtua = kModeVirtual; // interface methods are always virtual
 	oldClass = _this->miClass;
 
 	// we expect to find a class name
@@ -11431,10 +11480,10 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 		switch( tokenID )
 		{
 			case tk_method:
-				err = p_function( _this, kMethod | strict | virtua, JILTrue );
+				err = p_function( _this, kModeMethod | strict | virtua, JILTrue );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor | strict | virtua, JILTrue );
+				err = p_function( _this, kModeMethod | kModeAccessor | strict | virtua, JILTrue );
 				break;
 			default:
 				ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -12497,6 +12546,7 @@ static JILError p_variable_call(JCLState* _this, Array_JCLVar* pLocals, const JC
 	if( pObj )
 	{
 		pAnyVar = FindMemberVar(_this, pObj->miType, pName);	// call a member from another object
+		ERROR_IF(pAnyVar != NULL && IsVarPrivate(_this, pObj, pAnyVar), JCL_ERR_No_Access, pName, goto exit);
 	}
 	else
 	{
@@ -12732,28 +12782,31 @@ static JILError p_strict(JCLState* _this)
 	switch( tokenID )
 	{
 		case tk_class:
-			err = p_class( _this, kModiStrict );
+			err = p_class( _this, kModeStrict );
 			break;
 		case tk_interface:
-			err = p_interface( _this, kModiStrict );
+			err = p_interface( _this, kModeStrict );
 			break;
 		case tk_function:
-			err = p_function( _this, kFunction | kStrict, JILFalse );
+			err = p_function( _this, kModeFunction | kModeStrict, JILFalse );
 			break;
 		case tk_cofunction:
-			err = p_function( _this, kFunction | kCofunction | kStrict, JILFalse );
+			err = p_function( _this, kModeFunction | kModeCofunction | kModeStrict, JILFalse );
 			break;
 		case tk_method:
-			err = p_function( _this, kMethod | kStrict, JILFalse );
+			err = p_function( _this, kModeMethod | kModeStrict, JILFalse );
 			break;
 		case tk_accessor:
-			err = p_function( _this, kMethod | kAccessor | kStrict, JILFalse );
+			err = p_function( _this, kModeMethod | kModeAccessor | kModeStrict, JILFalse );
 			break;
 		case tk_explicit:
-			err = p_function( _this, kMethod | kExplicit | kStrict, JILFalse );
+			err = p_function( _this, kModeMethod | kModeExplicit | kModeStrict, JILFalse );
 			break;
 		case tk_virtual:
-			err = p_virtual( _this, kModiStrict );
+			err = p_virtual( _this, kModeStrict );
+			break;
+		case tk_private:
+			err = p_private( _this, kModePrivate );
 			break;
 		default:
 			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -12775,13 +12828,9 @@ static JILError p_virtual(JCLState* _this, JILLong modifier)
 	JCLFile* pFile;
 	JILLong tokenID;
 	JCLString* pToken;
-	JILLong fnKind = 0;
 
 	pFile = _this->mipFile;
 	pToken = NEW(JCLString);
-
-	if( modifier & kModiStrict )
-		fnKind |= kStrict;
 
 	// get next token
 	err = pFile->GetToken(pFile, pToken, &tokenID);
@@ -12790,16 +12839,16 @@ static JILError p_virtual(JCLState* _this, JILLong modifier)
 	switch( tokenID )
 	{
 		case tk_class:
-			err = p_class( _this, modifier | kModiVirtual );
+			err = p_class( _this, modifier | kModeVirtual );
 			break;
 		case tk_method:
-			err = p_function( _this, kMethod | fnKind | kVirtual, JILFalse );
+			err = p_function( _this, kModeMethod | modifier | kModeVirtual, JILFalse );
 			break;
 		case tk_accessor:
-			err = p_function( _this, kMethod | kAccessor | fnKind | kVirtual, JILFalse );
+			err = p_function( _this, kModeMethod | kModeAccessor | modifier | kModeVirtual, JILFalse );
 			break;
 		case tk_explicit:
-			err = p_function( _this, kMethod | kExplicit | fnKind | kVirtual, JILFalse );
+			err = p_function( _this, kModeMethod | kModeExplicit | modifier | kModeVirtual, JILFalse );
 			break;
 		default:
 			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -12807,6 +12856,68 @@ static JILError p_virtual(JCLState* _this, JILLong modifier)
 
 exit:
 	DELETE( pToken );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_private
+//------------------------------------------------------------------------------
+// Parse the private keyword
+
+static JILError p_private(JCLState* _this, JILLong modifier)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	JILLong tokenID;
+	JCLString* pToken;
+	JCLString* pToken2;
+	JCLVar* pVar;
+	JILLong savePos;
+
+	pFile = _this->mipFile;
+	pToken = NEW(JCLString);
+	pToken2 = NEW(JCLString);
+	pVar = NEW(JCLVar);
+
+	// get next token
+	savePos = pFile->GetLocator(pFile);
+	err = pFile->GetToken(pFile, pToken, &tokenID);
+	ERROR_IF(err, err, pToken, goto exit);
+
+	switch( tokenID )
+	{
+		case tk_method:
+			err = p_function( _this, kModeMethod | modifier | kModePrivate, JILFalse );
+			break;
+		case tk_accessor:
+			err = p_function( _this, kModeMethod | kModeAccessor | modifier | kModePrivate, JILFalse );
+			break;
+		case tk_explicit:
+			err = p_function( _this, kModeMethod | kModeExplicit | modifier | kModePrivate, JILFalse );
+			break;
+		case tk_virtual:
+			err = p_virtual( _this, modifier | kModePrivate );
+			break;
+		default:
+		{
+			ERROR_IF(modifier != 0, JCL_ERR_Unexpected_Token, pToken, goto exit);
+			// check for type declaration
+			pFile->SetLocator(pFile, savePos);
+			err = IsFullTypeDecl(_this, pToken2, pVar, JILFalse);
+			if( err == JCL_ERR_Probe_Failed )
+				err = JCL_ERR_Unexpected_Token;
+			ERROR_IF(err, err, pToken, goto exit);
+			ERROR_IF(pVar->miConst, JCL_ERR_No_Access, pVar->mipName, goto exit); // TODO: Allow private class constant?
+			pVar->miPrivate = JILTrue;
+			err = p_member_decl(_this, _this->miClass, pVar);
+			ERROR_IF(err, err, pToken, goto exit);
+		}
+	}
+
+exit:
+	DELETE( pToken );
+	DELETE( pToken2 );
+	DELETE( pVar );
 	return err;
 }
 
@@ -12840,7 +12951,7 @@ static JILError p_function_literal(JCLState* _this, Array_JCLVar* pLocals, JCLVa
 	}
 
 	// method delegates can only be used from within methods
-	if( (fnKind & kMethod) && !CurrentFunc(_this)->miMethod )
+	if( (fnKind & kModeMethod) && !CurrentFunc(_this)->miMethod )
 	{
 		ERROR(JCL_ERR_Calling_Method_From_Static, NULL, goto exit);
 	}
@@ -12899,7 +13010,7 @@ static JILError p_function_literal(JCLState* _this, Array_JCLVar* pLocals, JCLVa
 	}
 
 	// for method delegates, get 'this'
-	if( fnKind & kMethod )
+	if( fnKind & kModeMethod )
 	{
 		JCLSetString(pToken, "this");
 		pObj = FindLocalVar(_this, pToken);
@@ -13404,25 +13515,22 @@ static JILError p_namespace(JCLState* _this)
 				err = p_interface( _this, 0 );
 				break;
 			case tk_function:
-				err = p_function( _this, kFunction, JILFalse );
+				err = p_function( _this, kModeFunction, JILFalse );
 				break;
 			case tk_cofunction:
-				err = p_function( _this, kFunction | kCofunction, JILFalse );
+				err = p_function( _this, kModeFunction | kModeCofunction, JILFalse );
 				break;
 			case tk_method:
-				err = p_function( _this, kMethod, JILFalse );
+				err = p_function( _this, kModeMethod, JILFalse );
 				break;
 			case tk_accessor:
-				err = p_function( _this, kMethod | kAccessor, JILFalse );
+				err = p_function( _this, kModeMethod | kModeAccessor, JILFalse );
 				break;
 			case tk_explicit:
-				err = p_function( _this, kMethod | kExplicit, JILFalse );
-				break;
-			case tk_extern:
-				err = p_class_modifier( _this, kModiExtern );
+				err = p_function( _this, kModeMethod | kModeExplicit, JILFalse );
 				break;
 			case tk_native:
-				err = p_class_modifier( _this, kModiNativeBinding );
+				err = p_class_modifier( _this, kModeNativeBinding );
 				break;
 			case tk_delegate:
 				err = p_delegate( _this );
@@ -13889,7 +13997,7 @@ static JILBool cg_use_move(JCLVar* src, JCLVar* dst)
 //------------------------------------------------------------------------------
 // cg_move_var
 //------------------------------------------------------------------------------
-// Helper function that generates code to move, copy or set a variable from any
+// Helper function that generates code to move, copy or wref a variable from any
 // place to any place.
 
 static JILError cg_move_var(JCLState* _this, JCLVar* src, JCLVar* dst)

@@ -205,7 +205,7 @@ JILError JCLLink(JILState* pVM)
 	for( clas = 0; clas < NumClasses(_this); clas++ )
 	{
 		pClass = GetClass(_this, clas);
-		if( (pClass->miFamily == tf_class || pClass->miFamily == tf_thread) && !(pClass->miModifier & kModiNativeBinding) )
+		if( (pClass->miFamily == tf_class || pClass->miFamily == tf_thread) && !(pClass->miModifier & kModeNativeBinding) )
 		{
 			// set class instance size and v-table
 			if( !pClass->miHasVTable)
@@ -474,7 +474,7 @@ JILError JCLGenerateBindings(JILState* pVM, const JILChar* pPath)
 	for( clas = 0; clas < NumClasses(_this); clas++ )
 	{
 		pClass = GetClass(_this, clas);
-		if( pClass->miFamily == tf_class && (pClass->miModifier & kModiNativeBinding) )
+		if( pClass->miFamily == tf_class && (pClass->miModifier & kModeNativeBinding) )
 		{
 			err = JCLCreateBindingCode(_this, pClass, pPath);
 			if (err)

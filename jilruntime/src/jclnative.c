@@ -780,7 +780,7 @@ static JILBool NativeTypeNameFromTypeID(JCLState* _this, JCLString* outString, J
 			switch (pClass->miFamily)
 			{
 				case tf_class:	// user defined class
-					if (pClass->miNative || (pClass->miModifier & kModiNativeBinding))
+					if (pClass->miNative || (pClass->miModifier & kModeNativeBinding))
 					{
 						JCLString* workstr = NEW(JCLString);
 						RemoveParentNamespace(workstr, pClass->mipName);
@@ -860,7 +860,7 @@ static void DerivePackageString(JCLState* _this, JCLClass* pClass, JCLString* ou
 			if( (type < kNumPredefTypes) || (type == pClass->miType) ) // TODO: Exclusion of default imports hardcoded :-/
 				continue;
 			pType = GetClass(_this, type);
-			if( pType->miFamily == tf_class && (pType->miNative || (pType->miModifier & kModiNativeBinding)) )
+			if( pType->miFamily == tf_class && (pType->miNative || (pType->miModifier & kModeNativeBinding)) )
 			{
 				JILLong i;
 				// check if we already have this type in the list

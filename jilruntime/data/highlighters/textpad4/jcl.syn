@@ -54,7 +54,6 @@ do
 else
 explicit
 extends
-extern
 false
 for
 function
@@ -73,6 +72,7 @@ not
 null
 option
 or
+private
 return
 sameref
 strict

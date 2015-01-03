@@ -80,7 +80,8 @@ DECL_CLASS( JCLFunc )
 	JILBool				miExplicit;		// constructor / convertor declared explicit
 	JILBool				miStrict;		// fail if this function has no body during link stage
 	JILBool				miVirtual;		// call this function as a virtual method
-	JILBool				miNoOverride;	// the function is not overridable (used for inherited ctor)
+	JILBool				miNoOverride;	// the function is not overridable
+	JILBool				miPrivate;		// the function is private
 	JILBool				miLinked;		// the function has been linked
 	JILBool				miNaked;		// do not save / restore registers for this function
 	JILLong				miOptLevel;		// optimization level saved from compiler options

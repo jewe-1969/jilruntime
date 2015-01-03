@@ -76,6 +76,7 @@ DECL_CLASS( JCLVar )
 	JILBool				miHidden;		// marked as hidden (can't be found when searching for a variable)
 	JILBool				miNonVT;		// method calls via this variable are NEVER virtual
 	JILBool				miReadOnly;		// variable cannot be L-value in an assignment
+	JILBool				miPrivate;		// variable is private
 
 END_CLASS( JCLVar )
 

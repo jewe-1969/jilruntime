@@ -69,6 +69,7 @@ void create_JCLVar( JCLVar* _this )
 	_this->miHidden = JILFalse;
 	_this->miNonVT = JILFalse;
 	_this->miReadOnly = JILFalse;
+	_this->miPrivate = JILFalse;
 }
 
 //------------------------------------------------------------------------------
@@ -109,6 +110,7 @@ void copy_JCLVar(JCLVar* _this, const JCLVar* src)
 	_this->miHidden = src->miHidden;
 	_this->miNonVT = src->miNonVT;
 	_this->miReadOnly = src->miReadOnly;
+	_this->miPrivate = src->miPrivate;
 
 	_this->miOnStack = JILFalse;
 	_this->miParentStack = JILFalse;
