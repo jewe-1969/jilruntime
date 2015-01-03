@@ -151,17 +151,13 @@ static JCLString* toXml_JCLClass(JCLClass* _this, JCLState* pState, JCLString* p
 	JCLFormat(workstr, "%d", _this->miHybridBase);
 	JCLAppend(pOut, JCLGetString(workstr));
 	JCLAppend(pOut, "\" mode=\"");
-	if(_this->miModifier & kModiStrict)
+	if(_this->miModifier & kModeStrict)
 	{
 		JCLAppend(pOut, "strict ");
 	}
-	if(_this->miModifier & kModiNativeInterface)
+	if(_this->miModifier & kModeNativeInterface)
 	{
 		JCLAppend(pOut, "native ");
-	}
-	if(_this->miModifier & kModiExtern)
-	{
-		JCLAppend(pOut, "extern ");
 	}
 	JCLAppend(pOut, "\" isnative=\"");
 	if(_this->miNative)

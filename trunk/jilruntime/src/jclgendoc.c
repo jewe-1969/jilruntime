@@ -600,14 +600,14 @@ static void GetFamilyAndTypeName(JCLState* _this, JCLClass* pClass, JCLString* f
 {
 	if (pClass->miFamily == tf_class)
 	{
-		JCLSetString(familyName, (pClass->miModifier & kModiStrict) ? "strict " : "");
+		JCLSetString(familyName, (pClass->miModifier & kModeStrict) ? "strict " : "");
 		JCLAppend(familyName, "class");
 		JCLSetString(typeName, JCLGetString(pClass->mipName));
 	}
 	else if (pClass->miFamily == tf_interface)
 	{
-		JCLSetString(familyName, (pClass->miModifier & kModiStrict) ? "strict " : "");
-		JCLAppend(familyName, (pClass->miModifier & kModiNativeInterface) ? "native interface" : "interface");
+		JCLSetString(familyName, (pClass->miModifier & kModeStrict) ? "strict " : "");
+		JCLAppend(familyName, (pClass->miModifier & kModeNativeInterface) ? "native interface" : "interface");
 		JCLSetString(typeName, JCLGetString(pClass->mipName));
 	}
 	else if (pClass->miFamily == tf_thread)

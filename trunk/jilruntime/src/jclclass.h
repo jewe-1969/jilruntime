@@ -31,16 +31,21 @@
 #include "jclpair.h"
 
 //------------------------------------------------------------------------------
-// class modifier flags
+// class / function modifier flags
 //------------------------------------------------------------------------------
 
 enum
 {
-	kModiNativeBinding = 1,		// classes only, used as 'tag' for native binding generator
-	kModiExtern = 2,
-	kModiStrict = 4,
-	kModiNativeInterface = 8,	// interface only
-	kModiVirtual = 16
+	  kModeNativeBinding	= 1 << 0	// class, used as 'tag' for native binding generator
+	, kModeNativeInterface	= 1 << 1	// interface
+	, kModeFunction			= 1 << 2	// function
+	, kModeMethod			= 1 << 3	// function
+	, kModeAccessor			= 1 << 4	// function
+	, kModeCofunction		= 1 << 5	// function
+	, kModeExplicit			= 1 << 6	// function
+	, kModeStrict			= 1 << 7	// class, interface, function
+	, kModeVirtual			= 1 << 8	// class, function
+	, kModePrivate			= 1 << 9	// function
 };
 
 //------------------------------------------------------------------------------

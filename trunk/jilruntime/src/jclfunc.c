@@ -275,6 +275,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miStrict = JILFalse;
 	_this->miVirtual = JILFalse;
 	_this->miNoOverride = JILFalse;
+	_this->miPrivate = JILFalse;
 	_this->miLinked = JILFalse;
 	_this->miNaked = JILFalse;
 	_this->miOptLevel = 0;
@@ -337,6 +338,7 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miStrict = src->miStrict;
 	_this->miVirtual = src->miVirtual;
 	_this->miNoOverride = src->miNoOverride;
+	_this->miPrivate = src->miPrivate;
 	_this->miLinked = src->miLinked;
 	_this->miNaked = src->miNaked;
 	_this->mipParentStack = src->mipParentStack;
