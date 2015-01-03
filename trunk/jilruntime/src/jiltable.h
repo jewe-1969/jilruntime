@@ -23,7 +23,7 @@
 #include "jiltypes.h"
 
 //------------------------------------------------------------------------------
-// struct JILTable
+// JILTableDestructor
 //------------------------------------------------------------------------------
 
 typedef void (*JILTableDestructor)(JILUnknown*);	// destructor callback for table data.
@@ -38,14 +38,14 @@ JILTable*			JILTable_NewManaged			(JILState*);
 JILTable*			JILTable_NewNativeUnmanaged	(JILState*);
 JILTable*			JILTable_NewNativeManaged	(JILState*, JILTableDestructor);
 void				JILTable_Delete				(JILTable*);
-void				JILTable_Copy				(JILTable*, const JILTable*);			// kTableModeManaged only.
-JILTable*			JILTable_DeepCopy			(const JILTable*);						// kTableModeManaged only.
-JILError			JILTable_FromArray			(JILTable*, const JILArray*);			// kTableModeManaged only.
-JILError			JILTable_FromList			(JILTable*, const JILList*);			// kTableModeManaged only.
-JILError			JILTable_Enumerate			(JILTable*, JILHandle*, JILHandle*);	// kTableModeManaged only.
-JILLong				JILTable_Cleanup			(JILTable* _this);
-JILError			JILTable_ToArray			(JILTable* _this, JILArray* pArray);	// kTableModeManaged only.
-JILError			JILTable_ToList				(JILTable* _this, JILList* pList);		// kTableModeManaged only.
+void				JILTable_Copy				(JILTable*, const JILTable*);			// managed mode only
+JILTable*			JILTable_DeepCopy			(const JILTable*);						// managed mode only
+JILError			JILTable_FromArray			(JILTable*, const JILArray*);			// managed mode only
+JILError			JILTable_FromList			(JILTable*, const JILList*);			// managed mode only
+JILError			JILTable_ToArray			(JILTable*, JILArray*);					// managed mode only
+JILError			JILTable_ToList				(JILTable*, JILList*);					// managed mode only
+JILError			JILTable_Enumerate			(JILTable*, JILHandle*, JILHandle*);	// managed mode only
+JILLong				JILTable_Cleanup			(JILTable*);
 
 JILUnknown*			JILTable_GetItem			(JILTable*, const JILChar*);
 void				JILTable_SetItem			(JILTable*, const JILChar*, JILUnknown*);

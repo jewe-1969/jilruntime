@@ -59,6 +59,7 @@ JILEXTERN JILError JILInitializeCompiler(JILState*, const JILChar*);
 JILEXTERN JILError JCLFreeCompiler(JILState*);
 JILEXTERN JILError JILRuntimeProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown* pDataIn, JILUnknown** ppDataOut);
 JILEXTERN JILError JILRuntimeExceptionProc(NTLInstance*, JILLong, JILLong, JILUnknown*, JILUnknown**);
+JILEXTERN JILError JILArrayListProc(NTLInstance*, JILLong, JILLong, JILUnknown*, JILUnknown**);
 
 //------------------------------------------------------------------------------
 // Default callbacks
@@ -154,6 +155,9 @@ JILState* JILInitialize(JILLong stackSize, const JILChar* options)
 	if( err )
 		goto exit;
 	err = JILRegisterNativeType( pState, JILIteratorProc );
+	if( err )
+		goto exit;
+	err = JILRegisterNativeType( pState, JILArrayListProc );
 	if( err )
 		goto exit;
 	err = JILRegisterNativeType( pState, JILTableProc );

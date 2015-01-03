@@ -103,7 +103,7 @@ enum
 //------------------------------------------------------------------------------
 
 static const JILChar* kClassDeclaration =
-	TAG("This is the built-in string class. In general, a JewelScript string is an immutable object, meaning once created, it's state can't be altered. There is one exception to that rule: Operator += will actually modify the string object left from the operator. JewelScript strings are limited to 8-bit ANSI characters. Their length is limited to 2 gigabytes. Zero-bytes in the string are handled gracefully by the runtime. However, they may cause problems when passing strings to other native functions, so they are discouraged.")
+	TAG("This is the built-in string class. The JewelScript string is an immutable object, meaning once created, it's state can't be altered. There is one exception to that rule: Operator += will actually modify the string object left from the operator. JewelScript strings are limited to 8-bit ANSI characters. Their length is limited to 2 gigabytes. Zero-bytes and UTF-8 characters are handled gracefully by the runtime. However, they may cause problems when passing strings to other native functions.")
 	"delegate int		processor(int chr, var args);" TAG("Delegate type for the string::process() method.")
 	"method				string();" TAG("Constructs a new, empty string.")
 	"method				string(const int);" TAG("Constructs a new string representation of the specified integer number.")
