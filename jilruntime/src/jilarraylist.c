@@ -45,7 +45,7 @@ struct JILArrayList
 // global constants
 //------------------------------------------------------------------------------
 
-static const JILLong kArrayListAllocGrain = 32; ///< When the ArrayList resizes, it will add this number of new elements at once; increasing this value will increase performance as well as memory spoilage
+static const JILLong kArrayListAllocGrain = 32;
 
 //------------------------------------------------------------------------------
 // JILArrayList_New
@@ -230,6 +230,7 @@ void JILArrayList_AddItem(JILArrayList* _this, JILUnknown* pData)
 	JILArrayListNode* p, **pp, *o;
 	JILLong ix;
 
+	o = NULL;
 	ix = _this->count;
 	_this->count++;
 	if( _this->isize < _this->count )
@@ -238,13 +239,12 @@ void JILArrayList_AddItem(JILArrayList* _this, JILUnknown* pData)
 		if( _this->ppNodes != NULL )
 			ps->vmFree(ps, _this->ppNodes);
 		pp = _this->ppNodes = ps->vmMalloc(ps, _this->isize * sizeof(JILArrayListNode*));
-		o = NULL;
 		for( p = _this->pHead; p != NULL; o = p, p = p->pNext )
 		{
 			*pp++ = p;
 		}
 	}
-	else
+	else if( ix > 0 )
 	{
 		o = _this->ppNodes[ix - 1];
 	}
