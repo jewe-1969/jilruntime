@@ -57,7 +57,7 @@ JILEXTERN JILError JCLAnalyzeParameters(JCLState* _this, const JILChar* pParams,
 //------------------------------------------------------------------------------
 
 static const JILChar* kAnonFunction	=			"function %s %s(%s){%s}";
-static const JILChar* kDefaultImports =			"import string; import array; import list; import iterator; import table; ";
+static const JILChar* kDefaultImports =			"import string; import array; import list; import iterator; import arraylist; import table; ";
 static const JILChar* kDefaultAlias	=			"alias int bool; alias int char; ";
 static const JILChar* kInterfaceException =
 	"strict interface exception {"

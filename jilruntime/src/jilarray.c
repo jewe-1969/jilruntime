@@ -52,6 +52,7 @@ enum
 	kToString,
 	kProcess,
 	kEnumerate,
+	kEnumerate2,
 	kPushItem,
 	kPopItem,
 	kSort,
@@ -63,7 +64,7 @@ enum
 //------------------------------------------------------------------------------
 
 static const JILChar* kClassDeclaration =
-	TAG("This is the built-in array class. JewelScript arrays can dynamically grow depending on the index used to access elements from it. In general, setting an array element with an index that is out of range, will cause the array to grow to the required number of elements. Getting an array index with an index that is out of range will NOT resize the array, but return null instead. So one should be cautious to not use invalid array indices. The array index is a signed 32-bit value, so an array is limited to about 2 billion elements. Operator += can be used to add new elements to an array, as well as append an array to an array.")
+	TAG("This is the built-in array class. The JewelScript array can dynamically grow depending on the index used to access elements from it. In general, accessing an array element with an index that is out of range will cause the array to grow to the required number of elements. So one should be cautious to not use invalid array indices. The array index is a signed 32-bit value. Operator += can be used to add new elements to an array, as well as append an array to an array.")
 	"delegate			enumerator(var element, var args);" TAG("Delegate type for the array::enumerate() method.")
 	"delegate var		processor(var element, var args);" TAG("Delegate type for the array::process() method.")
 	"delegate int		comparator(const var value1, const var value2);" TAG("Delegate for the array::sort() method. The delegate should handle null-references and unmatching types gracefully. It should return -1 if value1 is less than value2, 1 if it is greater, and 0 if they are equal.")
@@ -80,6 +81,7 @@ static const JILChar* kClassDeclaration =
 	"method string		format(const string format);" TAG("Formats this array into a string. The format string must contain ANSI format identifiers. Every subsequent identifier in the format string is associated with the next array element. This only works with one dimensional arrays.")
 	"method string		toString();" TAG("Recursively converts all convertible elements of this array into a string. This method can be slow for very complex multi-dimensional arrays.")
 	"method array		process(processor fn, var args);" TAG("Calls a delegate for every element in this array. The delegate may process the element and return it. It may also return null. The function will concatenate all non-null results of the delegate into a new array. If the array is multi-dimensional, this creates a multi-dimensional result. The delegate is not called for elements that are null-references.")
+	"method				enumerate(enumerator fn);" TAG("Calls a delegate function for every element in this array. The delegate can read or modify each element that is passed to it. If the given array is multi-dimensional, this function recursively processes all elements. The delegate is not called for elements that contain null-references.")
 	"method				enumerate(enumerator fn, var args);" TAG("Calls a delegate function for every element in this array. The delegate can read or modify each element that is passed to it. If the given array is multi-dimensional, this function recursively processes all elements. The delegate is not called for elements that contain null-references.")
 	"method				push(var item);" TAG("Adds the specified item to the end of this array. This actually modifies the array and allows to use it like a stack.")
 	"method	var			pop();" TAG("Removes the top level element from this array and returns it. If the array is currently empty, null is returned. This actually modifies the array and allows to use it like a stack.")
@@ -294,6 +296,15 @@ static int ArrayCallMember(NTLInstance* pInst, int funcID, JILArray* _this)
 			break;
 		}
 		case kEnumerate:
+		{
+			JILHandle* hDel = NTLGetArgHandle(ps, 0);
+			JILHandle* hArg = NTLGetNullHandle(ps);
+			result = JILArray_Enumerate(_this, hDel, hArg);
+			NTLFreeHandle(ps, hArg);
+			NTLFreeHandle(ps, hDel);
+			break;
+		}
+		case kEnumerate2:
 		{
 			JILHandle* hDel = NTLGetArgHandle(ps, 0);
 			JILHandle* hArg = NTLGetArgHandle(ps, 1);

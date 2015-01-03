@@ -137,11 +137,12 @@ typedef enum
 	type_list			= 12,		///< Type ID of the built-in list class
 	// reserved			= 13,		//   Type ID used by delegate defined in list class
 	type_iterator		= 14,		///< Type ID of the built-in iterator class
-	type_table			= 15,		///< Type ID of the built-in table class
-	// reserved			= 16,		//   Type ID used by delegate defined in table class
-	type_exception		= 17,		///< Type ID of the exception interface
-	type_rt_exception	= 18,		///< Type ID of the runtime_exception class
-	type_delegate		= 19,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
+	type_arraylist		= 15,		///< Type ID of the built-in arraylist class
+	type_table			= 16,		///< Type ID of the built-in table class
+	// reserved			= 17,		//   Type ID used by delegate defined in table class
+	type_exception		= 18,		///< Type ID of the exception interface
+	type_rt_exception	= 19,		///< Type ID of the runtime_exception class
+	type_delegate		= 20,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
 
 	// additional constants
 	kNumPredefTypes				///< This and every following value is a type ID for a user defined type

@@ -89,6 +89,7 @@ yield
 
 [Keywords 2]
 array
+arraylist
 float
 int
 iterator

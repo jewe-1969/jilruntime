@@ -116,6 +116,7 @@ typedef struct JILArray				JILArray;
 typedef struct JILList				JILList;
 typedef struct JILListItem			JILListItem;
 typedef struct JILIterator			JILIterator;
+typedef struct JILArrayList			JILArrayList;
 typedef struct JILFuncInfo			JILFuncInfo;
 typedef struct JILDataHandle		JILDataHandle;
 typedef struct JILClosure			JILClosure;

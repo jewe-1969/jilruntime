@@ -97,6 +97,7 @@ enum
 	kSetItem,
 	kDeepCopy,
 	kEnumerate,
+	kEnumerate2,
 	kCleanup,
 	kToArray,
 	kToList,
@@ -109,7 +110,7 @@ enum
 //------------------------------------------------------------------------------
 
 static const char* kClassDeclaration =
-	TAG("This is the built-in table class.")
+	TAG("This is JewelScript's built-in hash table class. Adding and removing data by hash key to the table is very quick. However, hash tables are very costly in terms of memory usage.")
 	"delegate		enumerator(var element, var args);" TAG("Delegate type for the table::enumerate() and array::enumerate() methods.")
 	"delegate		merger(const string key, const table t1, const table t2, table result);" TAG("Delegate type for the table::merge() function.")
 	"method			table();" TAG("Constructs a new, empty hashtable.")
@@ -119,6 +120,7 @@ static const char* kClassDeclaration =
 	"method	var		get(const string key);" TAG("Retrieves a value from the table by the specified key. If no value exists in the table under the specified key, null is returned.")
 	"method			set(const string key, var value);" TAG("Stores a value in the table under the specified key. If a value already exists under this key, it is overwritten. To clear a value in the table, you can just set it to null.")
 	"method table	deepCopy();" TAG("Returns a deep-copy of this table. WARNING: All table data will be copied! This is a highly recursive operation. If the table contains script objects that have copy-constructors, this method can be very time consuming. It should only be called in cases where a shallow copy would not suffice.")
+	"method			enumerate(enumerator fn);" TAG("Calls the specified enumerator delegate for every value in this table. This is a highly recursive operation that can be very time consuming with large tables.")
 	"method			enumerate(enumerator fn, var args);" TAG("Calls the specified enumerator delegate for every value in this table. This is a highly recursive operation that can be very time consuming with large tables.")
 	"method int		cleanup();" TAG("Frees all empty nodes in this table, releasing unneeded resources. This only affects internal infrastructure, all table data will remain intact. When storing and clearing large amounts of values in the table, calling this can improve memory footprint and performance of all other recursive table methods.")
 	"method array	toArray();" TAG("Moves all values from this table into a new array. This is a highly recursive operation that can be very time consuming with complex tables.")
@@ -298,6 +300,15 @@ static JILError TableCallMember(NTLInstance* pInst, JILLong funcID, JILTable* _t
 			break;
 		}
 		case kEnumerate:
+		{
+			JILHandle* pDel = NTLGetArgHandle(ps, 0);
+			JILHandle* pArg = NTLGetNullHandle(ps);
+			result = JILTable_Enumerate(_this, pDel, pArg);
+			NTLFreeHandle(ps, pArg);
+			NTLFreeHandle(ps, pDel);
+			break;
+		}
+		case kEnumerate2:
 		{
 			JILHandle* pDel = NTLGetArgHandle(ps, 0);
 			JILHandle* pArg = NTLGetArgHandle(ps, 1);			

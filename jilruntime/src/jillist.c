@@ -55,6 +55,7 @@ enum
 	kKeyFromIndex,
 	kKeyExists,
 	kEnumerate,
+	kEnumerate2,
 	kDeepCopy,
 	kToArray
 };
@@ -64,7 +65,7 @@ enum
 //------------------------------------------------------------------------------
 
 static const char* kClassDeclaration =
-	TAG("This is the built-in list class. It is a double-chained, associative list implementation. Items can be stored and retrieved by an associative 'key'. The key can be an integer, a floating-point number, or a string. The list does not enforce that an item's key is unique.<p>Note that all methods that access items by their key will actually search the list for the first occurrence of a matching key. This will only work reliably, if you use unique values for the keys. It also means that performance of these methods gets worse the larger the list gets. For very large collections, consider using the table class, or use the iterator class for sequential access to items.</p>")
+	TAG("This is the built-in list class. It is a double-chained, associative list implementation. Items can be stored and retrieved by an associative 'key'. The key can be an integer, a floating-point number, or a string. The list does not enforce that an item's key is unique.<p>All methods that access items by their key will actually search the list for the first occurrence of a matching key. This will only work reliably, if you use unique values for the keys. It also means that performance of these methods gets worse the larger the list gets.  The arraylist class allows quick random access to list items. However, it will also use more memory. For very large collections, consider using the table class.</p>")
 	"delegate			enumerator(const var key, var value, var args);" TAG("Delegate type for the list::enumerate() method.")
 	"delegate int		comparator(const var value1, const var value2);" TAG("Delegate type for the list::sort() and array::sort() methods. The delegate should handle null-references and unmatching types gracefully. It should return -1 if value1 is less than value2, 1 if it is greater, and 0 if they are equal.")
 	"method				list();" TAG("Constructs a new, empty list.")
@@ -85,6 +86,7 @@ static const char* kClassDeclaration =
 	"method var			valueFromIndex(const int index);" TAG("Returns the value from the list that is associated with the specified zero based index. If the index is out of range, null is returned.")
 	"method const var	keyFromIndex(const int index);" TAG("Returns the key from the list that is associated with the specified zero based index. If the index is out of range, null is returned.")
 	"method int			keyExists(const var key);" TAG("Returns true if the specified key exists in this list, otherwise false.")
+	"method				enumerate(enumerator fn);" TAG("Calls the specified enumerator delegate for every item in this list.")
 	"method				enumerate(enumerator fn, var args);" TAG("Calls the specified enumerator delegate for every item in this list.")
 	"method list		deepCopy();" TAG("Returns a deep-copy of this list. WARNING: All element data will be copied! If the list contains script objects that have copy-constructors, this method can be time consuming. It should only be called in cases where a shallow-copy would not suffice.")
 	"method array		toArray();" TAG("Returns an array of all values in this list. The list item's keys will be disregarded.")
@@ -307,6 +309,15 @@ static int ListCallMember(NTLInstance* pInst, int funcID, JILList* _this)
 			NTLFreeHandle(ps, key);
 			break;
 		case kEnumerate:
+		{
+			JILHandle* pDel = NTLGetArgHandle(ps, 0);
+			JILHandle* pArg = NTLGetNullHandle(ps);
+			result = JILList_Enumerate(_this, pDel, pArg);
+			NTLFreeHandle(ps, pArg);
+			NTLFreeHandle(ps, pDel);
+			break;
+		}
+		case kEnumerate2:
 		{
 			JILHandle* pDel = NTLGetArgHandle(ps, 0);
 			JILHandle* pArg = NTLGetArgHandle(ps, 1);			
