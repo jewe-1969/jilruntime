@@ -16,6 +16,7 @@
 #include "jilstring.h"
 #include "jilcallntl.h"
 #include "jilarray.h"
+#include "jilcodelist.h"
 
 //------------------------------------------------------------------------------
 // class declaration string
@@ -46,6 +47,8 @@ static const char* kClassDeclaration =
 	"function int generateBindings (const string path);" TAG("Generates native binding code at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 	"function int generateDocs (const string path, const string args);" TAG("Generates HTML documentation at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 	"function printLog (const string[] args);" TAG("Uses the runtime's logging callback to output the given string arguments. A line-feed is added after printing all arguments.")
+	"function var clone(const var o);" TAG("Creates a copy of the given object by calling it's copy constructor. Script objects that have no copy constructor will be copied by the runtime. If a native object has no copy constructor, this function returns null. <p><b>Script objects that inherit base class should define a copy constructor, otherwise base references may not be initialized properly.</b></p>")
+	"function printDebugInfo(const var o);" TAG("Outputs information on the given object.")
 ;
 
 //------------------------------------------------------------------------------
@@ -305,6 +308,23 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 				JILMessageLog(ps, "%s", JILString_String(pResult));
 				JILString_Delete(pResult);
 			}
+			break;
+		}
+		case 23: // function var clone(const var o)
+		{
+			JILHandle* hArg = NTLGetArgHandle(ps, 0);
+			JILHandle* hResult = NTLCopyHandle(ps, hArg);
+			NTLReturnHandle(ps, hResult);
+			NTLFreeHandle(ps, hArg);
+			NTLFreeHandle(ps, hResult);
+			break;
+		}
+		case 24: // function printDebugInfo(const var o)
+		{
+			JILHandle* hArg = NTLGetArgHandle(ps, 0);
+			JILLong* pL = (JILLong*) hArg->data;
+			JILMessageLog(ps, "handle %X {flags = %X, refCount = %d, type = %s, data = %8.8X%8.8X}\n", hArg, hArg->flags, hArg->refCount, JILGetHandleTypeName(ps, hArg->type), pL[0], pL[1]);
+			NTLFreeHandle(ps, hArg);
 			break;
 		}
 		default:
