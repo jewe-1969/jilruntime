@@ -122,6 +122,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	0,	JCL_ERR_Function_No_Override,		"Function is not overridable",
 	0,	JCL_ERR_Variable_Read_Only,			"Variable is read-only",
 	0,	JCL_ERR_No_Access,					"No access to function or variable",
+	0,	JCL_ERR_Class_Not_Relocatable,		"Cannot inherit; class has mutual dependencies with another class",
 
 	// Compiler warnings
 	2,	JCL_WARN_Imp_Conv_From_Var,			"Conversion from typeless to type",

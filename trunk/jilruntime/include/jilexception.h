@@ -30,7 +30,7 @@
 enum
 { 
 	JIL_Num_Exception_Strings =	50,
-	JCL_Num_Compiler_Codes =	119
+	JCL_Num_Compiler_Codes =	120
 };
 
 //------------------------------------------------------------------------------
@@ -206,6 +206,7 @@ enum
 	JCL_ERR_Function_No_Override,			// 1291
 	JCL_ERR_Variable_Read_Only,				// 1292
 	JCL_ERR_No_Access,						// 1293
+	JCL_ERR_Class_Not_Relocatable,			// 1294
 
 	// Compiler warnings
 	JCL_Begin_Warnings = 1500,

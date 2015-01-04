@@ -261,6 +261,7 @@ static JILBool		IsClassToken		(JILLong);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsExtendingClass	(JCLState*, JILLong);
+static JILBool		IsClassRelocatable	(JCLState*, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
 static JILBool		IsClassNative		(JCLClass*);
@@ -270,6 +271,7 @@ static void			MakeFullQualified	(JCLState*, JCLString*, const JCLString*);
 static void			MakeUnqualified		(JCLState*, JCLString*, const JCLString*);
 static void			SetCurrentNamespace	(JCLState*, JCLString*);
 static JCLString*	GetCurrentNamespace	(JCLState*);
+static void			MangleNamePrivate	(JCLState*, JCLString*, JILLong);
 static JILLong		TypeInfoFromType	(JCLState*, TypeInfo*, JILLong);
 static void			PushOptions			(JCLState*);
 static void			PopOptions			(JCLState*);
@@ -3397,6 +3399,41 @@ static JILBool IsExtendingClass(JCLState* _this, JILLong type)
 }
 
 //------------------------------------------------------------------------------
+// IsClassRelocatable
+//------------------------------------------------------------------------------
+// Checks if the given class can be used for multiple-inheritance.
+
+static JILBool IsClassRelocatable(JCLState* _this, JILLong type)
+{
+	JCLClass* pClassA;
+	JCLClass* pClassB;
+	JCLVar* pVA;
+	JCLVar* pVB;
+	JILLong na, nb, i, j;
+
+	pClassA = GetClass(_this, type);
+	na = pClassA->mipVars->Count(pClassA->mipVars);
+	for( i = 0; i < na; i++ )
+	{
+		pVA = pClassA->mipVars->Get(pClassA->mipVars, i);
+		if( IsVarClassType(_this, pVA) )
+		{
+			pClassB = GetClass(_this, pVA->miType);
+			if( pClassB->miNative )
+				continue;	// TODO: Can we be sure to exclude native types?
+			nb = pClassB->mipVars->Count(pClassB->mipVars);
+			for( j = 0; j < nb; j++ )
+			{
+				pVB = pClassB->mipVars->Get(pClassB->mipVars, j);
+				if( pVB->miType == type || IsSubClass(_this, type, pVB->miType) )
+					return JILFalse;
+			}
+		}
+	}
+	return JILTrue;
+}
+
+//------------------------------------------------------------------------------
 // IsModifierNativeBinding
 //------------------------------------------------------------------------------
 // Returns true if the specified class has been declared using the 'native' modifier.
@@ -3579,6 +3616,22 @@ void RemoveClassNamespace(JCLString* prototype, JCLClass* pClass)
 		JCLReplace(prototype, JCLGetString(str), "");
 	}
 	DELETE(str);
+}
+
+//------------------------------------------------------------------------------
+// MangleNamePrivate
+//------------------------------------------------------------------------------
+// Mangles the given name so that it contains the given type-id.
+
+static void MangleNamePrivate(JCLState* _this, JCLString* pName, JILLong type)
+{
+	JCLString* pMangle = NEW(JCLString);
+	if( JCLFindChar(pName, '@', 0) < 0 )
+	{
+		JCLFormat(pMangle, "%s@%d", JCLGetString(pName), type);
+		pName->Copy(pName, pMangle);
+	}
+	DELETE(pMangle);
 }
 
 //------------------------------------------------------------------------------
@@ -4787,7 +4840,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 	JCLFile* pFile;
 	JCLString* pBaseName;
 	JCLString* pClassName;
-	JCLString* pMangle;
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
@@ -4802,8 +4854,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 
 	pBaseName = NEW(JCLString);
 	pBaseVar = NEW(JCLVar);
-	pMangle = NEW(JCLString);
-	JCLSetString(pMangle, "@");
 	pFile = _this->mipFile;
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
@@ -4831,7 +4881,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			pVar = pClass->mipVars->New(pClass->mipVars);
 			pVar->Copy(pVar, pSrcClass->mipVars->Get(pSrcClass->mipVars, i));
 			if( pVar->miPrivate )
-				JCLInsert(pVar->mipName, pMangle, 0);
+				MangleNamePrivate(_this, pVar->mipName, pSrcClass->miType);
 		}
 		// create "base" variable in this class
 		JCLSetString(pBaseVar->mipName, "base");
@@ -4861,7 +4911,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			pFunc->miLnkBaseVar = pBaseVar->miMember;
 			// special treatment for private (mangle name so it's no longer accessible)
 			if( pFunc->miPrivate )
-				JCLInsert(pFunc->mipName, pMangle, 0);
+				MangleNamePrivate(_this, pFunc->mipName, pSrcClass->miType);
 			// special treatment for ctors
 			if( pFunc->miCtor )
 			{
@@ -4921,7 +4971,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 exit:
 	DELETE( pBaseName );
 	DELETE( pBaseVar );
-	DELETE( pMangle );
 	return err;
 }
 
@@ -4937,7 +4986,6 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 	JCLString* pBaseName;
 	JCLString* pClassName;
 	JCLString* pToken;
-	JCLString* pMangle;
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
@@ -4953,8 +5001,6 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 
 	pToken = NEW(JCLString);
 	pBaseName = NEW(JCLString);
-	pMangle = NEW(JCLString);
-	JCLSetString(pMangle, "@");
 	pFile = _this->mipFile;
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
@@ -4973,6 +5019,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 		ERROR_IF(!pSrcClass->miHasBody, JCL_ERR_Class_Only_Forwarded, pBaseName, goto exit);
 		ERROR_IF(IsClassNative(pClass), JCL_ERR_Cannot_Extend_Native_Class, pClass->mipName, goto exit);
 		ERROR_IF(IsClassNative(pSrcClass), JCL_ERR_Cannot_Extend_Native_Class, pSrcClass->mipName, goto exit);
+		ERROR_IF(!IsClassRelocatable(_this, pSrcClass->miType), JCL_ERR_Class_Not_Relocatable, pSrcClass->mipName, goto exit);
 
 		if( _this->miPass == kPassPrecompile )
 		{
@@ -4980,12 +5027,20 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 			varRelOffset = pClass->mipVars->Count(pClass->mipVars);
 			for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
 			{
+				JCLVar* pVar;
 				JCLVar* pDst;
 				JCLVar* pSrc = pSrcClass->mipVars->Get(pSrcClass->mipVars, i);
+				pToken->Copy(pToken, pSrc->mipName);
+				if( pSrc->miPrivate )
+					MangleNamePrivate(_this, pToken, pSrcClass->miType);
+				// check if the var is already defined
+				pVar = FindMemberVar(_this, pClass->miType, pToken);
+				ERROR_IF(pVar != NULL, JCL_ERR_Identifier_Already_Defined, pToken, goto exit);
+				// add new variable
 				pDst = pClass->mipVars->New(pClass->mipVars);
 				pDst->Copy(pDst, pSrc);
-				if( pDst->miPrivate )
-					JCLInsert(pDst->mipName, pMangle, 0);
+				pDst->mipName->Copy(pDst->mipName, pToken);
+				// set correct offset
 				if( pDst->miUsage == kUsageVar && pDst->miMode == kModeMember )
 					pDst->miMember += varRelOffset;
 				// replace source type by destination type
@@ -5027,7 +5082,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				pFunc->miLnkClass = pSrcClass->miType;
 				// special treatment for private
 				if( pFunc->miPrivate )
-					JCLInsert(pFunc->mipName, pMangle, 0);
+					MangleNamePrivate(_this, pFunc->mipName, pSrcClass->miType);
 				// special treatment if method is constructor
 				if( pFunc->miCtor )
 				{
@@ -5058,7 +5113,6 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 exit:
 	DELETE( pBaseName );
 	DELETE( pToken );
-	DELETE( pMangle );
 	return err;
 }
 
@@ -6129,7 +6183,10 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 		for( i = 0; i < pSrcClass->mipVars->Count(pSrcClass->mipVars); i++ )
 		{
 			JCLVar* pVar = pSrcClass->mipVars->Get(pSrcClass->mipVars, i);
-			pVar = FindMemberVar(_this, pClass->miType, pVar->mipName);
+			pToken->Copy(pToken, pVar->mipName);
+			if( pVar->miPrivate )
+				MangleNamePrivate(_this, pToken, pSrcClass->miType);
+			pVar = FindMemberVar(_this, pClass->miType, pToken);
 			ERROR_IF(pVar == NULL, JCL_ERR_Undefined_Identifier, pVar->mipName, goto exit);
 			pVar->miInited = JILTrue;
 		}
