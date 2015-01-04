@@ -394,7 +394,8 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 				int n = 0;
 				int i;
 				int j = 0;
-				if( _this->miMethod )
+				int r0Save = (_this->miLnkMethod < 0);
+				if( _this->miMethod && r0Save )
 				{
 					pCode->Set(pCode, n++, op_push_r);
 					pCode->Set(pCode, n++, 0);
@@ -421,16 +422,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 				if( _this->miLnkMethod >= 0 )
 				{
 					// directly call base class method
-					JCLFunc* baseFunc;
-					JCLClass* pClass = GetClass(pCompiler, _this->miClassID);
-					if( _this->miMethod )
-					{
-						pCode->Set(pCode, n++, op_move_dr);		// move (r0+base), r0
-						pCode->Set(pCode, n++, 0);
-						pCode->Set(pCode, n++, _this->miLnkBaseVar);
-						pCode->Set(pCode, n++, 0);
-					}
-					baseFunc = GetFunc(pCompiler, _this->miLnkClass, _this->miLnkMethod);
+					JCLFunc* baseFunc = GetFunc(pCompiler, _this->miLnkClass, _this->miLnkMethod);
 					pCode->Set(pCode, n++, op_calls);
 					pCode->Set(pCode, n++, baseFunc->miHandle);
 				}
@@ -453,7 +445,7 @@ static JILError linkCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 						pCode->Set(pCode, n++, op_pop);
 					}
 				}
-				if( _this->miMethod )
+				if( _this->miMethod && r0Save )
 				{
 					pCode->Set(pCode, n++, op_pop_r);
 					pCode->Set(pCode, n++, 0);

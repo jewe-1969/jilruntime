@@ -35,6 +35,9 @@
 --------------------------------------------------------------------------------
 COMPILER TODO:
 --------------------------------------------------------------------------------
+	BUGS:
+	- Statement doesn't compile:   if (FileFilter().Site.IsComplete)
+
 	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
 
 	Missing features:
@@ -477,6 +480,7 @@ void create_JCLState( JCLState* _this )
 	// init register maps
 	for( i = 0; i < kNumRegisters; i++ )
 		_this->mipRegs[i] = NULL;
+	_this->mipSpecialVars = NEW(Array_JCLVar);
 	_this->miNumVarRegisters = 0;
 	_this->miBlockLevel = 0;
 	// break / continue / clause statement information
@@ -525,6 +529,7 @@ void destroy_JCLState( JCLState* _this )
 	DELETE( _this->mipClasses );
 	// free stack
 	free( _this->mipStack );
+	DELETE( _this->mipSpecialVars );
 	// free break fixup list
 	DELETE( _this->mipBreakFixup );
 	// free import stack
@@ -1708,10 +1713,17 @@ static JCLVar* FindLocalVar(JCLState* _this, const JCLString* pName)
 	int i;
 	JCLVar* pVar;
 
-	// search r0, 'this'
-	pVar = SimRegisterGet(_this, 0);
-	if( pVar && !pVar->miHidden && JCLCompare(pVar->mipName, pName) )
-		return pVar;
+	// search special vars like 'this' or 'base'
+	for( i = 0; i < _this->mipSpecialVars->Count(_this->mipSpecialVars); i++ )
+	{
+		pVar = _this->mipSpecialVars->Get(_this->mipSpecialVars, i);
+		if( pVar && (pVar->miUsage == kUsageVar) && !pVar->miHidden && JCLCompare(pVar->mipName, pName) )
+		{
+			if(strcmp(JCLGetString(pVar->mipName), "base") == 0 )
+				return pVar;
+			return pVar;
+		}
+	}
 
 	// search var registers
 	for( i = kFirstVarRegister; i < kNumRegisters; i++ )
@@ -1752,26 +1764,54 @@ static JCLVar* FindFuncArg(JCLState* _this, const JCLString* pName)
 }
 
 //------------------------------------------------------------------------------
-// MakeThisVar
+// MakeSpecialVar
 //------------------------------------------------------------------------------
-// Create a 'this' reference for the given class.
+// Create a special variable. Used for readonly vars like 'this' and 'base'.
 
-static JCLVar* MakeThisVar(JCLState* _this, JILLong typeID)
+static JCLVar* MakeSpecialVar(JCLState* _this, JILLong typeID, const JILChar* pName)
 {
-	JCLVar* pThis = NEW(JCLVar);
-	pThis->miType = typeID;
-	pThis->miConst = JILFalse;				// we could make functions const...
-	pThis->miRef = JILTrue;					// 'this' is a reference
-	pThis->miElemType = type_var;
-	pThis->miElemRef = JILFalse;
-	JCLSetString(pThis->mipName, "this");
-	pThis->miMode = kModeUnused;			// set by SimRegisterSet()
-	pThis->miUsage = kUsageVar;
-	pThis->miIndex = 0;						// always r0
-	pThis->miInited = JILTrue;
-	pThis->miUnique = JILTrue;
-	pThis->miReadOnly = JILTrue;
-	return pThis;
+	JCLVar* pVar = _this->mipSpecialVars->New(_this->mipSpecialVars);
+	pVar->miType = typeID;
+	pVar->miConst = JILFalse;
+	pVar->miRef = JILTrue;
+	pVar->miElemType = type_var;
+	pVar->miElemRef = JILFalse;
+	JCLSetString(pVar->mipName, pName);
+	pVar->miMode = kModeRegister;
+	pVar->miUsage = kUsageVar;
+	pVar->miIndex = 0;
+	pVar->miInited = JILTrue;
+	pVar->miUnique = JILTrue;
+	pVar->miReadOnly = JILTrue;
+	return pVar;
+}
+
+//------------------------------------------------------------------------------
+// ClearSpecialVars
+//------------------------------------------------------------------------------
+// Destroys all special vars.
+
+static void ClearSpecialVars(JCLState* _this)
+{
+	_this->mipSpecialVars->Trunc(_this->mipSpecialVars, 0);
+}
+
+//------------------------------------------------------------------------------
+// GetSpecialVar
+//------------------------------------------------------------------------------
+// Finds and returns the special variable with the given name.
+
+static JCLVar* GetSpecialVar(JCLState* _this, const JILChar* pName)
+{
+	JCLVar* pVar;
+	JILLong i;
+	for( i = 0; i < _this->mipSpecialVars->Count(_this->mipSpecialVars); i++ )
+	{
+		pVar = _this->mipSpecialVars->Get(_this->mipSpecialVars, i);
+		if( strcmp(JCLGetString(pVar->mipName), pName) == 0 )
+			return pVar;
+	}
+	return NULL;
 }
 
 //------------------------------------------------------------------------------
@@ -4884,15 +4924,15 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 				MangleNamePrivate(_this, pVar->mipName, pSrcClass->miType);
 		}
 		// create "base" variable in this class
-		JCLSetString(pBaseVar->mipName, "base");
-		pBaseVar->miType = pSrcClass->miType;
-		pBaseVar->miRef = JILTrue;
-		pBaseVar->miWeak = JILTrue;
-		pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
-		pBaseVar->miReadOnly = JILTrue;
-		pBaseVar->miPrivate = JILTrue;
-		err = AddMemberVar(_this, pClass->miType, pBaseVar);
-		ERROR_IF(err, err, pBaseVar->mipName, goto exit);
+		//JCLSetString(pBaseVar->mipName, "base");
+		//pBaseVar->miType = pSrcClass->miType;
+		//pBaseVar->miRef = JILTrue;
+		//pBaseVar->miWeak = JILTrue;
+		//pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
+		//pBaseVar->miReadOnly = JILTrue;
+		//pBaseVar->miPrivate = JILTrue;
+		//err = AddMemberVar(_this, pClass->miType, pBaseVar);
+		//ERROR_IF(err, err, pBaseVar->mipName, goto exit);
 		// copy over all function declarations from source class
 		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
 		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
@@ -5615,17 +5655,21 @@ static JILError p_function_body(JCLState* _this)
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
 	JCLFunc* pFunc;
-	JCLVar* pThis = NULL;
-	JILBool freeThis = JILFalse;
+	JCLVar* pVar;
+	JCLClass* pClass;
 
 	pFile = _this->mipFile;
 	pFunc = CurrentFunc(_this);
 	// prepare "this"
 	if( pFunc->miMethod )
 	{
-		pThis = MakeThisVar(_this, pFunc->miClassID);
-		SimRegisterSet(_this, 0, pThis);
-		freeThis = JILTrue;
+		MakeSpecialVar(_this, pFunc->miClassID, "this");
+		if( IsExtendingClass(_this, pFunc->miClassID) )
+		{
+			pClass = GetClass(_this, pFunc->miClassID);
+			pVar = MakeSpecialVar(_this, pClass->miBaseType, "base");
+			pVar->miNonVT = JILTrue;
+		}
 	}
 	// compile the function
 	err = p_function_pass(_this);
@@ -5638,11 +5682,7 @@ static JILError p_function_body(JCLState* _this)
 
 exit:
 	// destroy 'this'
-	if( freeThis )
-	{
-		SimRegisterUnset(_this, 0);
-		DELETE( pThis );
-	}
+	ClearSpecialVars(_this);
 	return err;
 
 write_ret:
@@ -6075,8 +6115,6 @@ static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
 	JCLClass* pClass;
 	JCLClass* pSrcClass;
 	JCLFile* pFile;
-	JCLVar* pThis;
-	JCLVar* pBase;
 	JCLString* pToken;
 	JCLString* pBaseName;
 	TypeInfo outType;
@@ -6101,13 +6139,13 @@ static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
 	ERROR_IF(!JCLCompare(pToken, pBaseName), JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
 
 	// move 'this' into 'base'
-	JCLSetString(pToken, "this");
-	pThis = FindLocalVar(_this, pToken);
-	JCLSetString(pToken, "base");
-	pBase = FindMemberVar(_this, pClass->miType, pToken);
-	err = cg_move_var(_this, pThis, pBase);
-	ERROR_IF(err, err, NULL, goto exit);
-	pBase->miInited = JILTrue;
+	//JCLSetString(pToken, "this");
+	//pThis = FindLocalVar(_this, pToken);
+	//JCLSetString(pToken, "base");
+	//pBase = FindMemberVar(_this, pClass->miType, pToken);
+	//err = cg_move_var(_this, pThis, pBase);
+	//ERROR_IF(err, err, NULL, goto exit);
+	//pBase->miInited = JILTrue;
 
 	// call specified constructor
 	err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, kOnlyCtor);
@@ -9840,7 +9878,7 @@ static JILError p_new_init_block(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 	JCLClass* pClass;
 	JCLFunc* pCtor = NULL;
 	JCLVar* pThis = NULL;
-	JCLVar* pSaveThis = NULL;
+	Array_JCLVar* pSaveThis;
 	JILLong saveClass;
 	JILLong saveFunc;
 	JILLong i;
@@ -9874,10 +9912,9 @@ static JILError p_new_init_block(JCLState* _this, Array_JCLVar* pLocals, JCLVar*
 	SetCompileContextOnly(_this, pObject->miType, pCtor->miFuncIdx);
 
 	// create 'this'
-	pSaveThis = SimRegisterGet(_this, 0);
-	SimRegisterUnset(_this, 0);
-	pThis = MakeThisVar(_this, pObject->miType);
-	SimRegisterSet(_this, 0, pThis);
+	pSaveThis = _this->mipSpecialVars;
+	_this->mipSpecialVars = NEW(Array_JCLVar);
+	pThis = MakeSpecialVar(_this, pObject->miType, "this");
 
 	// save current r0 to stack and load new class to r0
 	cg_opcode(_this, op_push_r);
@@ -9899,15 +9936,11 @@ exit2:
 	cg_opcode(_this, op_pop_r);
 	cg_opcode(_this, 0);
 	SimStackPop(_this, 1);
-	SimRegisterUnset(_this, 0);
-	SimRegisterSet(_this, 0, pSaveThis);
 
 exit:
-	// free 'this'
-	if( pThis )
-	{
-		DELETE(pThis);
-	}
+	// restore 'this'
+	DELETE(_this->mipSpecialVars);
+	_this->mipSpecialVars = pSaveThis;
 	// restore context
 	SetCompileContextOnly(_this, saveClass, saveFunc);
 	DELETE( pToken );
