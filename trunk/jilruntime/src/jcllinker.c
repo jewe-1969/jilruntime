@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: jcllinker.c                                           (c) 2014 jewe.org
+// File: jcllinker.c                                           (c) 2015 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -69,7 +69,169 @@ static JILError InsertRegisterSaving	(JCLFunc*, JCLState*);
 static JILError RelocateFunction		(JCLFunc*, JCLFunc*, JCLState*);
 
 //------------------------------------------------------------------------------
-// JCLFunc::LinkCode
+// JCLLinkerMain
+//------------------------------------------------------------------------------
+// Main entry point for the linker and byte-code optimizer.
+
+JILError JCLLinkerMain(JCLState* _this)
+{
+	JILError err = JIL_No_Exception;
+	JILLong clas;
+	JILLong fn;
+	JILLong address = 0;
+	JCLClass* pClass;
+	JCLFunc* pFunc;
+	Array_JILLong* pCode;
+	JCLString* declString = NEW(JCLString);
+	JILLong i;
+	JILLong vtabSize;
+	JILLong* pVtable;
+	JILState* pVM = _this->mipMachine;
+
+	// finish intro code
+	err = cg_finish_intro(_this);
+	if( err )
+		goto exit;
+
+	// reset statistics
+	_this->miOptSavedInstr = 0;
+	_this->miOptSizeBefore = 0;
+	_this->miOptSizeAfter = 0;
+
+	// iterate over all classes
+	for( clas = 0; clas < NumClasses(_this); clas++ )
+	{
+		pClass = GetClass(_this, clas);
+		if( (pClass->miFamily == tf_class || pClass->miFamily == tf_thread) && !(pClass->miModifier & kModeNativeBinding) )
+		{
+			// set class instance size and v-table
+			if( !pClass->miHasVTable)
+			{
+				pClass->miHasVTable = JILTrue;
+				if( pClass->miNative )
+				{
+					err = JILSetClassVTable(pVM, pClass->miType, NumFuncs(_this, clas), NULL);
+					if( err )
+						goto exit;
+				}
+				else if( pClass->miFamily == tf_class )
+				{
+					// Set class instance size
+					err = JILSetClassInstanceSize(pVM, pClass->miType, pClass->mipVars->Count(pClass->mipVars));
+					if( err )
+						goto exit;
+					// generate v-table
+					vtabSize = NumFuncs(_this, clas);
+					if( vtabSize )
+					{
+						pVtable = (JILLong*) malloc( vtabSize * sizeof(JILLong) );
+						for( i = 0; i < vtabSize; i++ )
+						{
+							JCLFunc* pFunc = GetFunc(_this, pClass->miType, i);
+							pVtable[i] = pFunc->miHandle;
+						}
+						err = JILSetClassVTable(pVM, pClass->miType, vtabSize, pVtable);
+						free( pVtable );
+						if( err )
+							goto exit;
+					}
+				}
+			}
+			// iterate over all functions and link them
+			for( fn = 0; fn < NumFuncs(_this, clas); fn++ )
+			{
+				pFunc = GetFunc(_this, clas, fn);
+				pCode = pFunc->mipCode;
+				// udpate function address
+				if( !pClass->miNative )
+				{
+					err = pFunc->LinkCode(pFunc, _this);
+					if( err )
+						goto exit;
+					// ensure that the function has a body
+					pCode = pFunc->mipCode;
+					if( !pCode->count )
+					{
+						// get function declaration
+						pFunc->ToString(pFunc, _this, declString, kCompact);
+						if( IsMethodInherited(_this, clas, fn) )
+							err = EmitError(_this, declString, JCL_ERR_Interface_Not_Complete);
+						else
+							err = EmitError(_this, declString, JCL_ERR_No_Function_Body);
+						goto exit;
+					}
+					// copy function code into JIL machine
+					err = JILSetMemory(pVM, address, pCode->array, pCode->count);
+					if( err )
+						goto exit;
+					err = JILSetFunctionAddress(pVM, pFunc->miHandle, address, pCode->count, pFunc->mipArgs->Count(pFunc->mipArgs));
+					if( err )
+						goto exit;
+				}
+				pFunc->miLnkAddr = address;
+				address += pCode->count;
+			}
+			if( pClass->miFamily == tf_class )
+			{
+				err = JILSetClassMethodInfo(pVM, pClass->miType, &(pClass->miMethodInfo));
+				if( err )
+					goto exit;
+			}
+		}
+	}
+
+exit:
+	DELETE( declString );
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// JCLPostLink
+//------------------------------------------------------------------------------
+// Substitute all 'calls' instructions by cheaper 'jsr' instructions.
+
+JILError JCLPostLink(JCLState* _this)
+{
+	JILLong c;
+	JILLong f;
+	JILLong i;
+	JILLong l;
+	JILLong o;
+	JILLong addr;
+	JCLFunc* pFunc;
+	Array_JILLong* pCode;
+	JILFuncInfo* pFuncInfo;
+	JILState* ps = _this->mipMachine;
+
+	addr = 0;
+	for( c = 0; c < NumClasses(_this); c++ )
+	{
+		for( f = 0; f < NumFuncs(_this, c); f++ )
+		{
+			pFunc = GetFunc(_this, c, f);
+			pCode = pFunc->mipCode;
+			for( i = 0; i < pCode->count; i += l )
+			{
+				o = pCode->Get(pCode, i);
+				l = JILGetInstructionSize(o);
+				if( l == 0 )
+					break;
+				if( o == op_calls )
+				{
+					JILLong cod[2] = { op_jsr, 0 };
+					pFuncInfo = JILGetFunctionInfo(ps, pCode->Get(pCode, i + 1));
+					cod[1] = pFuncInfo->codeAddr;
+					JILSetMemory(ps, addr + i, cod, 2);
+				}
+			}
+			addr += pCode->count;
+		}
+	}
+	return JCL_No_Error;
+}
+
+//------------------------------------------------------------------------------
+// JCLLinkFunction
 //------------------------------------------------------------------------------
 
 JILError JCLLinkFunction(JCLFunc* _this, JCLState* pCompiler)
