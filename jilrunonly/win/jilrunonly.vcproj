@@ -256,6 +256,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\jilruntime\src\jcllinker.c"
+				>
+			</File>
+			<File
 				RelativePath="..\..\jilruntime\src\jclnative.c"
 				>
 			</File>
