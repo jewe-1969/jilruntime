@@ -2267,6 +2267,23 @@ static JILBool IsTestEqual(CodeBlock* _this, JILLong addr, OpcodeInfo* pInfo)
 }
 
 //------------------------------------------------------------------------------
+// IsMovingThisRef
+//------------------------------------------------------------------------------
+// Checks if an instruction moves r0 into any variable or register.
+
+static JILBool IsMovingThisRef(CodeBlock* _this, JILLong addr, OpcodeInfo* pInfo)
+{
+	if( GetMoveFromRegister(_this, addr, pInfo) )
+	{
+		if( pInfo->operand[0].type == ot_ear && pInfo->operand[0].data[0] == 0 ) // r0?
+		{
+			return (pInfo->operand[1].type != ot_ear || pInfo->operand[1].data[0] != 1); // allow r1
+		}
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
 // InsertRegisterSaving
 //------------------------------------------------------------------------------
 // Inserts code that saves all modified registers at the start of the function
@@ -3372,9 +3389,6 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 	JCLFunc* pFunc;
 	JILBool bUpdate;
 
-//	if(strcmp(JCLGetString(pSrcFunc->mipName), "DoEvents") == 0)
-//		bUpdate = 0;
-
 	// copy entire code from source function
 	pDstFunc->mipCode->Copy(pDstFunc->mipCode, pSrcFunc->mipCode);
 
@@ -3383,6 +3397,13 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 	{
 		opcode = _this->array[opaddr];
 		opsize = JILGetInstructionSize(opcode);
+		if( IsMovingThisRef(_this, opaddr, &info) )
+		{
+			JCLString* pName = NEW(JCLString);
+			pDstFunc->ToString(pDstFunc, pCompiler, pName, kCompact);
+			EmitWarning(pCompiler, pName, JCL_WARN_Unsafe_This_Operation);
+			DELETE(pName);
+		}
 		if( GetOpcodeInfo(_this, opaddr, &info) )
 		{
 			bUpdate = JILFalse;
