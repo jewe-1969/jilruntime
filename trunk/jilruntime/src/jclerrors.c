@@ -148,6 +148,8 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	4,	JCL_WARN_Taking_Wref_From_Wref,		"Taking weak reference from weak reference",
 	3,	JCL_WARN_Wref_Variable,				"Weak reference declaration discouraged; using (weak) operator recommended",
 	2,	JCL_WARN_Imp_Conv_Var_Array,		"Conversion from typeless array to typed array",
+	1,	JCL_WARN_Interface_In_Inherit,		"Inheritance unsafe; base has dependency to interface",
+	1,	JCL_WARN_Unsafe_This_Operation,		"Possibly unsafe operation on 'this' reference in inherited method",
 
 	// leave this at the end of the table
 	0,	JCL_Unknown_Error_Code,				"UNKNOWN COMPILER ERROR CODE"

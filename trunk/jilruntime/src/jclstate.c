@@ -674,15 +674,15 @@ JILError EmitWarning(JCLState* _this, const JCLString* pArg, JILError err)
 	{
 		case kErrorFormatDefault:
 			if( pName )
-				JCLFormat(pWarning, "Warning %d(%d): %s in %s (%d,%d)\n", err, lev, pWarningSz, pName, line, column);
+				JCLFormat(pWarning, "Warning %d (%d): %s in %s (%d,%d)\n", err, lev, pWarningSz, pName, line, column);
 			else
-				JCLFormat(pWarning, "Warning %d(%d): %s\n", err, lev, pWarningSz);
+				JCLFormat(pWarning, "Warning %d (%d): %s\n", err, lev, pWarningSz);
 			break;
 		case kErrorFormatMS:
 			if( pName )
-				JCLFormat(pWarning, "%s(%d): Warning %d(%d): %s\n", pName, line, err, lev, pWarningSz);
+				JCLFormat(pWarning, "%s(%d): Warning %d (%d): %s\n", pName, line, err, lev, pWarningSz);
 			else
-				JCLFormat(pWarning, "Warning %d(%d): %s\n", err, lev, pWarningSz);
+				JCLFormat(pWarning, "Warning %d (%d): %s\n", err, lev, pWarningSz);
 			break;
 	}
 	str = _this->mipErrors->New(_this->mipErrors);
@@ -3461,6 +3461,8 @@ static JILBool IsClassRelocatable(JCLState* _this, JILLong type)
 			pClassB = GetClass(_this, pVA->miType);
 			if( pClassB->miNative )
 				continue;	// TODO: Can we be sure to exclude native types?
+			if( pClassB->miFamily == tf_interface )
+				EmitWarning(_this, pClassB->mipName, JCL_WARN_Interface_In_Inherit);
 			nb = pClassB->mipVars->Count(pClassB->mipVars);
 			for( j = 0; j < nb; j++ )
 			{
@@ -4745,6 +4747,7 @@ exit:
 // p_class_hybrid
 //------------------------------------------------------------------------------
 // Parse "hybrid inheritance" of a class.
+// TODO: Take 'private' modifier into account, only hybridize public methods.
 
 static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 {
