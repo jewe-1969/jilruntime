@@ -362,6 +362,10 @@
 			Name="src"
 			>
 			<File
+				RelativePath="..\src\bind_arraylist.c"
+				>
+			</File>
+			<File
 				RelativePath="..\src\bind_runtime.c"
 				>
 			</File>
@@ -471,6 +475,10 @@
 			</File>
 			<File
 				RelativePath="..\src\jclgendoc.c"
+				>
+			</File>
+			<File
+				RelativePath="..\src\jcllinker.c"
 				>
 			</File>
 			<File
@@ -612,6 +620,10 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\src\jilarraylist.c"
+				>
 			</File>
 			<File
 				RelativePath="..\src\jilchunk.c"

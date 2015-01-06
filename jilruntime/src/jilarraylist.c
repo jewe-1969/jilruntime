@@ -15,6 +15,8 @@
 /// the flexibility of a list and the efficiency of an array.
 //------------------------------------------------------------------------------
 
+#include "jilstdinc.h"
+
 #include "jilarraylist.h"
 #include "jilarray.h"
 #include "jilapi.h"
