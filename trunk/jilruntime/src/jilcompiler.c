@@ -597,6 +597,7 @@ JILError JCLImportClass(JILState* pState, const JILChar* pClassName)
 		return JIL_ERR_No_Compiler;
 
 	JCLSetString(className, pClassName);
+	pFile->Open(pFile, "JCLImportClass", "", "", GetGlobalOptions(_this));
 	_this->mipFile = pFile;
 	_this->miPass = kPassPrecompile;
 	err = p_import_class(_this, className);
