@@ -309,6 +309,21 @@ JILState* NTLInstanceGetVM(NTLInstance* pInst)
 }
 
 //------------------------------------------------------------------------------
+// NTLSetTypeUserData
+//------------------------------------------------------------------------------
+
+JILError NTLSetTypeUserData(JILState* pVM, JILLong typeID, JILUnknown* pUser)
+{
+	if( !pVM->vmInitialized )
+		return JIL_ERR_Code_Not_Initialized;
+	if( typeID < 0 || typeID >= pVM->vmUsedTypeInfoSegSize )
+		return JIL_ERR_Undefined_Type;
+
+	pVM->vmpTypeInfoSegment[typeID].instance.userData = pUser;
+	return JIL_No_Exception;
+}
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 // Advanced functions - only for experts!                                     //
 // The following functions are declared in JILNativeTypeEx.h                  //
