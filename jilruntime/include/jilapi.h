@@ -464,7 +464,7 @@ JILEXTERN JILError				JILMarkFunctionTable	(JILState* pState, JILFunctionTable* 
 //------------------------------------------------------------------------------
 /// Run the garbage collector to find and free any leaked objects due to
 /// reference cycles. Depending on the number of objects in use, this can take
-/// a considerable amount of time. Returns the number of objects collected.
+/// a considerable amount of time.
 /// <p>The runtime will never automatically run the garbage collector. If you
 /// intend to use garbage collection, it is up to your application to find a
 /// suitable time to call this function, i.e. when the application has been
@@ -481,6 +481,8 @@ JILEXTERN JILError				JILMarkFunctionTable	(JILState* pState, JILFunctionTable* 
 /// application that permanently store JILHandle pointers, and that are NOT
 /// native types itself. Native types should handle marking when they receive
 /// the NTL_MarkHandles message in their type proc.</p>
+/// The function will return JIL_No_Exception unless a native function did not
+/// handle the marking message correctly or returned an error.
 /// @see JILRegisterGCEvent, JILUnregisterGCEvent
 
 JILEXTERN JILError				JILCollectGarbage		(JILState* pState);
