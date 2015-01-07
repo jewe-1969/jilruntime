@@ -117,6 +117,13 @@ void					JILFreeContext			(JILState* pState, JILContext* pContext);
 JILError				JILMarkContext			(JILState* pState, JILContext* pContext);
 
 //------------------------------------------------------------------------------
+// JILMarkDelegate
+//------------------------------------------------------------------------------
+// Marks all handles used by the given delegate / closure.
+
+JILError				JILMarkDelegate			(JILState* pState, JILDelegate* pDelegate);
+
+//------------------------------------------------------------------------------
 // JILIsBaseType
 //------------------------------------------------------------------------------
 // Checks if 'base' is a super-class of 'type', or in other words, if 'type'

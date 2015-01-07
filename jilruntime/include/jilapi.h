@@ -483,7 +483,7 @@ JILEXTERN JILError				JILMarkFunctionTable	(JILState* pState, JILFunctionTable* 
 /// the NTL_MarkHandles message in their type proc.</p>
 /// @see JILRegisterGCEvent, JILUnregisterGCEvent
 
-JILEXTERN JILLong				JILCollectGarbage		(JILState* pState);
+JILEXTERN JILError				JILCollectGarbage		(JILState* pState);
 
 //------------------------------------------------------------------------------
 // JILRegisterGCEvent

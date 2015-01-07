@@ -252,7 +252,7 @@ JILError JILMarkHandle(JILState* pState, JILHandle* pSource)
 				break;
 			}
 			case tf_delegate:
-				result = JILMarkHandle(pState, JILGetDelegateHandle(pSource)->pDelegate->pObject);
+				result = JILMarkDelegate(pState, JILGetDelegateHandle(pSource)->pDelegate);
 				break;
 			case tf_thread:
 				result = JILMarkContext(pState, JILGetContextHandle(pSource)->pContext);
@@ -509,7 +509,7 @@ void JILDestroyObject(JILState* pState, JILHandle* pHandle)
 // JILCollectGarbage
 //------------------------------------------------------------------------------
 
-JILLong JILCollectGarbage(JILState* ps)
+JILError JILCollectGarbage(JILState* ps)
 {
 	JILLong numColl = 0;
 	JILError err;
@@ -582,11 +582,11 @@ JILLong JILCollectGarbage(JILState* ps)
 		ps->errHandlesLeaked += numColl;
 		JILMessageLog(ps, "--- GC collected %d handles in %g seconds ---\n", numColl, time);
 	}
-	return numColl;
+	return JIL_No_Exception;
 
 exit:
 	JILMessageLog(ps, "GC MARK ERROR: %d (%s)\n", err, JILGetExceptionString(ps, err));
-	return 0;
+	return JIL_ERR_Mark_Handle_Error;
 }
 
 //------------------------------------------------------------------------------

@@ -614,6 +614,31 @@ JILError JILMarkContext(JILState* pState, JILContext* pContext)
 }
 
 //------------------------------------------------------------------------------
+// JILMarkDelegate
+//------------------------------------------------------------------------------
+
+JILError JILMarkDelegate(JILState* pState, JILDelegate* pDelegate)
+{
+	// mark 'this' reference in method delegate
+	JILError result = JILMarkHandle(pState, pDelegate->pObject);
+	if( pDelegate->pClosure != NULL && result == JIL_No_Exception )
+	{
+		// mark all handles in closure too!
+		JILLong i;
+		JILLong n = pDelegate->pClosure->stackSize;
+		JILHandle** ppHandles = pDelegate->pClosure->ppStack;
+		for( i = 0; i < n; i++ )
+		{
+			result = JILMarkHandle(pState, *ppHandles++);
+			if( result )
+				break;
+		}
+	}
+	return result;
+}
+
+
+//------------------------------------------------------------------------------
 // JILExecuteByteCode
 //------------------------------------------------------------------------------
 

@@ -78,6 +78,7 @@ const JILExceptionInfo JILExceptionStrings[JIL_Num_Exception_Strings] =
 	JIL_ERR_File_Open,					"File open failed",
 	JIL_ERR_File_End,					"End of file reached",
 	JIL_ERR_File_Generic,				"General file input error",
+	JIL_ERR_Mark_Handle_Error,			"GC Mark handle error",
 
 	// leave this at the end of the table
 	JIL_Unknown_Exception,				"JIL UNKNOWN EXCEPTION"
