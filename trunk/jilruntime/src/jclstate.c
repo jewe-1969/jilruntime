@@ -36,9 +36,8 @@
 COMPILER TODO:
 --------------------------------------------------------------------------------
 	BUGS:
-	- Statement doesn't compile:   if (FileFilter().Site.IsComplete)
-
-	* Ensure that the SimStack is cleaned up properly during a compile-time error. All vars must be taken from stack!
+	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
+	- possible heap corruption when closure throws exception?
 
 	Missing features:
 	* enum
