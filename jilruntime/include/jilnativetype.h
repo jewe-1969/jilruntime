@@ -186,9 +186,9 @@ JILEXTERN void			NTLReturnString			(JILState* pState, const JILChar* value);
 /// machine will <b>not</b> automatically free this memory for you.
 /// The function returns the value that was previously stored in the instances
 /// user data memory.
-/// @see NTLInstance
+/// @see NTLInstance, NTLSetTypeUserData ()
 
-JILEXTERN JILUnknown*		NTLInstanceSetUser		(NTLInstance* pInst, JILUnknown* pData);
+JILEXTERN JILUnknown*	NTLInstanceSetUser		(NTLInstance* pInst, JILUnknown* pData);
 
 //------------------------------------------------------------------------------
 // NTLInstanceGetUser
@@ -197,7 +197,7 @@ JILEXTERN JILUnknown*		NTLInstanceSetUser		(NTLInstance* pInst, JILUnknown* pDat
 /// If no pointer was previously set, returns NULL.
 /// @see NTLInstance
 
-JILEXTERN JILUnknown*		NTLInstanceGetUser		(NTLInstance* pInst);
+JILEXTERN JILUnknown*	NTLInstanceGetUser		(NTLInstance* pInst);
 
 //------------------------------------------------------------------------------
 // NTLInstanceTypeID
@@ -215,5 +215,24 @@ JILEXTERN JILLong		NTLInstanceTypeID		(NTLInstance* pInst);
 /// @see NTLInstance
 
 JILEXTERN JILState*		NTLInstanceGetVM		(NTLInstance* pInst);
+
+//------------------------------------------------------------------------------
+// NTLSetTypeUserData
+//------------------------------------------------------------------------------
+/// This function allows you to attach an arbitrary pointer to any type.
+/// This will only work if the type is already known by the runtime, which means
+/// the type has already been imported (by script or programmatically).
+/// The function will store the pointer in the type's user data field, the same
+/// field that is written by the NTLInstanceSetUser() function. Be sure not to
+/// overwrite important data when calling this.
+/// <p>The purpose of this function is to allow developers to create native
+/// functions that appear as global functions in JewelScript, but call an
+/// instance of a C++ class natively. The binding code can retrieve the user
+/// data pointer by calling NTLInstanceGetUser() and call a method from that
+/// pointer.</p>
+/// If the specified type ID is invalid, the function returns an error.
+/// @see NTLInstanceGetUser (), NTLInstanceSetUser ()
+
+JILEXTERN JILError		NTLSetTypeUserData		(JILState* pVM, JILLong typeID, JILUnknown* pUser);
 
 #endif	// #ifndef JILNATIVETYPE_H
