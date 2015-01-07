@@ -29,7 +29,7 @@
 
 enum
 { 
-	JIL_Num_Exception_Strings =	50,
+	JIL_Num_Exception_Strings =	51,
 	JCL_Num_Compiler_Codes =	122
 };
 
@@ -96,9 +96,10 @@ enum
 	JIL_ERR_File_Open,					// 1127
 	JIL_ERR_File_End,					// 1128
 	JIL_ERR_File_Generic,				// 1129
+	JIL_ERR_Mark_Handle_Error,			// 1130
 
 	// end of exception declarations
-	JIL_Unknown_Exception				// 1130
+	JIL_Unknown_Exception				// 1131
 };
 
 //------------------------------------------------------------------------------
