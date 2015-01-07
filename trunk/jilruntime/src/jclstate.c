@@ -37,7 +37,6 @@ COMPILER TODO:
 --------------------------------------------------------------------------------
 	BUGS:
 	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
-	- possible heap corruption when closure throws exception?
 
 	Missing features:
 	* enum
