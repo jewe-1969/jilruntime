@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: JILVersion.h                                     (c) 2005-2010 jewe.org
+// File: JILVersion.h                                     (c) 2005-2015 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -39,29 +39,29 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "3.95"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "3.96"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the JewelScript compiler.
 
-#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "3.64"
+#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "3.65"
 
 //------------------------------------------------------------------------------
 // JIL_MACHINE_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the virtual machine.
 
-#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "3.20"
+#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "3.21"
 
 //------------------------------------------------------------------------------
 // JIL_TYPE_INTERFACE_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the native type interface. In your native type,
 /// upon receiving the NTL_GetInterfaceVersion message, convert this string into
-/// an integer value and return it. @see JILRevisionToLong ()
+/// an integer value and return it. @see NTLRevisionToLong ()
 
-#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "3.10"
+#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "3.11"
 
 #endif // JILVERSION_H
