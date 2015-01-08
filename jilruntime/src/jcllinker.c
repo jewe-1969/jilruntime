@@ -248,7 +248,7 @@ JILError JCLLinkFunction(JCLFunc* _this, JCLState* pCompiler)
 			{
 				JCLString* declString = NEW(JCLString);
 				_this->ToString(_this, pCompiler, declString, kCompact);
-				EmitWarning(pCompiler, declString, JCL_WARN_Function_Auto_Complete);
+				EmitWarning(pCompiler, JCL_WARN_Function_Auto_Complete, 1, declString);
 				DELETE( declString );
 			}
 			if( _this->miCofunc )
@@ -3089,7 +3089,7 @@ static JILError RelocateFunction(JCLFunc* pDstFunc, JCLFunc* pSrcFunc, JCLState*
 		{
 			JCLString* pName = NEW(JCLString);
 			pDstFunc->ToString(pDstFunc, pCompiler, pName, kCompact);
-			EmitWarning(pCompiler, pName, JCL_WARN_Unsafe_This_Operation);
+			EmitWarning(pCompiler, JCL_WARN_Unsafe_This_Operation, 1, pName);
 			DELETE(pName);
 		}
 		if( GetOpcodeInfo(_this, opaddr, &info) )

@@ -627,17 +627,19 @@ JILError EmitError(JCLState* _this, const JCLString* pArg, JILError err)
 //------------------------------------------------------------------------------
 // Record a compiler warning.
 
-JILError EmitWarning(JCLState* _this, const JCLString* pArg, JILError err)
+JILError EmitWarning(JCLState* _this, JILError err, JILLong numArgs, ...)
 {
 	JCLString* pWarning;
 	JCLString* str;
 	JCLString* pMsg;
+	JCLString* pToken;
 	JILLong i;
 	JILLong lev;
 	const JILChar* pName = NULL;
 	const JILChar* pWarningSz = NULL;
 	JILLong line = 0;
 	JILLong column = 0;
+	va_list marker;
 
 	// search for the warning in the table...
 	for( i = 0; JCLErrorStrings[i].e != JCL_Unknown_Error_Code; i++ )
@@ -650,9 +652,25 @@ JILError EmitWarning(JCLState* _this, const JCLString* pArg, JILError err)
 			break;
 		}
 	}
-	pWarningSz = JCLErrorStrings[i].s;
-	lev = JCLErrorStrings[i].l;
+
 	pWarning = NEW(JCLString);
+	pMsg = NEW(JCLString);
+	pToken = NEW(JCLString);
+
+	// format the message
+	lev = JCLErrorStrings[i].l;
+	JCLSetString(pMsg, JCLErrorStrings[i].s);
+	va_start(marker, numArgs);
+	for( i = 0; i < numArgs; i++ )
+	{
+		str = va_arg(marker, JCLString*);
+		JCLFormat(pToken, "{%d}", i);
+		JCLReplace(pMsg, JCLGetString(pToken), JCLGetString(str));
+	}
+	va_end(marker);
+	pWarningSz = JCLGetString(pMsg);
+
+	// get the file name and position
 	if( _this->mipFile )
 	{
 		if( JCLGetLength(_this->mipFile->mipPath) )
@@ -661,13 +679,8 @@ JILError EmitWarning(JCLState* _this, const JCLString* pArg, JILError err)
 			pName = JCLGetString(_this->mipFile->mipName);
 		GetCurrentPosition(_this->mipFile, &column, &line);
 	}
-	pMsg = NEW(JCLString);
-	if( pArg )
-	{
-		JCLFormat(pMsg, "'%s' - ", JCLGetString(pArg));
-		JCLAppend(pMsg, pWarningSz);
-		pWarningSz = JCLGetString(pMsg);
-	}
+
+	// build the warning message
 	switch( GetOptions(_this)->miErrorFormat )
 	{
 		case kErrorFormatDefault:
@@ -683,11 +696,15 @@ JILError EmitWarning(JCLState* _this, const JCLString* pArg, JILError err)
 				JCLFormat(pWarning, "Warning %d (%d): %s\n", err, lev, pWarningSz);
 			break;
 	}
+
+	// store message in warning list
 	str = _this->mipErrors->New(_this->mipErrors);
 	str->Copy(str, pWarning);
+	_this->miNumWarnings++;
+
 	DELETE(pWarning);
 	DELETE(pMsg);
-	_this->miNumWarnings++;
+	DELETE(pToken);
 	return err;
 }
 
@@ -980,7 +997,7 @@ static JILLong FindInNamespace(JCLState* _this, const JCLString* pName, JCLClass
 			for( i = 0; i < matches->count; i++ )
 			{
 				pc = GetClass(_this, matches->Get(matches, i));
-				EmitWarning(_this, pc->mipName, JCL_WARN_Ambiguous_Type_Name);
+				EmitWarning(_this, JCL_WARN_Ambiguous_Type_Name, 1, pc->mipName);
 			}
 			index = matches->Get(matches, 0);
 			*ppClass = GetClass(_this, index);
@@ -2167,13 +2184,13 @@ static JILError IsIdentifierUsed(JCLState* _this, JILLong whatIsDefined, JILLong
 		case kClassVarDelegate:
 			// try global variables
 			if( FindGlobalVar(_this, classIdx, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Member_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Member_Hides_Global, 1, pName);
 			// try member variables
 			if( FindMemberVar(_this, classIdx, pName) )
 				return JCL_ERR_Identifier_Already_Defined;
 			// try global functions
 			if( IsFuncInGlobalScope(_this, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Member_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Member_Hides_Global, 1, pName);
 			// try member functions (allow delegate variables to hide functions)
 			if( whatIsDefined == kClassVar )
 			{
@@ -2213,10 +2230,10 @@ static JILError IsIdentifierUsed(JCLState* _this, JILLong whatIsDefined, JILLong
 				return JCL_ERR_Identifier_Already_Defined;
 			// try global variables
 			if( FindGlobalVar(_this, classIdx, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Global, 1, pName);
 			// try global functions
 			if( IsFuncInGlobalScope(_this, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Global, 1, pName);
 			// try classes
 			FindClass(_this, pName, &pClass);
 			if( pClass )
@@ -2231,17 +2248,17 @@ static JILError IsIdentifierUsed(JCLState* _this, JILLong whatIsDefined, JILLong
 				return JCL_ERR_Identifier_Already_Defined;
 			// try global variables
 			if( FindGlobalVar(_this, classIdx, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Global, 1, pName);
 			// try global functions
 			if( IsFuncInGlobalScope(_this, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Global);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Global, 1, pName);
 			// try member variables
 			if( FindMemberVar(_this, classIdx, pName) )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Member);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Member, 1, pName);
 			// try member functions
 			FindFunction(_this, classIdx, pName, 0, &pFunc);
 			if( pFunc )
-				EmitWarning(_this, pName, JCL_WARN_Local_Hides_Member);
+				EmitWarning(_this, JCL_WARN_Local_Hides_Member, 1, pName);
 			// try classes
 			FindClass(_this, pName, &pClass);
 			if( pClass )
@@ -3460,7 +3477,7 @@ static JILBool IsClassRelocatable(JCLState* _this, JILLong type)
 			if( pClassB->miNative )
 				continue;	// TODO: Can we be sure to exclude native types?
 			if( pClassB->miFamily == tf_interface )
-				EmitWarning(_this, pClassB->mipName, JCL_WARN_Interface_In_Inherit);
+				EmitWarning(_this, JCL_WARN_Interface_In_Inherit, 2, pClassA->mipName, pClassB->mipName);
 			nb = pClassB->mipVars->Count(pClassB->mipVars);
 			for( j = 0; j < nb; j++ )
 			{
@@ -3815,7 +3832,7 @@ static JILError IsFullTypeDecl(JCLState* _this, JCLString* pToken, JCLVar* pVar,
 	if( tokenID == tk_weak )
 	{
 		pVar->miWeak = JILTrue;
-		EmitWarning(_this, NULL, JCL_WARN_Wref_Variable);
+		EmitWarning(_this, JCL_WARN_Wref_Variable, 0);
 	}
 	else
 	{
@@ -5016,6 +5033,48 @@ exit:
 }
 
 //------------------------------------------------------------------------------
+// ReplaceVarType
+//------------------------------------------------------------------------------
+
+static JILBool ReplaceVarType(JCLState* _this, JCLVar* dst, JILLong searchType, JILLong replaceType)
+{
+	if( dst->miMode == kModeArray )
+	{
+		if( dst->miElemType == searchType || IsSuperClass(_this, dst->miElemType, searchType) )
+		{
+			dst->miElemType = replaceType;
+			return JILTrue;
+		}
+	}
+	else
+	{
+		if( dst->miType == searchType || IsSuperClass(_this, dst->miType, searchType) )
+		{
+			dst->miType = replaceType;
+			return JILTrue;
+		}
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// ReplaceFuncTypes
+//------------------------------------------------------------------------------
+
+static JILBool ReplaceFuncTypes(JCLState* _this, JCLFunc* pFunc, JILLong searchType, JILLong replaceType)
+{
+	JILLong j;
+	JILBool bReplaced = JILFalse;
+	bReplaced |= ReplaceVarType(_this, pFunc->mipResult, searchType, replaceType);
+	for( j = 0; j < pFunc->mipArgs->Count(pFunc->mipArgs); j++ )
+	{
+		JCLVar* pVar = pFunc->mipArgs->Get(pFunc->mipArgs, j);
+		bReplaced |= ReplaceVarType(_this, pVar, searchType, replaceType);
+	}
+	return bReplaced;
+}
+
+//------------------------------------------------------------------------------
 // p_class_inherits
 //------------------------------------------------------------------------------
 // Parse class inheritance / mix-in class.
@@ -5027,6 +5086,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 	JCLString* pBaseName;
 	JCLString* pClassName;
 	JCLString* pToken;
+	JCLString* pToken2;
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
@@ -5041,6 +5101,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 	JILBool bAddFn;
 
 	pToken = NEW(JCLString);
+	pToken2 = NEW(JCLString);
 	pBaseName = NEW(JCLString);
 	pFile = _this->mipFile;
 	classIdx = pClass->miType;
@@ -5084,11 +5145,8 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				// set correct offset
 				if( pDst->miUsage == kUsageVar && pDst->miMode == kModeMember )
 					pDst->miMember += varRelOffset;
-				// replace source type by destination type
-				if( pDst->miType == pSrcClass->miType )
-					pDst->miType = pClass->miType;
-				else if( pDst->miElemType == pSrcClass->miType )
-					pDst->miElemType = pClass->miType;
+				// replace destination type
+				ReplaceVarType(_this, pDst, pSrcClass->miType, pClass->miType);
 			}
 			// copy and relocate all functions from source class
 			for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
@@ -5100,15 +5158,29 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 				FindDiscreteFunction(_this, pClass->miType, pSFunc->mipName, pSFunc->mipResult, pSFunc->mipArgs, &pFunc);
 				if( pFunc )
 				{
-					pSFunc->ToString(pSFunc, _this, pToken, kFullDecl|kCompact|kClearFirst);
+					pSFunc->ToString(pSFunc, _this, pToken, kCompact|kClearFirst);
 					ERROR_IF(pFunc->miLnkRelIdx >= 0, JCL_ERR_Identifier_Already_Defined, pToken, goto exit);
 				}
 				else
 				{
+					JCLFunc* pFunc2;
+					JILBool bReplaced = JILFalse;
 					// not found - create new function
 					pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 					pFunc->Copy(pFunc, pSFunc);
 					pFunc->miFuncIdx = pClass->mipFuncs->Count(pClass->mipFuncs) - 1;
+					pFunc->miClassID = pClass->miType;
+					// replace function types
+					bReplaced = ReplaceFuncTypes(_this, pFunc, pSrcClass->miType, pClass->miType);
+					if( bReplaced )
+					{
+						// must try to find it again...
+						pSFunc->ToString(pSFunc, _this, pToken2, kCompact|kClearFirst);
+						pFunc->ToString(pFunc, _this, pToken, kCompact|kClearFirst);
+						EmitWarning(_this, JCL_WARN_Func_Inherited_As, 2, pToken2, pToken);
+						FindDiscreteFunction(_this, pClass->miType, pSFunc->mipName, pSFunc->mipResult, pSFunc->mipArgs, &pFunc2);
+						ERROR_IF(pFunc2 != NULL && pFunc2->miLnkRelIdx >= 0, JCL_ERR_Identifier_Already_Defined, pToken2, goto exit);
+					}
 					bAddFn = JILTrue;
 				}
 				// set class index
@@ -5153,6 +5225,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 
 exit:
 	DELETE( pBaseName );
+	DELETE( pToken2 );
 	DELETE( pToken );
 	return err;
 }
@@ -6352,7 +6425,7 @@ static JILError p_statement(JCLState* _this, Array_JCLVar* pLocals, JILBool* pIs
 
 	if( CurrentFunc(_this)->miRetFlag )
 	{
-		EmitWarning(_this, NULL, JCL_WARN_Unreachable_Code);
+		EmitWarning(_this, JCL_WARN_Unreachable_Code, 0);
 		p_skip_statement(_this);
 		*pIsCompound = JILTrue;
 		goto exit;
@@ -6647,7 +6720,7 @@ static JILError p_return(JCLState* _this, Array_JCLVar* pLocals)
 
 	// check if returning local variable as weak ref
 	if( !outType.miRef && IsWeakRef(pRetVar) )
-		EmitWarning(_this, NULL, JCL_WARN_Return_WRef_Local);
+		EmitWarning(_this, JCL_WARN_Return_WRef_Local, 0);
 
 no_expr:
 	// get number of items on stack
@@ -7783,7 +7856,7 @@ static JILError p_expr_primary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 		}
 		ERROR_IF(pVarOut->miMode == kModeUnused, JCL_ERR_Not_An_LValue, pToken, goto exit);
 		if( IsTempVar(pVarOut) || IsResultVar(pVarOut) )
-			EmitWarning(_this, pToken, JCL_WARN_Operator_No_Effect);
+			EmitWarning(_this, JCL_WARN_Operator_No_Effect, 1, pToken);
 		err = p_assignment(_this, pLocals, pVarOut, &outType);
 		if( err )
 			goto exit;
@@ -7830,7 +7903,7 @@ static JILError p_expr_primary(JCLState* _this, Array_JCLVar* pLocals, JCLVar* p
 		{
 			// Fix: Post inc/dec on return register should have no effect
 			JCLSetString(pToken2, tokenID == tk_plusplus ? "++" : "--");
-			EmitWarning(_this, pToken2, JCL_WARN_Operator_No_Effect);
+			EmitWarning(_this, JCL_WARN_Operator_No_Effect, 1, pToken2);
 		}
 		else
 		{
@@ -12038,7 +12111,7 @@ static JILError p_cast_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 				ERROR_IF(!pLVar, JCL_ERR_Expression_Without_LValue, NULL, goto exit);
 				// warn, if L-Value is var
 				if( destType.miType == type_var && pLVar->miType != type_var )
-					EmitWarning(_this, NULL, JCL_WARN_Cast_To_Var);
+					EmitWarning(_this, JCL_WARN_Cast_To_Var, 0);
 				// do we need a temp var?
 				if( pLVar && IsTempVar(pLVar) )
 				{
@@ -12110,7 +12183,7 @@ static JILError p_weak_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar* 
 	ERROR_IF(!IsRef(pLVar), JCL_ERR_Weak_Without_Ref, NULL, goto exit);
 	// warn, if L-Value is already weak
 	if( IsWeakRef(pLVar) )
-		EmitWarning(_this, NULL, JCL_WARN_Taking_Wref_From_Wref);
+		EmitWarning(_this, JCL_WARN_Taking_Wref_From_Wref, 0);
 	// do we need a temp var?
 	if( IsTempVar(pLVar) )
 	{
@@ -12282,12 +12355,12 @@ static JILError p_option(JCLState* _this)
 			if( err == JCL_WARN_Unknown_Option )
 			{
 				JCLSpanExcluding(pStr, "=", pStr);
-				EmitWarning(_this, pStr, err);
+				EmitWarning(_this, err, 1, pStr);
 				JCLSetLocator(pStr, 0);
 			}
 			else if( err == JCL_WARN_Invalid_Option_Value )
 			{
-				EmitWarning(_this, pStr, err);
+				EmitWarning(_this, err, 1, pStr);
 			}
 			else if( err )
 			{
@@ -13888,7 +13961,7 @@ static JILError cg_load_null(JCLState* _this, JCLVar* dst, TypeInfo* pOut)
 	{
 		JCLString* str = NEW(JCLString);
 		JCLSetString(str, "null");
-		EmitWarning(_this, str, JCL_WARN_Null_Assign_No_Ref);
+		EmitWarning(_this, JCL_WARN_Null_Assign_No_Ref, 1, str);
 		DELETE(str);
 	}
 	if( IsTempVar(dst) )
@@ -14105,16 +14178,16 @@ static JILError cg_move_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 		goto exit;
 	// check if a weak reference is assigned a temporary, unique value
 	if( !IsDstInited(dst) && IsWeakRef(dst) && IsTempVar(newsrc) && newsrc->miUnique )
-		EmitWarning(_this, NULL, JCL_WARN_Assign_WRef_Temp_Value);
+		EmitWarning(_this, JCL_WARN_Assign_WRef_Temp_Value, 0);
 	// check if a reference is taken from a weak reference
 	if( !IsDstInited(dst) && !IsTempVar(dst) && !IsWeakRef(dst) && IsWeakRef(newsrc) )
-		EmitWarning(_this, NULL, JCL_WARN_Taking_Ref_From_Wref);
+		EmitWarning(_this, JCL_WARN_Taking_Ref_From_Wref, 0);
 	// check access rules
 	err = cg_src_dst_rule(_this, newsrc, dst);
 	// taking ref from const: auto-copy
 	if(	err == JCL_ERR_Expression_Is_Const && !IsWeakRef(dst) )
 	{
-		EmitWarning(_this, NULL, JCL_WARN_Auto_Copy_Const);
+		EmitWarning(_this, JCL_WARN_Auto_Copy_Const, 0);
 		bCopy = JILTrue;
 		err = JCL_No_Error;
 	}
@@ -15533,14 +15606,14 @@ static JILError cg_auto_convert(JCLState* _this, JCLVar* src, JCLVar* dst, JCLVa
 	{
 		if( src->miType == type_array && src->miElemType == type_var && dst->miType == type_array && dst->miElemType != type_var )
 		{
-			EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_Var_Array);
+			EmitWarning(_this, JCL_WARN_Imp_Conv_Var_Array, 0);
 		}
 		else if( (src->miType == type_var && dst->miType != type_var)
 			|| (src->miMode == kModeArray && src->miType == type_var && dst->miType != type_var) )
 		{
 			if( dst->miType == type_string )
 			{
-				EmitWarning(_this, NULL, JCL_WARN_Dynamic_Conversion);
+				EmitWarning(_this, JCL_WARN_Dynamic_Conversion, 0);
 				err = MakeTempVar(_this, ppTmpOut, dst);
 				if( err )
 					goto exit;
@@ -15550,7 +15623,7 @@ static JILError cg_auto_convert(JCLState* _this, JCLVar* src, JCLVar* dst, JCLVa
 			}
 			else if( GetOptions(_this)->miUseRTCHK )
 			{
-				EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_From_Var);
+				EmitWarning(_this, JCL_WARN_Imp_Conv_From_Var, 0);
 				// place RTCHK instruction
 				err = cg_rtchk(_this, src, dst->miType);
 				if( err )
@@ -15567,7 +15640,7 @@ static JILError cg_auto_convert(JCLState* _this, JCLVar* src, JCLVar* dst, JCLVa
 		// IF destination is NOT a temporary variable AND
 		// IF destination is non-const reference THEN
 		// emit warning and continue
-		EmitWarning(_this, NULL, JCL_WARN_Auto_Convert_To_Ref);
+		EmitWarning(_this, JCL_WARN_Auto_Convert_To_Ref, 0);
 	}
 	if( src->miType == type_int && dst->miType == type_float )
 	{
@@ -16428,7 +16501,7 @@ static JILError cg_cvf_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 		FATALERROREXIT("cg_cvl_var", "Var mode not implemented");
 	// if using 32bit float, emit truncation warning
 	if( sizeof(JILFloat) == sizeof(float) )
-		EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_Int_Float);
+		EmitWarning(_this, JCL_WARN_Imp_Conv_Int_Float, 0);
 	switch( src->miMode )
 	{
 		case kModeRegister:
@@ -16474,7 +16547,7 @@ static JILError cg_cvl_var(JCLState* _this, JCLVar* src, JCLVar* dst)
 		FATALERROREXIT("cg_cvl_var", "Var mode not implemented");
 	// if using 64bit float, emit truncation warning
 	if( sizeof(JILFloat) == sizeof(double) )
-		EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_Float_Int);
+		EmitWarning(_this, JCL_WARN_Imp_Conv_Float_Int, 0);
 	switch( src->miMode )
 	{
 		case kModeRegister:
@@ -16817,7 +16890,7 @@ static JILError cg_cast_if_typeless(JCLState* _this, JCLVar* src, JCLVar* dst)
 
 	if( (dst->miType == type_var && src->miType != type_var) )
 	{
-		EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_From_Var);
+		EmitWarning(_this, JCL_WARN_Imp_Conv_From_Var, 0);
 		dst->miType = src->miType;
 		dst->miElemType = src->miElemType;
 		if( GetOptions(_this)->miUseRTCHK )
@@ -17116,7 +17189,7 @@ static JILError cg_convert_to_type(JCLState* _this, JCLVar* pSrcVar, JILLong des
 
 	if( pSrcVar->miType == type_var && destType != type_var )
 	{
-		EmitWarning(_this, NULL, JCL_WARN_Imp_Conv_From_Var);
+		EmitWarning(_this, JCL_WARN_Imp_Conv_From_Var, 0);
 		pSrcVar->miType = destType;
 		if( GetOptions(_this)->miUseRTCHK )
 		{

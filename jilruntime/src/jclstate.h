@@ -106,7 +106,7 @@ JCLFunc*	GetFunc				(JCLState*, JILLong, JILLong);
 JILError	cg_begin_intro		(JCLState*);
 JILError	cg_finish_intro		(JCLState*);
 JILError	cg_resume_intro		(JCLState*);
-JILError	EmitWarning			(JCLState*, const JCLString*, JILError);
+JILError	EmitWarning			(JCLState*, JILError, JILLong, ...);
 JILError	EmitError			(JCLState*, const JCLString*, JILError);
 void		FatalError			(JCLState*, const JILChar*, JILLong, const JILChar*, const JILChar*);
 JCLOption*	GetOptions			(JCLState*);
