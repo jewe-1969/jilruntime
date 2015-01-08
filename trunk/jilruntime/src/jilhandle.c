@@ -521,7 +521,7 @@ JILError JILCollectGarbage(JILState* ps)
 
 	// for safety reasons, do nothing if currently executing byte-code
 	if( ps->vmRunning )
-		return 0;
+		return JIL_ERR_Runtime_Locked;
 
 	// mark data handles
 	err = JILMarkDataHandles(ps);

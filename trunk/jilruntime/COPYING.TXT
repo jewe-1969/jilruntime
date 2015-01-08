@@ -4,7 +4,7 @@
     differ from this license text, then the latter shall
     prevail.
 
-    Copyright (c) 2005 jewe.org
+    Copyright (c) 2005-2015 jewe.org
 
     This software is provided 'as-is', without any express
     or implied warranty. In no event will the authors be
