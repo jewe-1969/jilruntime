@@ -30,7 +30,7 @@
 enum
 { 
 	JIL_Num_Exception_Strings =	51,
-	JCL_Num_Compiler_Codes =	122
+	JCL_Num_Compiler_Codes =	123
 };
 
 //------------------------------------------------------------------------------
@@ -237,6 +237,7 @@ enum
 	JCL_WARN_Imp_Conv_Var_Array,			// 1522
 	JCL_WARN_Interface_In_Inherit,			// 1523
 	JCL_WARN_Unsafe_This_Operation,			// 1524
+	JCL_WARN_Func_Inherited_As,				// 1525
 
 	JCL_Unknown_Error_Code
 };
