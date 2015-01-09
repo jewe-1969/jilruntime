@@ -783,6 +783,10 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 					JCLAppend(string, "\b");
 					JCLSeekForward(_this->mipText, 1);
 					break;
+				case 'e':	// escape
+					JCLAppend(string, "\x1B");
+					JCLSeekForward(_this->mipText, 1);
+					break;
 				case 'f':	// formfeed
 					JCLAppend(string, "\f");
 					JCLSeekForward(_this->mipText, 1);
