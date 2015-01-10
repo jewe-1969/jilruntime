@@ -528,8 +528,8 @@ JILError JCLAddImportPath(JILState* pVM, const JILChar* pName, const JILChar* pP
 {
 	JILError err = JIL_No_Exception;
 	JCLState* _this;
-	JCLString* key = NEW(JCLString);
-	JCLString* data = NEW(JCLString);
+	JCLString* key;
+	JCLString* data;
 
 	if( (_this = pVM->vmpCompiler) == NULL )
 		return JIL_ERR_No_Compiler;
@@ -539,6 +539,8 @@ JILError JCLAddImportPath(JILState* pVM, const JILChar* pName, const JILChar* pP
 		return JIL_ERR_Illegal_Argument;
 
 	// make sure 'pName' is unique
+	key = NEW(JCLString);
+	data = NEW(JCLString);
 	JCLSetString(key, pName);
 	JCLSetString(data, pPath);
 	if( Get_JCLCollection(_this->mipImportPaths, key) != NULL )
@@ -590,12 +592,14 @@ JILError JCLImportClass(JILState* pState, const JILChar* pClassName)
 {
 	JILError err = JCL_No_Error;
 	JCLState* _this;
-	JCLString* className = NEW(JCLString);
-	JCLFile* pFile = NEW(JCLFile);
+	JCLString* className;
+	JCLFile* pFile;
 
 	if( (_this = pState->vmpCompiler) == NULL )
 		return JIL_ERR_No_Compiler;
 
+	className = NEW(JCLString);
+	pFile = NEW(JCLFile);
 	JCLSetString(className, pClassName);
 	pFile->Open(pFile, "JCLImportClass", "", "", GetGlobalOptions(_this));
 	_this->mipFile = pFile;
