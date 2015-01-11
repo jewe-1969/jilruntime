@@ -5974,7 +5974,7 @@ exit:
 static JILError p_sub_functions(JCLState* _this)
 {
 	JILError err = JCL_No_Error;
-	JILLong i, n;
+	JILLong i, j, n;
 	JILLong funcIdx;
 	JILLong savePos;
 	JCLFunc* pCurrentFunc;
@@ -6067,10 +6067,10 @@ static JILError p_sub_functions(JCLState* _this)
 			}
 			// process parent stack variables
 			n = pLit->mipStack->Count(pLit->mipStack) - numParentArgs;
-			for( i = 0; i < pLit->mipStack->Count(pLit->mipStack); i++ )
+			for( j = 0; j < pLit->mipStack->Count(pLit->mipStack); j++ )
 			{
-				JCLVar* pVar = pLit->mipStack->Get(pLit->mipStack, i);
-				if( i >= n )
+				JCLVar* pVar = pLit->mipStack->Get(pLit->mipStack, j);
+				if( j >= n )
 					pVar->miIndex += numRegsToSave;
 				pVar->miParentStack = JILTrue;
 			}
