@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: main.c                                                (c) 2014 jewe.org
+// File: main.c                                                (c) 2015 jewe.org
 //------------------------------------------------------------------------------
 //
 // JILRUNONLY LICENSE AGREEMENT
@@ -9,7 +9,7 @@
 // differ from this license text, then this text shall
 // prevail.
 //
-// Copyright (c) 2005-2014 jewe.org
+// Copyright (c) 2005-2015 jewe.org
 //
 // This software is provided 'as-is', without any express
 // or implied warranty. In no event will the authors be
@@ -90,7 +90,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.3.1.67"
+#define	VERSION		"0.4.2.0"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
