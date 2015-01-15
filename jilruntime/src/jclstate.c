@@ -262,6 +262,7 @@ static JILBool		IsClassToken		(JILLong);
 static JILBool		IsSuperClass		(JCLState*, JILLong, JILLong);
 static JILBool		IsSubClass			(JCLState*, JILLong, JILLong);
 static JILBool		IsExtendingClass	(JCLState*, JILLong);
+static JILBool		IsSameBaseType		(JCLState*, JILLong, JILLong);
 static JILBool		IsClassRelocatable	(JCLState*, JILLong);
 static JILBool		IsModifierNativeBinding(JCLClass*);
 static JILBool		IsModifierNativeInterface(JCLClass*);
@@ -383,7 +384,7 @@ static JILError		p_function_extends	(JCLState*, JCLFunc*);
 static JILError		p_function_inherits	(JCLState*, JCLFunc*);
 static JILError		p_block				(JCLState*, JILBool*);
 static JILError		p_statement			(JCLState*, Array_JCLVar*, JILBool*);
-static JILError		p_local_decl		(JCLState*, Array_JCLVar*, JCLVar*);
+static JILError		p_local_decl		(JCLState*, Array_JCLVar*, JCLVar*, JILBool);
 static JILError		p_member_decl		(JCLState*, JILLong, JCLVar*);
 static JILError		p_return			(JCLState*, Array_JCLVar*);
 static JILError		p_throw				(JCLState*, Array_JCLVar*);
@@ -2203,11 +2204,6 @@ static JILError IsIdentifierUsed(JCLState* _this, JILLong whatIsDefined, JILLong
 						return JCL_ERR_Identifier_Already_Defined;
 				}
 			}
-			// try classes
-			/*TODO: See if we can allow member variables with same name as a class
-			FindClass(_this, pName, &pClass);
-			if( pClass )
-				return JCL_ERR_Identifier_Already_Defined;*/
 			break;
 		case kClassFunc:
 		case kClassMethod:
@@ -3449,6 +3445,23 @@ static JILBool IsExtendingClass(JCLState* _this, JILLong type)
 	{
 		pClass = GetClass(_this, pClass->miBaseType);
 		return (pClass && pClass->miFamily == tf_class);
+	}
+	return JILFalse;
+}
+
+//------------------------------------------------------------------------------
+// IsSameBaseType
+//------------------------------------------------------------------------------
+// Checks if type1 has implemented / extended the same base as type2.
+// If one of the types has no base at all, returns false.
+
+static JILBool IsSameBaseType(JCLState* _this, JILLong type1, JILLong type2)
+{
+	JCLClass* pClass1 = GetClass(_this, type1);
+	JCLClass* pClass2 = GetClass(_this, type2);
+	if( pClass1 && pClass2 )
+	{
+		return (pClass1->miBaseType != 0 && pClass1->miBaseType == pClass2->miBaseType);
 	}
 	return JILFalse;
 }
@@ -4762,7 +4775,6 @@ exit:
 // p_class_hybrid
 //------------------------------------------------------------------------------
 // Parse "hybrid inheritance" of a class.
-// TODO: Take 'private' modifier into account, only hybridize public methods.
 
 static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 {
@@ -4815,8 +4827,8 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 		for( i = 0; i < NumFuncs(_this, srcType); i++ )
 		{
 			pFunc = GetFunc(_this, srcType, i);
-			// only global functions and methods are valid
-			if( !pFunc->miCtor && !pFunc->miConvertor && !pFunc->miAccessor && !pFunc->miCofunc && !pFunc->miAnonymous )
+			// only public global functions and methods are valid
+			if( !pFunc->miCtor && !pFunc->miConvertor && !pFunc->miAccessor && !pFunc->miCofunc && !pFunc->miAnonymous && !pFunc->miPrivate )
 			{
 				// create delegate from function
 				err = CreateDelegate(_this, pFunc->mipResult, pFunc->mipArgs, &typeID);
@@ -4828,18 +4840,16 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 				pVar->mipName->Copy(pVar->mipName, pFunc->mipName);
 				err = AddMemberVar(_this, dstType, pVar);
 				ERROR_IF(err != JCL_No_Error && err != JCL_ERR_Identifier_Already_Defined, err, pFunc->mipName, goto exit);
-				// if we have a name conflict check if it's with an interface method
+				// if we have a name conflict check if it's with a base method
 				if( err == JCL_ERR_Identifier_Already_Defined )
 				{
 					JCLFunc* pInFunc;
-					// class must inherit an interface
-					ERROR_IF(pClass->miBaseType == 0, err, pFunc->mipName, goto exit);
-					// hybrid base must inherit same interface
-					ERROR_IF(pSrcClass->miBaseType != pClass->miBaseType, err, pFunc->mipName, goto exit);
-					// find function in interface
+					// hybrid class must implement or extend same base
+					ERROR_IF(!IsSameBaseType(_this, pClass->miType, pSrcClass->miType), err, pFunc->mipName, goto exit);
+					// find function in base
 					FindDiscreteFunction(_this, pClass->miBaseType, pFunc->mipName, pFunc->mipResult, pFunc->mipArgs, &pInFunc);
 					ERROR_IF(pInFunc == NULL, err, pFunc->mipName, goto exit);
-					// find inherited function in this class
+					// find base function in this class
 					FindDiscreteFunction(_this, dstType, pFunc->mipName, pFunc->mipResult, pFunc->mipArgs, &pInFunc);
 					ERROR_IF(pInFunc == NULL, err, pFunc->mipName, goto exit);
 					ERROR_IF(pInFunc->miAccessor || pInFunc->miCtor, err, pFunc->mipName, goto exit);
@@ -4852,10 +4862,10 @@ static JILError p_class_hybrid(JCLState* _this, JCLClass* pClass)
 					pInFunc->miLnkDelegate = pVar->miMember;
 				}
 			}
-			else if( pFunc->miAccessor && pClass->miBaseType && pSrcClass->miBaseType == pClass->miBaseType )
+			else if( pFunc->miAccessor && !pFunc->miPrivate && IsSameBaseType(_this, pClass->miType, pSrcClass->miType) )
 			{
 				JCLFunc* pInFunc;
-				// find accessor in interface
+				// find accessor in base
 				FindDiscreteFunction(_this, pClass->miBaseType, pFunc->mipName, pFunc->mipResult, pFunc->mipArgs, &pInFunc);
 				if( pInFunc != NULL )
 				{
@@ -4941,16 +4951,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			if( pVar->miPrivate )
 				MangleNamePrivate(_this, pVar->mipName, pSrcClass->miType);
 		}
-		// create "base" variable in this class
-		//JCLSetString(pBaseVar->mipName, "base");
-		//pBaseVar->miType = pSrcClass->miType;
-		//pBaseVar->miRef = JILTrue;
-		//pBaseVar->miWeak = JILTrue;
-		//pBaseVar->miNonVT = JILTrue; // calls through this variable are NEVER virtual
-		//pBaseVar->miReadOnly = JILTrue;
-		//pBaseVar->miPrivate = JILTrue;
-		//err = AddMemberVar(_this, pClass->miType, pBaseVar);
-		//ERROR_IF(err, err, pBaseVar->mipName, goto exit);
 		// copy over all function declarations from source class
 		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
 		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
@@ -4960,8 +4960,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			pFunc->miClassID = pClass->miType;
 			// set strict modifier
 			pFunc->miStrict |= bStrict;
-			// set virtual modifier
-			// pFunc->miVirtual |= bVirtual;   XXX: We don't want to make inherited methods virtual if this class is virtual
 			// store function index for link process
 			pFunc->miLnkMethod = pFunc->miFuncIdx;
 			pFunc->miLnkClass = pSrcClass->miType;
@@ -4980,7 +4978,7 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
 					pSFunc->Copy(pSFunc, pFunc);
 					pSFunc->miLnkMethod = pFunc->miLnkMethod;
-					// make it normal method
+					// modify it accordingly
 					pSFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
 					pSFunc->miNoOverride = JILTrue;	// function is not overridable
 					pSFunc->miPrivate = JILTrue;	// function is not callable
@@ -6134,7 +6132,7 @@ static JILError p_function_hybrid(JCLState* _this, JCLFunc* pFunc)
 	err = cg_move_var(_this, pTempVar, pMember);
 	ERROR_IF(err, err, NULL, goto exit);
 	pMember->miInited = JILTrue;
-	// HACK: Because OptimizeMoveOperations() would corrupt the code, we must reload pTempVar here
+	// TODO: Because OptimizeMoveOperations() would corrupt the code, we must reload pTempVar here
 	err = cg_move_var(_this, pMember, pTempVar);
 	ERROR_IF(err, err, NULL, goto exit);
 	memberIdx++;
@@ -6245,7 +6243,6 @@ exit:
 // p_function_inherits
 //------------------------------------------------------------------------------
 // Generate code for inherited constructor call.
-// TODO: Notify user if base contructor call is missing (we'll get uninitialized member variables anyway, but would be nicer)
 
 static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 {
@@ -6437,7 +6434,7 @@ static JILError p_statement(JCLState* _this, Array_JCLVar* pLocals, JILBool* pIs
 	err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
 	if( err == JCL_No_Error )
 	{
-		err = p_local_decl(_this, pLocals, pVar);
+		err = p_local_decl(_this, pLocals, pVar, JILFalse);
 	}
 	else if( err == JCL_ERR_Probe_Failed )
 	{
@@ -6532,8 +6529,9 @@ exit:
 // p_local_decl
 //------------------------------------------------------------------------------
 // Parse declaration / initialization of one or more local variables.
+// If 'bNoComma' is true, only one variable can be declared.
 
-static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVar)
+static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVar, JILBool bNoComma)
 {
 	JILError err = JCL_No_Error;
 	JCLFile* pFile;
@@ -6546,7 +6544,7 @@ static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVa
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	JCLClrTypeInfo( &outType );
-	localVarMode = kLocalStack; //GetOptions(_this)->miLocalVarMode;
+	localVarMode = kLocalStack;
 
 	for(;;)
 	{
@@ -6580,6 +6578,8 @@ static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVa
 		// skip ","
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
+		// is comma allowed?
+		ERROR_IF(bNoComma, JCL_ERR_Unexpected_Token, pToken, goto exit);
 		// get next identifier name
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
@@ -11950,7 +11950,6 @@ exit:
 // Advance in the text stream until the end of a complete statement. This
 // includes block-statements as well as statements that consist of
 // sub-statements (like for example 'if').
-// TODO: Add new statements (clause, goto)
 
 static JILError p_skip_statement(JCLState* _this)
 {
@@ -12008,6 +12007,35 @@ static JILError p_skip_statement(JCLState* _this)
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
 			break;
+		case tk_clause:
+			// skip identifier / round open
+			savePos = pFile->GetLocator(pFile);
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			if( tokenID == tk_round_open )
+			{
+				// skip expression in round braces
+				pFile->SetLocator(pFile, savePos);
+				err = p_skip_braces(_this, tk_round_open, tk_round_close);
+				if( err )
+					goto exit;
+			}
+			// skip block
+			err = p_skip_block(_this);
+			if( err )
+				goto exit;
+			break;
+		case tk_goto:
+			// skip identifier
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
+			// skip expression in round braces
+			err = p_skip_braces(_this, tk_round_open, tk_round_close);
+			if( err )
+				goto exit;
+			// skip ';'
+			err = pFile->GetToken(pFile, pToken, &tokenID);
+			ERROR_IF(err, err, pToken, goto exit);
 		default:
 			// advance until we reach a semicolon in this block-level
 			do
@@ -12551,7 +12579,7 @@ static JILError p_delegate(JCLState* _this)
 	ERROR_IF(err, err, pName, goto exit);
 
 	// handle tags
-	// TODO: We only have 1 tag for all aliases of a delegate type :( AddAlias() should accept an additional tag parameter.
+	// TODO: We only have 1 tag for all aliases of a delegate type, AddAlias() should accept an additional tag parameter.
 	pClass = GetClass(_this, typeID);
 	err = p_tag(_this, pClass->mipTag);
 	if( err )
@@ -13071,7 +13099,7 @@ static JILError p_private(JCLState* _this, JILLong modifier)
 			if( err == JCL_ERR_Probe_Failed )
 				err = JCL_ERR_Unexpected_Token;
 			ERROR_IF(err, err, pToken, goto exit);
-			ERROR_IF(pVar->miConst, JCL_ERR_No_Access, pVar->mipName, goto exit); // TODO: Allow private class constant?
+			ERROR_IF(pVar->miConst, JCL_ERR_No_Access, pVar->mipName, goto exit); // TODO: Allow private class constant or find better error code!
 			pVar->miPrivate = JILTrue;
 			err = p_member_decl(_this, _this->miClass, pVar);
 			ERROR_IF(err, err, pToken, goto exit);
@@ -13377,7 +13405,7 @@ static JILError p_clause(JCLState* _this, Array_JCLVar* pLocals, JCLClause* pCla
 		// variable declaration
 		err = IsFullTypeDecl(_this, pToken, pVar, JILFalse);
 		ERROR_IF(err, err, pToken, goto exit);
-		err = p_local_decl(_this, pLocals, pVar); // TODO: tell function to only allow 1 declaration
+		err = p_local_decl(_this, pLocals, pVar, JILTrue);
 		ERROR_IF(err, err, pToken, goto exit);
 		pParamVar = FindLocalVar(_this, pVar->mipName);
 		if( pParamVar == NULL )
@@ -14155,7 +14183,7 @@ static JILBool cg_use_wref(JCLVar* src, JCLVar* dst)
 
 static JILBool cg_use_move(JCLVar* src, JCLVar* dst)
 {
-	return (IsRef(dst) || IsTempVar(dst) || /*TODO: TEST*/ IsDstConst(dst) || (IsTempVar(src) && src->miUnique));
+	return (IsRef(dst) || IsTempVar(dst) || IsDstConst(dst) || (IsTempVar(src) && src->miUnique));
 }
 
 //------------------------------------------------------------------------------
