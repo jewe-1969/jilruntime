@@ -279,6 +279,10 @@ int main(int nArgs, char* ppArgList[])
 	pMachine = JILInitialize( kStackSize, gCompilerOptions );
 	THROW( !pMachine, -1, "The JIL virtual machine could not be initialized!" )
 
+	// install a log message handler (this is optional)
+	// runtime and compiler will use this to output errors, warnings and other information
+	JILSetLogCallback(pMachine, CBOutputLogMessage);
+
 	// print version info, if requested
 	if( bVers )
 		PrintVersionInfo( pMachine );
