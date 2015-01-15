@@ -287,10 +287,6 @@ int main(int nArgs, char* ppArgList[])
 	if( nFile == nArgs )
 		goto cleanup;
 
-	// install a log message handler (this is optional)
-	// runtime and compiler will use this to output errors, warnings and other information
-	JILSetLogCallback(pMachine, CBOutputLogMessage);
-
 	// install exception handlers (optional)
 	// for simplicity, we only catch 2 of the 4 possible types of exceptions
 	err = JILSetExceptionVector(pMachine, JIL_Machine_Exception_Vector, CBMachineException);
