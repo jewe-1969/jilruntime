@@ -324,7 +324,7 @@ JILEXTERN JILUnknown*			JILGetObject			(JILState* pState, JILLong objectID);
 //------------------------------------------------------------------------------
 // JILUseFixedMemory
 //------------------------------------------------------------------------------
-/// Enables the fixed memory support.
+/// Enables the fixed memory management.
 /// <p>All runtime memory allocs and deallocs will be made through the runtime's
 /// own memory management, which is optimized for fast allocation and deallocation
 /// of small memory blocks.</p>
@@ -344,6 +344,7 @@ JILEXTERN JILUnknown*			JILGetObject			(JILState* pState, JILLong objectID);
 /// JILState::vmFree member variables. If you have set these callbacks to
 /// your customized memory allocation / deallocation handlers, do not call this
 /// function!</p>
+/// @see JILUseFixedMemDynamic (), JILMalloc (), JILMfree ()
 
 JILEXTERN JILError				JILUseFixedMemory		(JILState* pState,
 														 JILLong max16,
@@ -356,10 +357,41 @@ JILEXTERN JILError				JILUseFixedMemory		(JILState* pState,
 //------------------------------------------------------------------------------
 // JILUseFixedMemDynamic
 //------------------------------------------------------------------------------
-/// This enables the fixed memory support and sets all memory managers to
+/// This enables the fixed memory management and sets all memory managers to
 /// "dynamic growth" mode. @see JILUseFixedMemory ().
 
 JILEXTERN JILError				JILUseFixedMemDynamic	(JILState* pState);
+
+//------------------------------------------------------------------------------
+// JILMalloc
+//------------------------------------------------------------------------------
+/// Uses the runtime's memory management for quick allocation of a memory block.
+/// If 'fixed memory management' is not enabled, this will simply map through
+/// to the C-runtime malloc() function. Otherwise this will use
+/// 'fixed memory management' to allocate the block. The function is mainly
+/// intended for native type implementations that require fast allocation and
+/// deallocation of small objects.
+/// <p><b>Blocks allocated with this function <u>must</u> be freed using
+///  JILMfree(), otherwise it will corrupt the memory management!</b></p>
+/// @see JILUseFixedMemory ().
+
+JILEXTERN JILUnknown*			JILMalloc				(JILState* pState, JILLong size);
+
+//------------------------------------------------------------------------------
+// JILMfree
+//------------------------------------------------------------------------------
+/// Uses the runtime's memory management to deallocate a previously allocated
+/// block of memory. If 'fixed memory management' is not enabled, this will
+/// simply map through to the C-runtime free() function. Otherwise this will use
+/// 'fixed memory management' to free the block.  The function is mainly
+/// intended for native type implementations that require fast allocation and
+/// deallocation of small objects.
+/// <p><b>Only pass blocks allocated by JILMalloc() to this function!</b>
+/// Passing a pointer allocated by any other means will corrupt the memory
+/// management and may even produce crashes.</p>
+/// @see JILUseFixedMemory ().
+
+JILEXTERN void					JILMfree				(JILState* pState, JILUnknown* ptr);
 
 //------------------------------------------------------------------------------
 // JILSetBlocked

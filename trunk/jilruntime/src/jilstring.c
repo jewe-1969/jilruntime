@@ -1444,51 +1444,76 @@ JILString* JILString_ReplaceChar(const JILString* _this, JILLong schr, JILLong r
 
 JILString* JILString_Replace(const JILString* _this, const JILString* search, const JILString* replace)
 {
-	JILString* result = JILString_New(_this->pState);
-	JILLong lastPos;
-	JILLong lastLength;
-	JILLong pos = 0;
+	struct MatchList {
+		JILChar* pos;
+		struct MatchList* next;
+	};
+
+	JILState* ps = _this->pState;
+	JILString* result = JILString_New(ps);
 	JILLong currentLength = 0;
 	JILLong replaceLength = JILString_Length(replace);
 	JILLong searchLength = JILString_Length(search);
+	JILLong numMatches = 0;
 	const JILChar* pReplace = JILString_String(replace);
 	const JILChar* pSearch = JILString_String(search);
-	char* pPos;
+	JILChar* spos;
+	JILChar* dpos;
+	struct MatchList* lastMatch = NULL;
+	struct MatchList* firstMatch = NULL;
+	struct MatchList* match;
+
 	// if search string is empty return
 	if( searchLength )
 	{
-		while( pos < _this->length )
+		// step 1: memorize all match locations for the search string
+		for( spos = _this->string; ; spos += searchLength )
 		{
 			// using lowlevel strstr, coz it's faster...
-			pPos = strstr( _this->string + pos, pSearch );
-			if( pPos == NULL )
-			{
-				lastPos = pos;
-				pos = _this->length;
-				lastLength = currentLength;
-				currentLength += (pos - lastPos);
-				JILStringReAlloc(result, currentLength, JILTrue);
-				// copy everything up to end of string
-				memcpy(result->string + lastLength, _this->string + lastPos, pos - lastPos);
+			spos = strstr(spos, pSearch);
+			if( spos == NULL )
 				break;
-			}
-			lastPos = pos;
-			pos = (JILLong) (pPos - _this->string);
-			lastLength = currentLength;
-			currentLength += (pos - lastPos) + replaceLength;
-			JILStringReAlloc(result, currentLength, JILTrue);
-			// copy everything up to found position
-			memcpy(result->string + lastLength, _this->string + lastPos, pos - lastPos);
-			// copy replace string
-			memcpy(result->string + lastLength + (pos - lastPos), pReplace, replaceLength);
-			// skip search substring
-			pos += searchLength;
+			// allocate new match
+			match = ps->vmMalloc(ps, sizeof(struct MatchList));
+			match->pos = spos;
+			match->next = NULL;
+			if (firstMatch == NULL)
+				firstMatch = match;
+			if (lastMatch != NULL)
+				lastMatch->next = match;
+			lastMatch = match;
+			numMatches++;
+		}
+		// step 2: build new string
+		JILStringReAlloc(result, _this->length - (numMatches * searchLength) + (numMatches * replaceLength), JILFalse);
+		dpos = result->string;
+		spos = _this->string;
+		for( match = firstMatch; match != NULL; match = match->next )
+		{
+			// copy source up to match
+			currentLength = (JILLong) (match->pos - spos);
+			memcpy(dpos, spos, currentLength);
+			dpos += currentLength;
+			spos += currentLength;
+			// copy replace string to dest and skip search string in source
+			memcpy(dpos, pReplace, replaceLength);
+			dpos += replaceLength;
+			spos += searchLength;
+		}
+		// copy source to end of string
+		currentLength = (JILLong) ((_this->string + _this->length) - spos);
+		memcpy(dpos, spos, currentLength);
+		// step 3: free resources
+		for( match = firstMatch; match != NULL; match = lastMatch )
+		{
+			lastMatch = match->next;
+			ps->vmFree(ps, match);
 		}
 	}
 	else
 	{
-		JILStringReAlloc(result, searchLength, JILFalse);
-		memcpy(result->string, _this->string, searchLength);
+		JILStringReAlloc(result, _this->length, JILFalse);
+		memcpy(result->string, _this->string, _this->length);
 	}
 	if( result->length )
 		result->string[result->length] = 0;
