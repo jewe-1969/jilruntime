@@ -39,7 +39,7 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.3"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.4"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION

@@ -66,6 +66,7 @@ const JILChar* kCSSTemplate =
 
 static const JILChar* kIdentifierSpan = "0123456789:@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
 static const JILChar* kUrlSpan = "0123456789.-_@?=:;/+%#$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+static const JILChar* kIncludeSpan = "\r\n<";
 
 //------------------------------------------------------------------------------
 // Error handling macros
@@ -98,11 +99,13 @@ static void ToDict(JILTable* pDict, JCLString* pHash, JCLString* pValue);
 static JCLString* FromDict(JILTable* pDict, JCLString* pHash);
 static void FunctionsToDict(JILTable* pDict, JCLClass* pClass, JCLString* pFileName, FnFilter pFn, int* pAnchor);
 static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* context);
+static void AutoInsertVariables(JILTable* pDict, JCLString* workstr);
 static void ScanTag(JILTable* pDict, JCLString* pTag);
 static void SplitTag(JCLString* pTag, JCLString* pPart1, JCLString* pPart2);
 static void WriteTypeTable(JCLState* _this, FILE* pFile, ClFilter pFn, const JILChar* pText, JILTable* pDict, JILLong startClass, JILLong endClass);
 static void GetFileName(JCLString* result, const JCLClass* pClass);
 static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFile, const JILChar* pText, int* pAnchor, JILTable* pDict);
+static void LoadTextInclude(JCLString* fileNameAndResult, JCLString* text);
 
 //------------------------------------------------------------------------------
 // filter functions
@@ -717,6 +720,7 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 		if( len )
 		{
 			JCLString* match = NULL;
+			// skip @define directive
 			if( strcmp(JCLGetString(tempstr), "@define") == 0 )
 			{
 				JILLong pos = JCLGetLocator(oldstr);
@@ -733,6 +737,25 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 					}
 				}
 				JCLSetLocator(oldstr, pos);
+			}
+			else if( strcmp(JCLGetString(tempstr), "@include") == 0)
+			{
+				JCLString* text;
+				JCLSpanIncluding(oldstr, " \t", tempstr2);
+				len = JCLSpanExcluding(oldstr, kIncludeSpan, tempstr2);
+				if( len == 0 )
+					continue;
+				// expand include argument
+				AutoInsertVariables(pDict, tempstr2);
+				// load text
+				text = NEW(JCLString);
+				LoadTextInclude(tempstr2, text);
+				// expand include text
+				AutoLinkKeywords(pDict, text, context);
+				// add to workstr
+				JCLAppend(workstr, JCLGetString(text));
+				DELETE(text);
+				continue;
 			}
 			if( context )
 			{
@@ -771,26 +794,52 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 		}
 		else
 		{
-			if( JCLBeginsWith(oldstr, "{") )
-			{
-				JILLong pos = JCLGetLocator(oldstr);
-				len = JCLSpanBetween(oldstr, '{', '}', tempstr);
-				if( len > 0 )
-				{
-					JCLString* match;
-					JCLFormat(tempstr2, "{%s}", JCLGetString(tempstr));
-					match = FromDict(pDict, tempstr2);
-					if( match )
-					{
-						JCLAppend(workstr, JCLGetString(match));
-						continue;
-					}
-				}
-				JCLSetLocator(oldstr, pos);
-			}
 			JCLSpanExcluding(oldstr, kIdentifierSpan, tempstr);
 			JCLAppend(workstr, JCLGetString(tempstr));
 		}
+	}
+	DELETE(oldstr);
+	DELETE(tempstr);
+	DELETE(tempstr2);
+
+	AutoInsertVariables(pDict, workstr);
+}
+
+//------------------------------------------------------------------------------
+// AutoInsertVariables
+//------------------------------------------------------------------------------
+
+static void AutoInsertVariables(JILTable* pDict, JCLString* workstr)
+{
+	JILLong len;
+	JCLString* oldstr = NEW(JCLString);
+	JCLString* tempstr = NEW(JCLString);
+	JCLString* tempstr2 = NEW(JCLString);
+	oldstr->Copy(oldstr, workstr);
+	JCLClear(workstr);
+	JCLSetLocator(oldstr, 0);
+
+	while( JCLGetLocator(oldstr) < JCLGetLength(oldstr) )
+	{
+		if( JCLBeginsWith(oldstr, "{") )
+		{
+			JILLong pos = JCLGetLocator(oldstr);
+			len = JCLSpanBetween(oldstr, '{', '}', tempstr);
+			if( len > 0 )
+			{
+				JCLString* match;
+				JCLFormat(tempstr2, "{%s}", JCLGetString(tempstr));
+				match = FromDict(pDict, tempstr2);
+				if( match )
+				{
+					JCLAppend(workstr, JCLGetString(match));
+					continue;
+				}
+			}
+			JCLSetLocator(oldstr, pos);
+		}
+		JCLSpanExcluding(oldstr, "{", tempstr);
+		JCLAppend(workstr, JCLGetString(tempstr));
 	}
 
 	DELETE(oldstr);
@@ -1077,6 +1126,29 @@ exit:
 	DELETE( pToken );
 	DELETE( pToken2 );
 	DELETE( declStruct.pString );
+}
+
+//------------------------------------------------------------------------------
+// LoadTextInclude
+//------------------------------------------------------------------------------
+
+static void LoadTextInclude(JCLString* fileNameAndResult, JCLString* text)
+{
+	FILE* file;
+	size_t length;
+
+	JCLReplace(fileNameAndResult, "/", JIL_PATHSEPARATORSTR);
+	JCLClear(text);
+	file = fopen(JCLGetString(fileNameAndResult), "rb");
+	if( file != NULL )
+	{
+		fseek(file, 0, SEEK_END);
+		length = ftell(file);
+		fseek(file, 0, SEEK_SET);
+		JCLFill(text, ' ', length);
+		length = fread(text->m_String, length, 1, file);
+		fclose(file);
+	}
 }
 
 #else	// JIL_USE_HTML_CODEGEN
