@@ -105,7 +105,8 @@ static void SplitTag(JCLString* pTag, JCLString* pPart1, JCLString* pPart2);
 static void WriteTypeTable(JCLState* _this, FILE* pFile, ClFilter pFn, const JILChar* pText, JILTable* pDict, JILLong startClass, JILLong endClass);
 static void GetFileName(JCLString* result, const JCLClass* pClass);
 static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFile, const JILChar* pText, int* pAnchor, JILTable* pDict);
-static void LoadTextInclude(JCLString* fileNameAndResult, JCLString* text);
+static void LoadTextInclude(JCLString* fileName, JCLString* text);
+static void WrapIntoTag(JCLString* string, const JILChar* pTag);
 
 //------------------------------------------------------------------------------
 // filter functions
@@ -161,7 +162,7 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	GetFamilyAndTypeName(_this, pClass, familyName, typeName, kClearFirst|kFullDecl);
 
 	// header, title, etc
-	fprintf(pFile, "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
+	fprintf(pFile, "<!DOCTYPE html>\n");
 	fprintf(pFile, "<html>\n<head>\n<title>JewelScript %s %s Documentation</title>\n", JCLGetString(familyName), JCLGetString(typeName));
 	fprintf(pFile, "<style type=\"text/css\">\n<!--\n");
 	fprintf(pFile, kCSSTemplate);
@@ -171,11 +172,14 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	fprintf(pFile, "<h1>%s %s</h1>\n", JCLGetString(familyName), JCLGetString(typeName));
 	// write class documentation
 	workstr->Copy(workstr, pClass->mipTag);
-	AutoLinkKeywords(pDict, workstr, pClass->mipName);
 	SplitTag(workstr, tagstr1, tagstr2);
-	fprintf(pFile, "<p>%s</p>\n", JCLGetString(tagstr1));
+	AutoLinkKeywords(pDict, tagstr1, pClass->mipName);
+	AutoLinkKeywords(pDict, tagstr2, pClass->mipName);
+	WrapIntoTag(tagstr1, "p");
+	WrapIntoTag(tagstr2, "p");
+	fprintf(pFile, "%s\n", JCLGetString(tagstr1));
 	if( JCLGetLength(tagstr2) )
-		fprintf(pFile, "<p>%s</p>\n", JCLGetString(tagstr2));
+		fprintf(pFile, "%s\n", JCLGetString(tagstr2));
 	// inheritance
 	if( pClass->miFamily == tf_class && (pClass->miBaseType || pClass->miHybridBase) )
 	{
@@ -305,7 +309,7 @@ JILError JCLCreateClassIndex(JCLState* _this, JILTable* pDict, const JILChar* pP
 	// header, title, etc
 	JCLSetString(workstr, "{application}");
 	AutoLinkKeywords(pDict, workstr, NULL);
-	fprintf(pFile, "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
+	fprintf(pFile, "<!DOCTYPE html>\n");
 	fprintf(pFile, "<html>\n<head>\n<title>%s Class Documentation</title>\n", JCLGetString(workstr));
 	fprintf(pFile, "<style type=\"text/css\">\n<!--\n");
 	fprintf(pFile, kCSSTemplate);
@@ -343,41 +347,58 @@ exit:
 
 JILError JCLAnalyzeParameters(JCLState* _this, const JILChar* pParams, JILTable* pDict)
 {
+	JILError err = JCL_No_Error;
+	JCLString* pValue = NEW(JCLString);
+	JCLString* pName = NEW(JCLString);
+	JCLString* pHash = NEW(JCLString);
+	JCLString* pOptions = NEW(JCLString);
+
 	if( pParams != NULL && strlen(pParams) > 0 )
 	{
-		JCLString* pValue;
-		JCLString* pName = NEW(JCLString);
-		JCLString* pHash = NEW(JCLString);
-		JCLString* pOptions = NEW(JCLString);
 		JCLSetString(pOptions, pParams);
 		while( !JCLAtEnd(pOptions) )
 		{
 			JCLSpanExcluding(pOptions, "=", pName);
 			JCLTrim(pName);
-			if( JCLAtEnd(pOptions) || !JCLGetLength(pName) || !JCLContainsOnly(pName, kIdentifierSpan) )
-				return JCL_WARN_Invalid_Option_Value;
-			JCLFormat(pHash, "{%s}", JCLGetString(pName));
-			JCLSeekForward(pOptions, 1);
-			pValue = NEW(JCLString);
-			JCLSpanExcluding(pOptions, ",;", pValue);
-			JCLTrim(pValue);
-			if( strcmp(JCLGetString(pName), "@ignore") == 0 )
+			if( JCLAtEnd(pOptions) )
 			{
-				JCLClass* pClass;
-				if( FindClass(_this, pValue, &pClass) )
-					JCLSetString(pClass->mipTag, "@ignore");
+				err = JCL_ERR_Native_Code_Generator;
+				goto exit;
+			}
+			if( !JCLGetLength(pName) || !JCLContainsOnly(pName, kIdentifierSpan) )
+			{
+				EmitWarning(_this, JCL_WARN_Invalid_Docs_Parameter, 1, pName);
+				JCLSpanExcluding(pOptions, ",;", pValue);
 			}
 			else
 			{
-				JILTable_SetItem(pDict, JCLGetString(pHash), pValue);
+				JCLFormat(pHash, "{%s}", JCLGetString(pName));
+				JCLSeekForward(pOptions, 1);
+				JCLSpanExcluding(pOptions, ",;", pValue);
+				JCLTrim(pValue);
+				if( strcmp(JCLGetString(pName), "@ignore") == 0 )
+				{
+					JCLClass* pClass;
+					if( FindClass(_this, pValue, &pClass) )
+						JCLSetString(pClass->mipTag, "@ignore");
+				}
+				else
+				{
+					JCLString* newValue = NEW(JCLString); // not a leak! must put new instance into dictionary!
+					newValue->Copy(newValue, pValue);
+					JILTable_SetItem(pDict, JCLGetString(pHash), newValue);
+				}
 			}
 			JCLSeekForward(pOptions, 1);
 		}
-		DELETE(pName);
-		DELETE(pHash);
-		DELETE(pOptions);
 	}
-	return JCL_No_Error;
+
+exit:
+	DELETE(pName);
+	DELETE(pHash);
+	DELETE(pOptions);
+	DELETE(pValue);
+	return err;
 }
 
 //------------------------------------------------------------------------------
@@ -505,10 +526,12 @@ static void DescribeFunction(JCLState* _this, JCLClass* pClass, FILE* pFile, JCL
 	SplitTag(pFunc->mipTag, tagstr1, tagstr2);
 	AutoLinkKeywords(pDict, tagstr1, pClass->mipName);
 	AutoLinkKeywords(pDict, tagstr2, pClass->mipName);
-	fprintf(pFile, "<tr id='dark'><td><code>%s</code></td></tr><tr id='light'><td><p>%s</p>", JCLGetString(workstr), JCLGetString(tagstr1));
+	WrapIntoTag(tagstr1, "p");
+	WrapIntoTag(tagstr2, "p");
+	fprintf(pFile, "<tr id='dark'><td><code>%s</code></td></tr><tr id='light'><td>%s", JCLGetString(workstr), JCLGetString(tagstr1));
 	if( JCLGetLength(tagstr2) )
 	{
-		fprintf(pFile, "<p>%s</p>", JCLGetString(tagstr2));
+		fprintf(pFile, "%s", JCLGetString(tagstr2));
 	}
 	fprintf(pFile, "</td></tr>\n");
 	fprintf(pFile, "</tbody>\n</table>\n");
@@ -1132,14 +1155,14 @@ exit:
 // LoadTextInclude
 //------------------------------------------------------------------------------
 
-static void LoadTextInclude(JCLString* fileNameAndResult, JCLString* text)
+static void LoadTextInclude(JCLString* fileName, JCLString* text)
 {
 	FILE* file;
 	size_t length;
 
-	JCLReplace(fileNameAndResult, "/", JIL_PATHSEPARATORSTR);
+	JCLReplace(fileName, "/", JIL_PATHSEPARATORSTR);
 	JCLClear(text);
-	file = fopen(JCLGetString(fileNameAndResult), "rb");
+	file = fopen(JCLGetString(fileName), "rb");
 	if( file != NULL )
 	{
 		fseek(file, 0, SEEK_END);
@@ -1149,6 +1172,24 @@ static void LoadTextInclude(JCLString* fileNameAndResult, JCLString* text)
 		length = fread(text->m_String, length, 1, file);
 		fclose(file);
 	}
+}
+
+//------------------------------------------------------------------------------
+// WrapIntoTag
+//------------------------------------------------------------------------------
+// Wraps the given text into a tag, but only if the text doesn't contain that
+// tag already. Will only work for simple tags without attributes.
+
+static void WrapIntoTag(JCLString* string, const JILChar* pTag)
+{
+	JCLString* tag = NEW(JCLString);
+	JCLFormat(tag, "<%s>", pTag);
+	if( JCLFindString(string, JCLGetString(tag), 0) < 0 )
+	{
+		tag->Copy(tag, string);
+		JCLFormat(string, "<%s>%s</%s>", pTag, JCLGetString(tag), pTag);
+	}
+	DELETE(tag);
 }
 
 #else	// JIL_USE_HTML_CODEGEN
