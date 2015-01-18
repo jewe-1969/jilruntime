@@ -151,6 +151,7 @@ const JCLErrorInfo JCLErrorStrings[JCL_Num_Compiler_Codes] =
 	1,	JCL_WARN_Interface_In_Inherit,		"Inheritance from '{0}' may be unsafe; base has dependency to interface '{1}'",
 	1,	JCL_WARN_Unsafe_This_Operation,		"'{0}' - Possibly unsafe operation on 'this' reference in inherited method",
 	3,	JCL_WARN_Func_Inherited_As,			"Inheriting '{0}' as '{1}'",
+	3,	JCL_WARN_Invalid_Docs_Parameter,	"Ignoring invalid documentation generator parameter '{0}'",
 
 	// leave this at the end of the table
 	0,	JCL_Unknown_Error_Code,				"UNKNOWN COMPILER ERROR CODE"
