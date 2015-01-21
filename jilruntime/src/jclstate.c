@@ -35,6 +35,11 @@
 --------------------------------------------------------------------------------
 COMPILER TODO:
 --------------------------------------------------------------------------------
+    TODO:
+	- accessor method always creates static calls, should take virtual into account
+	- auto-conversion always creates static calls, should take virtual into account
+	- there may be more parts of compiler and linker always creating static calls
+
 	BUGS:
 	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
 
@@ -49,7 +54,6 @@ COMPILER TODO:
 		by script. self-contained memory-block, no pointers or references allowed, even when nesting structs. Limited to int, float, string,
 		other structs and static arrays of those types.)
 	* Generic classes ( class<T> )
-	* Inheritance from multiple interfaces
 	* try / catch
 */
 
