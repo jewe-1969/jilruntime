@@ -371,7 +371,7 @@ JILLong JILListHandle(JILState* pState, JILHandle* pHandle, JILChar* pString, JI
 			JILSnprintf( pString, maxString, "%s %g", JILGetHandleTypeName(pState, type), JILGetFloatHandle(pHandle)->f );
 			break;
 		case type_string:
-			JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 30 );
+			JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 32 );
 			JILSnprintf( pString, maxString, "%s \"%s\"", JILGetHandleTypeName(pState, type), tempstr );
 			break;
 		case type_array:
@@ -674,7 +674,6 @@ static JILLong JILListOperand(JILState* pState, JILLong address, JILLong adr, JI
 //------------------------------------------------------------------------------
 // JILTabTo
 //------------------------------------------------------------------------------
-//
 
 static void JILTabTo(JILChar* pString, JILLong maxDestLen, JILLong column)
 {
@@ -689,35 +688,21 @@ static void JILTabTo(JILChar* pString, JILLong maxDestLen, JILLong column)
 //------------------------------------------------------------------------------
 // JILCopyEscString
 //------------------------------------------------------------------------------
-//
 
 static void JILCopyEscString(JILChar* pDst, const JILChar* pSrc, JILLong maxLen)
 {
 	JILLong c;
-	JILLong i = 0;
 	JILLong l = 0;
-	for( ; ; i++ )
+	for(;;)
 	{
-		c = pSrc[i];
-		if( !c )
+		c = *pSrc++;
+		if( c == 0 )
 		{
 			break;
 		}
 		else if( c < 32 )
 		{
-			*pDst++ = '\\';
-			l++;
-			if( l == maxLen )
-				break;
-			*pDst++ = 'x';
-			l++;
-			if( l == maxLen )
-				break;
-			if( (l + 2) >= maxLen )
-				break;
-			JILSnprintf( pDst, 2, "%2.2x", c & 0xff );
-			pDst += 2;
-			l += 2;
+			continue;
 		}
 		else
 		{
@@ -733,7 +718,7 @@ static void JILCopyEscString(JILChar* pDst, const JILChar* pSrc, JILLong maxLen)
 //------------------------------------------------------------------------------
 // JILStrEquNoCase
 //------------------------------------------------------------------------------
-// Like StrEqu, but ignores the case of characters "A" to "Z".
+// Compares two strings, but ignores the case of characters "A" to "Z".
 
 static int JILStrEquNoCase(const char* str1, const char* str2)
 {
