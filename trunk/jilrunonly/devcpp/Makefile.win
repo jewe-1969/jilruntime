@@ -1,0 +1,178 @@
+# Project: jilrunonly
+# Makefile created by Dev-C++ 5.8.3
+
+CPP      = g++.exe
+CC       = gcc.exe
+WINDRES  = windres.exe
+OBJ      = ./build/main.o ./build/ntl_file.o ./build/ntl_math.o ./build/ntl_stdlib.o ./build/ntl_time.o ./build/ntl_trex.o ./build/trex.o ./build/bind_arraylist.o ./build/bind_runtime.o ./build/bind_runtime_exception.o ./build/bind_stringMatch.o ./build/jclarray.o ./build/jclclass.o ./build/jclclause.o ./build/jclerrors.o ./build/jclfile.o ./build/jclfunc.o ./build/jclgendoc.o ./build/jcllinker.o ./build/jclnative.o ./build/jcloption.o ./build/jclpair.o ./build/jclstate.o ./build/jclstring.o ./build/jclvar.o ./build/jilallocators.o ./build/jilarray.o ./build/jilarraylist.o ./build/jilchunk.o ./build/jilcodelist.o ./build/jilcompiler.o ./build/jilcstrsegment.o ./build/jildebug.o ./build/jilexception.o ./build/jilexecbytecode.o ./build/jilfixmem.o ./build/jilhandle.o ./build/jiliterator.o ./build/jillist.o ./build/jilmachine.o ./build/jilnativetype.o ./build/jiloptables.o ./build/jilprogramming.o ./build/jilruntime.o ./build/jilstdinc.o ./build/jilstring.o ./build/jilsymboltable.o ./build/jiltable.o ./build/jiltools.o ./build/jiltypeinfo.o ./build/jiltypelist.o
+LINKOBJ  = ./build/main.o ./build/ntl_file.o ./build/ntl_math.o ./build/ntl_stdlib.o ./build/ntl_time.o ./build/ntl_trex.o ./build/trex.o ./build/bind_arraylist.o ./build/bind_runtime.o ./build/bind_runtime_exception.o ./build/bind_stringMatch.o ./build/jclarray.o ./build/jclclass.o ./build/jclclause.o ./build/jclerrors.o ./build/jclfile.o ./build/jclfunc.o ./build/jclgendoc.o ./build/jcllinker.o ./build/jclnative.o ./build/jcloption.o ./build/jclpair.o ./build/jclstate.o ./build/jclstring.o ./build/jclvar.o ./build/jilallocators.o ./build/jilarray.o ./build/jilarraylist.o ./build/jilchunk.o ./build/jilcodelist.o ./build/jilcompiler.o ./build/jilcstrsegment.o ./build/jildebug.o ./build/jilexception.o ./build/jilexecbytecode.o ./build/jilfixmem.o ./build/jilhandle.o ./build/jiliterator.o ./build/jillist.o ./build/jilmachine.o ./build/jilnativetype.o ./build/jiloptables.o ./build/jilprogramming.o ./build/jilruntime.o ./build/jilstdinc.o ./build/jilstring.o ./build/jilsymboltable.o ./build/jiltable.o ./build/jiltools.o ./build/jiltypeinfo.o ./build/jiltypelist.o
+LIBS     = -L"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/lib" -L"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/x86_64-w64-mingw32/lib" -static-libgcc -m64
+INCS     = -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/include" -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"../..//jilruntime/include" -I"../..//jilruntime/src" -I"../..//jilrunonly/src" -I"../..//jilrunonly/contrib/native/ansi" -I"../..//jilrunonly/contrib/native/trex"
+CXXINCS  = -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/include" -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/x86_64-w64-mingw32/include" -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include" -I"C:/Users/Stefan/Downloads/Dev-Cpp/MinGW64/lib/gcc/x86_64-w64-mingw32/4.8.1/include/c++" -I"../..//jilruntime/include" -I"../..//jilruntime/src" -I"../..//jilrunonly/src" -I"../..//jilrunonly/contrib/native/ansi" -I"../..//jilrunonly/contrib/native/trex"
+BIN      = build/jilrunonly.exe
+CXXFLAGS = $(CXXINCS) -Ofast -m64 -std=c99
+CFLAGS   = $(INCS) -Ofast -m64 -std=c99
+RM       = rm.exe -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+./build/main.o: ../src/main.c
+	$(CC) -c ../src/main.c -o ./build/main.o $(CFLAGS)
+
+./build/ntl_file.o: ../contrib/native/ansi/ntl_file.c
+	$(CC) -c ../contrib/native/ansi/ntl_file.c -o ./build/ntl_file.o $(CFLAGS)
+
+./build/ntl_math.o: ../contrib/native/ansi/ntl_math.c
+	$(CC) -c ../contrib/native/ansi/ntl_math.c -o ./build/ntl_math.o $(CFLAGS)
+
+./build/ntl_stdlib.o: ../contrib/native/ansi/ntl_stdlib.c
+	$(CC) -c ../contrib/native/ansi/ntl_stdlib.c -o ./build/ntl_stdlib.o $(CFLAGS)
+
+./build/ntl_time.o: ../contrib/native/ansi/ntl_time.c
+	$(CC) -c ../contrib/native/ansi/ntl_time.c -o ./build/ntl_time.o $(CFLAGS)
+
+./build/ntl_trex.o: ../contrib/native/trex/ntl_trex.c
+	$(CC) -c ../contrib/native/trex/ntl_trex.c -o ./build/ntl_trex.o $(CFLAGS)
+
+./build/trex.o: ../contrib/native/trex/trex.c
+	$(CC) -c ../contrib/native/trex/trex.c -o ./build/trex.o $(CFLAGS)
+
+./build/bind_arraylist.o: ../../jilruntime/src/bind_arraylist.c
+	$(CC) -c ../../jilruntime/src/bind_arraylist.c -o ./build/bind_arraylist.o $(CFLAGS)
+
+./build/bind_runtime.o: ../../jilruntime/src/bind_runtime.c
+	$(CC) -c ../../jilruntime/src/bind_runtime.c -o ./build/bind_runtime.o $(CFLAGS)
+
+./build/bind_runtime_exception.o: ../../jilruntime/src/bind_runtime_exception.c
+	$(CC) -c ../../jilruntime/src/bind_runtime_exception.c -o ./build/bind_runtime_exception.o $(CFLAGS)
+
+./build/bind_stringMatch.o: ../../jilruntime/src/bind_stringMatch.c
+	$(CC) -c ../../jilruntime/src/bind_stringMatch.c -o ./build/bind_stringMatch.o $(CFLAGS)
+
+./build/jclarray.o: ../../jilruntime/src/jclarray.c
+	$(CC) -c ../../jilruntime/src/jclarray.c -o ./build/jclarray.o $(CFLAGS)
+
+./build/jclclass.o: ../../jilruntime/src/jclclass.c
+	$(CC) -c ../../jilruntime/src/jclclass.c -o ./build/jclclass.o $(CFLAGS)
+
+./build/jclclause.o: ../../jilruntime/src/jclclause.c
+	$(CC) -c ../../jilruntime/src/jclclause.c -o ./build/jclclause.o $(CFLAGS)
+
+./build/jclerrors.o: ../../jilruntime/src/jclerrors.c
+	$(CC) -c ../../jilruntime/src/jclerrors.c -o ./build/jclerrors.o $(CFLAGS)
+
+./build/jclfile.o: ../../jilruntime/src/jclfile.c
+	$(CC) -c ../../jilruntime/src/jclfile.c -o ./build/jclfile.o $(CFLAGS)
+
+./build/jclfunc.o: ../../jilruntime/src/jclfunc.c
+	$(CC) -c ../../jilruntime/src/jclfunc.c -o ./build/jclfunc.o $(CFLAGS)
+
+./build/jclgendoc.o: ../../jilruntime/src/jclgendoc.c
+	$(CC) -c ../../jilruntime/src/jclgendoc.c -o ./build/jclgendoc.o $(CFLAGS)
+
+./build/jcllinker.o: ../../jilruntime/src/jcllinker.c
+	$(CC) -c ../../jilruntime/src/jcllinker.c -o ./build/jcllinker.o $(CFLAGS)
+
+./build/jclnative.o: ../../jilruntime/src/jclnative.c
+	$(CC) -c ../../jilruntime/src/jclnative.c -o ./build/jclnative.o $(CFLAGS)
+
+./build/jcloption.o: ../../jilruntime/src/jcloption.c
+	$(CC) -c ../../jilruntime/src/jcloption.c -o ./build/jcloption.o $(CFLAGS)
+
+./build/jclpair.o: ../../jilruntime/src/jclpair.c
+	$(CC) -c ../../jilruntime/src/jclpair.c -o ./build/jclpair.o $(CFLAGS)
+
+./build/jclstate.o: ../../jilruntime/src/jclstate.c
+	$(CC) -c ../../jilruntime/src/jclstate.c -o ./build/jclstate.o $(CFLAGS)
+
+./build/jclstring.o: ../../jilruntime/src/jclstring.c
+	$(CC) -c ../../jilruntime/src/jclstring.c -o ./build/jclstring.o $(CFLAGS)
+
+./build/jclvar.o: ../../jilruntime/src/jclvar.c
+	$(CC) -c ../../jilruntime/src/jclvar.c -o ./build/jclvar.o $(CFLAGS)
+
+./build/jilallocators.o: ../../jilruntime/src/jilallocators.c
+	$(CC) -c ../../jilruntime/src/jilallocators.c -o ./build/jilallocators.o $(CFLAGS)
+
+./build/jilarray.o: ../../jilruntime/src/jilarray.c
+	$(CC) -c ../../jilruntime/src/jilarray.c -o ./build/jilarray.o $(CFLAGS)
+
+./build/jilarraylist.o: ../../jilruntime/src/jilarraylist.c
+	$(CC) -c ../../jilruntime/src/jilarraylist.c -o ./build/jilarraylist.o $(CFLAGS)
+
+./build/jilchunk.o: ../../jilruntime/src/jilchunk.c
+	$(CC) -c ../../jilruntime/src/jilchunk.c -o ./build/jilchunk.o $(CFLAGS)
+
+./build/jilcodelist.o: ../../jilruntime/src/jilcodelist.c
+	$(CC) -c ../../jilruntime/src/jilcodelist.c -o ./build/jilcodelist.o $(CFLAGS)
+
+./build/jilcompiler.o: ../../jilruntime/src/jilcompiler.c
+	$(CC) -c ../../jilruntime/src/jilcompiler.c -o ./build/jilcompiler.o $(CFLAGS)
+
+./build/jilcstrsegment.o: ../../jilruntime/src/jilcstrsegment.c
+	$(CC) -c ../../jilruntime/src/jilcstrsegment.c -o ./build/jilcstrsegment.o $(CFLAGS)
+
+./build/jildebug.o: ../../jilruntime/src/jildebug.c
+	$(CC) -c ../../jilruntime/src/jildebug.c -o ./build/jildebug.o $(CFLAGS)
+
+./build/jilexception.o: ../../jilruntime/src/jilexception.c
+	$(CC) -c ../../jilruntime/src/jilexception.c -o ./build/jilexception.o $(CFLAGS)
+
+./build/jilexecbytecode.o: ../../jilruntime/src/jilexecbytecode.c
+	$(CC) -c ../../jilruntime/src/jilexecbytecode.c -o ./build/jilexecbytecode.o $(CFLAGS)
+
+./build/jilfixmem.o: ../../jilruntime/src/jilfixmem.c
+	$(CC) -c ../../jilruntime/src/jilfixmem.c -o ./build/jilfixmem.o $(CFLAGS)
+
+./build/jilhandle.o: ../../jilruntime/src/jilhandle.c
+	$(CC) -c ../../jilruntime/src/jilhandle.c -o ./build/jilhandle.o $(CFLAGS)
+
+./build/jiliterator.o: ../../jilruntime/src/jiliterator.c
+	$(CC) -c ../../jilruntime/src/jiliterator.c -o ./build/jiliterator.o $(CFLAGS)
+
+./build/jillist.o: ../../jilruntime/src/jillist.c
+	$(CC) -c ../../jilruntime/src/jillist.c -o ./build/jillist.o $(CFLAGS)
+
+./build/jilmachine.o: ../../jilruntime/src/jilmachine.c
+	$(CC) -c ../../jilruntime/src/jilmachine.c -o ./build/jilmachine.o $(CFLAGS)
+
+./build/jilnativetype.o: ../../jilruntime/src/jilnativetype.c
+	$(CC) -c ../../jilruntime/src/jilnativetype.c -o ./build/jilnativetype.o $(CFLAGS)
+
+./build/jiloptables.o: ../../jilruntime/src/jiloptables.c
+	$(CC) -c ../../jilruntime/src/jiloptables.c -o ./build/jiloptables.o $(CFLAGS)
+
+./build/jilprogramming.o: ../../jilruntime/src/jilprogramming.c
+	$(CC) -c ../../jilruntime/src/jilprogramming.c -o ./build/jilprogramming.o $(CFLAGS)
+
+./build/jilruntime.o: ../../jilruntime/src/jilruntime.c
+	$(CC) -c ../../jilruntime/src/jilruntime.c -o ./build/jilruntime.o $(CFLAGS)
+
+./build/jilstdinc.o: ../../jilruntime/src/jilstdinc.c
+	$(CC) -c ../../jilruntime/src/jilstdinc.c -o ./build/jilstdinc.o $(CFLAGS)
+
+./build/jilstring.o: ../../jilruntime/src/jilstring.c
+	$(CC) -c ../../jilruntime/src/jilstring.c -o ./build/jilstring.o $(CFLAGS)
+
+./build/jilsymboltable.o: ../../jilruntime/src/jilsymboltable.c
+	$(CC) -c ../../jilruntime/src/jilsymboltable.c -o ./build/jilsymboltable.o $(CFLAGS)
+
+./build/jiltable.o: ../../jilruntime/src/jiltable.c
+	$(CC) -c ../../jilruntime/src/jiltable.c -o ./build/jiltable.o $(CFLAGS)
+
+./build/jiltools.o: ../../jilruntime/src/jiltools.c
+	$(CC) -c ../../jilruntime/src/jiltools.c -o ./build/jiltools.o $(CFLAGS)
+
+./build/jiltypeinfo.o: ../../jilruntime/src/jiltypeinfo.c
+	$(CC) -c ../../jilruntime/src/jiltypeinfo.c -o ./build/jiltypeinfo.o $(CFLAGS)
+
+./build/jiltypelist.o: ../../jilruntime/src/jiltypelist.c
+	$(CC) -c ../../jilruntime/src/jiltypelist.c -o ./build/jiltypelist.o $(CFLAGS)

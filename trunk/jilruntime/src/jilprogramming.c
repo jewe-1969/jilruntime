@@ -30,6 +30,12 @@
 #include "jilallocators.h"
 
 //------------------------------------------------------------------------------
+// constants
+//------------------------------------------------------------------------------
+
+static const JILLong JRes_Magic = 0x4A526573;
+
+//------------------------------------------------------------------------------
 // JILCreateLong
 //------------------------------------------------------------------------------
 
@@ -445,7 +451,7 @@ JILError JILGetMemory(JILState* pState, JILLong address, JILLong* pData, JILLong
 
 void JILCreateRestorePoint(JILState* pS, JILRestorePoint* pRP)
 {
-	if( pRP->reMagic != 'JRes' )
+	if( pRP->reMagic != JRes_Magic )
 	{
 		JILTermVM( pS );
 		pRP->reUsedCodeSegSize = pS->vmpCodeSegment->usedSize;
@@ -453,7 +459,7 @@ void JILCreateRestorePoint(JILState* pS, JILRestorePoint* pRP)
 		pRP->reUsedCStrSegSize = pS->vmUsedCStrSegSize;
 		pRP->reUsedTypeSegSize = pS->vmUsedTypeInfoSegSize;
 		pRP->reUsedSymTabSize = JILGetNumSymbolTableEntries(pS);
-		pRP->reMagic = 'JRes';
+		pRP->reMagic = JRes_Magic;
 	}
 }
 
@@ -463,7 +469,7 @@ void JILCreateRestorePoint(JILState* pS, JILRestorePoint* pRP)
 
 void JILGotoRestorePoint(JILState* pS, JILRestorePoint* pRP)
 {
-	if( pRP->reMagic == 'JRes' )
+	if( pRP->reMagic == JRes_Magic )
 	{
 		JILTermVM( pS );
 		pS->vmpCodeSegment->usedSize = pRP->reUsedCodeSegSize;

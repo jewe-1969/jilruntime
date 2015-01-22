@@ -100,7 +100,7 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 	struct JCLArray* operator_new_JCLArray(JILUnknown*, JILLong, operator_new);\
 	static Array_##T* operator_new_Array_##T (JILUnknown* p)\
 	{\
-		return (Array_##T*) operator_new_JCLArray(p, sizeof(T), operator_new_##T);\
+		return (Array_##T*) operator_new_JCLArray(p, sizeof(T), (operator_new)operator_new_##T);\
 	}
 
 //------------------------------------------------------------------------------
