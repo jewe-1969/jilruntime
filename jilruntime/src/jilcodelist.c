@@ -314,7 +314,7 @@ JILLong JILListHandleByIndex(JILState* pState, JILLong hObj, JILChar* pString, J
 		case type_string:
 			JILSnprintf( pString, maxString, "%d", hObj );
 			if( isData )
-				JILCopyEscString( tempstr, JILCStrGetString(pState, (JILLong) JILGetStringHandle(pHandle)->str), 30 );
+				JILCopyEscString( tempstr, JILCStrGetString(pState, (JILLong) JILGetDataHandleLong(pHandle)), 30 );
 			else
 				JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 30 );
 			JILSnprintf( pComment, maxComment, "%s \"%s\"", JILGetHandleTypeName(pState, type), tempstr );
