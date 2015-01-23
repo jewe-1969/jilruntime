@@ -2,7 +2,7 @@
  *  gendocs.jc
  *
  *  Demonstrates how to use the integrated HTML documentation generator.
- *  To generate documentation, create a script documented script file like this one, or
+ *  To generate documentation, create a documented script file like this one, or
  *  import all the classes you want to have documented.
  *  Then run the debug build of the JILRunOnly tool with following parameters:
  *

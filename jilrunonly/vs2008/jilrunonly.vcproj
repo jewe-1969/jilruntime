@@ -48,10 +48,10 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="../../jilrunonly/contrib/native/trex;../../jilrunonly/contrib/native/ansi;../../jilruntime/src;../../jilruntime/include"
+				AdditionalIncludeDirectories="../../jilrunonly/contrib/native/ansi;../../jilruntime/src;../../jilruntime/include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				DisableLanguageExtensions="true"
 				PrecompiledHeaderFile=".\Release/jilrunonly.pch"
@@ -136,10 +136,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../../jilrunonly/contrib/native/trex;../../jilrunonly/contrib/native/ansi;../../jilruntime/src;../../jilruntime/include"
+				AdditionalIncludeDirectories="../../jilrunonly/contrib/native/ansi;../../jilruntime/src;../../jilruntime/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				DisableLanguageExtensions="true"
 				PrecompiledHeaderFile=".\Debug/jilrunonly.pch"
 				AssemblerListingLocation=".\Debug/"
@@ -408,18 +408,6 @@
 				</File>
 				<File
 					RelativePath="..\contrib\native\ansi\ntl_time.c"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="trex"
-				>
-				<File
-					RelativePath="..\contrib\native\trex\ntl_trex.c"
-					>
-				</File>
-				<File
-					RelativePath="..\contrib\native\trex\trex.c"
 					>
 				</File>
 			</Filter>

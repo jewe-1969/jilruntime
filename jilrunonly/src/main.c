@@ -57,7 +57,6 @@
 //      "../../jilruntime/include"
 //      "../../jilruntime/src"
 //		"../contrib/native/ansi"
-//		"../contrib/native/trex"
 //
 //------------------------------------------------------------------------------
 
@@ -83,14 +82,13 @@
 #include "ntl_stdlib.h"
 #include "ntl_math.h"
 #include "ntl_file.h"
-#include "ntl_trex.h"
 #include "ntl_time.h"
 
 //------------------------------------------------------------------------------
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.4.2.0"
+#define	VERSION		"0.4.2.1"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
@@ -315,9 +313,6 @@ int main(int nArgs, char* ppArgList[])
 	THROW( err, err, NULL )
 
 	err = JILRegisterNativeType( pMachine, FileProc );
-	THROW( err, err, NULL )
-
-	err = JILRegisterNativeType( pMachine, TrexProc );
 	THROW( err, err, NULL )
 
 	err = JILRegisterNativeType( pMachine, TimeProc );

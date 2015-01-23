@@ -21,10 +21,10 @@ function string main( const string[] args )
 {
     float f = 0.333;
 
-    if( args.length == 1 )
+    if( args.length == 2 )
         printf( "No value specified, using %g\n", f );
     else
-        f = (float) args[1];
+        f = (float) args[2];
 
     test( "abs", f, abs(f) );
     test( "acos", f, acos(f) );
