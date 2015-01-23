@@ -2,7 +2,7 @@
  * Test exceptions
  */
 
-class WrongTypeException : exception
+class WrongTypeException implements exception
 {
     string message;
 

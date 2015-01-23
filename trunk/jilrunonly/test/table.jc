@@ -13,6 +13,7 @@ using stdlib;
 
 function string main(const string[] args)
 {
+    // create a hash table from an array literal
     table tab = {
         "key1",  123.4,
         "key2",  236.77,
@@ -21,39 +22,38 @@ function string main(const string[] args)
         "olleh", 27.0
     };
 
-    printf( "key1 = %f\n", tab.get("key1") );
-    printf( "key2 = %f\n", tab.get("key2") );
-    printf( "hello = %f\n", tab.get("hello") );
-    printf( "elloh = %f\n", tab.get("elloh") );
-    printf( "olleh = %f\n", tab.get("olleh") );
+    // print table
+    printTable(tab);
 
+    // add ten new values and use their index as key
     array arr = { "a", "b", "c", "d", "e", 10, "f", 5.5, 9, 10 };
     for( int i = 0; i < 10; i++ )
         tab.set( i, arr[i] );
 
+    // print table
     printTable(tab);
 
+    // copy table and remove keys "0" - "9"
     table newTab = new table(tab);
-
     for( int i = 0; i < 10; i++ )
         tab.set( i, null );
 
+    // print tables
     printTable(tab);
     printTable(newTab);
-    
-    tab = null;
-    newTab = null;
 
-    return "";
+    return null;
 }
 
 function printTable(table t)
 {
-    print( "table = " );
-    for( int i = 0; i < 10; i++ )
+    print( "table = {\n" );
+    // convert table to list
+    list l = t.toList();
+    // iterate through list and print keys and values
+    for( iterator i = l; i.valid; i.next() )
     {
-        printv( t.get(i) );
-        print( ", " );
+        print({"  ", i.key, " = ", i.value, "\n"});
     }
-    print( "\n" );
+    print( "}\n" );
 }

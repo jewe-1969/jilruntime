@@ -12,9 +12,10 @@ using stdlib;   // get rid of stdlib namespace
 function string main(const string[] args)
 {
     file myFile;
+    string filename = args[1];
 
-    printf( "* Setting file specifier to: %s\n", args[0] );
-    myFile.fileSpec = args[0];
+    printf( "* Setting file specifier to: %s\n", filename );
+    myFile.fileSpec = filename;
 
     printf( "myFile.path returns: %s\n", myFile.path );
     printf( "myFile.name returns: %s\n", myFile.name );
@@ -58,7 +59,7 @@ function string main(const string[] args)
     print("* Trying to open newFile and write a text line\n");
     if( !newFile.open() )
     {
-        if( newFile.writeTextLine("This is what we read from "+args[0]+".\n") )
+        if( newFile.writeTextLine("This is what we read from "+filename+".\n") )
         {
             print("newFile.writeTextLine() returned with an error.\n");
         }

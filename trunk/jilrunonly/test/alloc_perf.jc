@@ -1,7 +1,7 @@
 /*
  *  alloc_perf.jc
  *
- *  Performance test for heavy allocation / deallocation of objects
+ *  Performance test for heavy allocation and deallocation of objects
  */
 
 import runtime;
@@ -22,39 +22,39 @@ const int kMapSize = 100000;
 function string main(const string[] args)
 {
     time ticks;
-    int iterations = 0;
-    int key = 0;
-    array map = new array(kMapSize);
+    int iterations;
+    int key;
+    Object[] map = new array(kMapSize);
 
-    print("Performance test for heavy allocation / deallocation of objects\n");
+    print("Performance test for heavy allocation and deallocation of objects\n");
     printf("Testing %d times allocation of %d script objects, please wait...\n", {kMaxIterations, kMapSize});
     ticks.tickDiff();
     float ictr1 = instructionCounter();
-    for( iterations = 0; iterations < kMaxIterations; iterations++ )
+    for (iterations = 0; iterations < kMaxIterations; iterations++)
     {
-        for( key = 0; key < kMapSize; key++ )
+        for (key = 0; key < kMapSize; key++)
         {
-            map[key] = new CObject( "alloc_perf.jc: Performance test for allocation / deallocation." );
+            map[key] = new Object( "alloc_perf.jc: Performance test for allocation / deallocation." );
         }
     }
     float ictr2 = instructionCounter();
     float dur = ticks.tickDiff();
     float vmips = (ictr2 - ictr1) * (1000.0 / dur) / 1000000.0;
     printf("Time = %.2f seconds\n", dur / 1000.0);
-    printf("VM speed on this machine is approximately %.2f bogoMIPS\n", vmips);
+    printf("VM speed on this machine is approximately %.2f MVMIPS\n", vmips);
 
     return null;
 }
 
 /*
- *  class CObject
+ *  class Object
  */
 
-class CObject
+class Object
 {
-    method CObject(const string str)
+    method Object(const string str)
     {
-        m_String = str;
+        m_String = str; // ctor will copy 'str' since it is 'const'
     }
     string m_String;
 }

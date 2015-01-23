@@ -30,7 +30,7 @@ interface IHello
  *  It has a int value as data member.
  */
 
-class CHello : IHello
+class CHello implements IHello
 {
     method          CHello()            { m_Value = 0; }
     method          Set(int v)          { m_Value = v; }
@@ -47,7 +47,7 @@ class CHello : IHello
  *  It has a string as data member.
  */
 
-class CFoo : IHello
+class CFoo implements IHello
 {
     method          CFoo()              { m_String = ""; }
     method          Set(int v)          { m_String = v; }
