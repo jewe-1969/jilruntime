@@ -21,23 +21,7 @@
 #include "jiltypes.h"
 
 //------------------------------------------------------------------------------
-// Macro JIL_RUNTIME_CHECKS
-//------------------------------------------------------------------------------
-
-#ifdef _DEBUG
-	#define		JIL_RUNTIME_CHECKS			1	///< Set this macro to 1 if you want to enable runtime checks.
-#else
-	#define		JIL_RUNTIME_CHECKS			0	///< Set this macro to 1 if you want to enable runtime checks.
-#endif
-
-//------------------------------------------------------------------------------
-// Macro JIL_TRACE_RELEASE
-//------------------------------------------------------------------------------
-
-#define			JIL_TRACE_RELEASE			0	///< Set this macro to 1 if the trace exception should also be generated in release builds.
-
-//------------------------------------------------------------------------------
-// INSERT_DEBUG_CODE
+// JIL_INSERT_DEBUG_CODE
 //------------------------------------------------------------------------------
 /// @def JIL_INSERT_DEBUG_CODE
 /// Macro that inserts code that does additional safety checks and should not be
