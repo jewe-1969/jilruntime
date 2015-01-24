@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: JILPlatform.h                                    (c) 2005-2010 jewe.org
+// File: JILPlatform.h                                    (c) 2005-2015 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -11,11 +11,10 @@
 // Description:
 // ------------
 /// @file jilplatform.h
-/// Platform specific definitions for the JILRuntime library.
+/// Platform specific macros and options for the JILRuntime library.
 ///
-/// This file defines some platform specific macros that the JILRuntime library
-/// and some native types are using. This file is automatically included when
-/// including file "jilapi.h".
+/// This file defines some platform specific macros and build options for the
+/// JILRuntime libarary. It is automatically included when including "jilapi.h".
 //------------------------------------------------------------------------------
 
 #ifndef JILPLATFORM_H
@@ -24,9 +23,10 @@
 //------------------------------------------------------------------------------
 // DEFINESCRIPT
 //------------------------------------------------------------------------------
+/// @def DEFINESCRIPT
 /// This macro is useful to define script code in your C/C++ code. Just pass
 /// your script code, without quotes, as an argument to this macro. The macro
-/// will wrap the code in quotes.
+/// will stringify the code.
 
 #ifndef DEFINESCRIPT
 #define DEFINESCRIPT(CODE)		#CODE
@@ -35,15 +35,16 @@
 //------------------------------------------------------------------------------
 // TAG
 //------------------------------------------------------------------------------
+/// @def TAG
 /// This macro is useful for adding documentation tags to script function declarations.
 /// Starting with version 1.1, the compiler allows classes and functions to have
-/// documentation tags which can be used by an integrated HTML documentation
+/// documentation tags, which can be used by an integrated HTML documentation
 /// generator. If you are concerned about the size of your native type library and
 /// don't want to include the documentation tags in release builds, you can use
-/// the macro below to define a tag that is only there in debug builds.
-/// This macro does not work inside the above DEFINESCRIPT macro. You need to declare
+/// the macro below to define a tag that only exists in debug builds.
+/// This macro does NOT work inside the above DEFINESCRIPT macro. You need to declare
 /// your functions in quotes and append the TAG macro, like this:
-/// const JILChar* kClassColor = "method Color();" TAG("Constructs a default color.");
+/// <pre>const JILChar* kClassColor = "method Color();" TAG("Constructs a default color.");</pre>
 
 #ifndef TAG
 #ifdef _DEBUG
@@ -56,9 +57,11 @@
 //------------------------------------------------------------------------------
 // JIL_USE_LITTLE_ENDIAN
 //------------------------------------------------------------------------------
+/// @def JIL_USE_LITTLE_ENDIAN
 /// If you are compiling this project for a processor architecture that uses
 /// little endianess (IA-32, AMD-64) you must set this macro to 1.
 /// If target architecture uses big endian (PowerPC, SPARC, M68000), set it to 0.
+/// At present, this macro is more or less unused.
 
 #ifndef JIL_USE_LITTLE_ENDIAN
 #define JIL_USE_LITTLE_ENDIAN	1
@@ -67,6 +70,7 @@
 //------------------------------------------------------------------------------
 // JIL_USE_LOCAL_FILESYS
 //------------------------------------------------------------------------------
+/// @def JIL_USE_LOCAL_FILESYS
 /// Enable or disable access to the local file system.
 /// The import statement by default allows to directly load and compile
 /// additional script files from the local filesystem, if no ANSI file support
@@ -82,6 +86,7 @@
 //------------------------------------------------------------------------------
 // JIL_USE_BINDING_CODEGEN
 //------------------------------------------------------------------------------
+/// @def JIL_USE_BINDING_CODEGEN
 /// Enable or disable the integrated C++ binding code generator. You should only
 /// set this macro to true for tools where you need the code generator
 /// functionality to reduce the size of the library and avoid that files can
@@ -98,6 +103,7 @@
 //------------------------------------------------------------------------------
 // JIL_USE_HTML_CODEGEN
 //------------------------------------------------------------------------------
+/// @def JIL_USE_HTML_CODEGEN
 /// Enable or disable the integrated HTML documentation generator. You should only
 /// set this macro to true for tools where you need the code generator
 /// functionality to reduce the size of the library and avoid that files can
@@ -114,11 +120,12 @@
 //------------------------------------------------------------------------------
 // JIL_NO_FPRINTF
 //------------------------------------------------------------------------------
+/// @def JIL_NO_FPRINTF
 /// Enable or disable usage of the ANSI FILE handle and fprintf().
-/// The code-listing functionality accepts an ANSI FILE handle and uses the
-/// fprintf() function to list code, if your platform doesn't support the
-/// FILE handle and/or fprintf(), you can disable code-listing by setting this
-/// to 1.
+/// Despite the name ALL functionality that deals with ANSI FILE handles will
+/// be disabled by this macro.
+/// Enabling this may be useful for security reasons, or if your platform
+/// or C-runtime doesn't fully support file I/O.
 
 #ifndef JIL_NO_FPRINTF
 #define JIL_NO_FPRINTF			0
@@ -127,6 +134,7 @@
 //------------------------------------------------------------------------------
 // JIL_USE_INSTRUCTION_COUNTER
 //------------------------------------------------------------------------------
+/// @def JIL_USE_INSTRUCTION_COUNTER
 /// Enable or disable the VM's instruction counter. The instruction counter is
 /// simple a 32-bit integer that gets increased for every VM instruction that
 /// is executed. It is intended for performance measurement / benchmarking only.
@@ -136,6 +144,39 @@
 
 #ifndef JIL_USE_INSTRUCTION_COUNTER
 #define JIL_USE_INSTRUCTION_COUNTER		1
+#endif
+
+//------------------------------------------------------------------------------
+// JIL_RUNTIME_CHECKS
+//------------------------------------------------------------------------------
+/// @def JIL_RUNTIME_CHECKS
+/// Enable or disable extended runtime checks while executing byte-code. If this
+/// macro is undefined, it will be enabled in DEBUG builds of the library, but
+/// disabled in RELEASE builds for maximum performance.
+/// Disabling this option greatly affects the VM's ability to detect runtime errors
+/// and may lead to unexpected behavior or crashes.
+/// Enabling this option greatly affects the VM's performance.
+
+#ifndef JIL_RUNTIME_CHECKS
+#ifdef _DEBUG
+#define JIL_RUNTIME_CHECKS		1
+#else
+#define JIL_RUNTIME_CHECKS		0
+#endif
+#endif
+
+//------------------------------------------------------------------------------
+// JIL_TRACE_RELEASE
+//------------------------------------------------------------------------------
+/// @def JIL_TRACE_RELEASE
+/// Enable the TRACE exception in release builds of the virtual machine. This is
+/// disabled by default for performance reasons. If this is enabled, the release
+/// build of the virtual machine will invoke a TRACE exception before every
+/// VM instruction that is about to be executed.
+/// If you don't have very good reasons to enable this, you should leave it off.
+
+#ifndef JIL_TRACE_RELEASE
+#define JIL_TRACE_RELEASE		0
 #endif
 
 //------------------------------------------------------------------------------
