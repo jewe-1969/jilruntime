@@ -411,9 +411,9 @@ JILArray* JILArray_New(JILState* pState)
 //------------------------------------------------------------------------------
 // JILArray_NewNoInit
 //------------------------------------------------------------------------------
-/// Allocate an array of a specified size and NOT with null handles!
-/// ATTENTION: The array will NOT be initialized! The caller MUST initialize all
-/// elements with valid pointers to handles, otherwise this will crash badly.
+/// Allocate an array of a specified size and DO NOT fill it with null-handles.
+/// <p><b>ATTENTION: The array will not be initialized! The caller must initialize all
+/// elements with valid pointers to handles, otherwise this will crash badly.</b></p>
 /// This function is intended to provide C developers with the means to
 /// efficiently pre-construct an array of a given size and fill it with handles.
 /// Doing this is considerably more efficient than letting the array dynamically
@@ -587,6 +587,7 @@ void JILArray_ArrCopy(JILArray* _this, JILHandle* pHandle)
 //------------------------------------------------------------------------------
 /// Move a reference to an item into a location of this array. Any previous item
 /// in the destination location will be released.
+/// If the index is out of range, the array will try to resize accordingly.
 
 void JILArray_MoveTo(JILArray* _this, JILLong index, JILHandle* pHandle)
 {
@@ -608,6 +609,7 @@ void JILArray_MoveTo(JILArray* _this, JILLong index, JILHandle* pHandle)
 //------------------------------------------------------------------------------
 /// Copy an item into a location of this array. Any previous item in the
 /// destination will be released.
+/// If the index is out of range, the array will try to resize accordingly.
 
 void JILArray_CopyTo(JILArray* _this, JILLong index, JILHandle* pHandle)
 {
@@ -629,6 +631,7 @@ void JILArray_CopyTo(JILArray* _this, JILLong index, JILHandle* pHandle)
 //------------------------------------------------------------------------------
 /// Get a handle from a location of this array; the caller must JILAddRef the
 /// returned handle!
+/// If the index is out of range, the array will return the null-handle.
 
 JILHandle* JILArray_GetFrom(JILArray* _this, JILLong index)
 {
@@ -642,6 +645,7 @@ JILHandle* JILArray_GetFrom(JILArray* _this, JILLong index)
 // JILArray_GetEA
 //------------------------------------------------------------------------------
 /// Get the effective handle address of a location in this array.
+/// If the index is out of range, the array will try to resize accordingly.
 
 JILHandle** JILArray_GetEA(JILArray* _this, JILLong index)
 {
@@ -659,6 +663,9 @@ JILHandle** JILArray_GetEA(JILArray* _this, JILLong index)
 /// This creates a deep copy of the source array. The difference to JILArray_Copy
 /// is that this function will create copies of all elements in this array,
 /// regardless of their type.
+/// ATTENTION: If the array contains complex types, such as hash-tables or
+/// script objects, especially ones that have copy-constructors, this will be a
+/// highly-recursive, time consuming operation.
 
 JILArray* JILArray_DeepCopy(const JILArray* pSource)
 {
@@ -680,6 +687,7 @@ JILArray* JILArray_DeepCopy(const JILArray* pSource)
 //------------------------------------------------------------------------------
 /// Insert the source array's elements at the given position into this array and
 /// return the result as a new array. This array will not be modified.
+/// If the index is out of range, it will be clipped.
 
 JILArray* JILArray_Insert(JILArray* _this, JILArray* source, JILLong index)
 {
@@ -718,6 +726,7 @@ JILArray* JILArray_Insert(JILArray* _this, JILArray* source, JILLong index)
 /// Insert the source element at the given position into this array and
 /// return the result as a new array. This array will not be modified.
 /// The source element will be inserted by reference, it will not be copied.
+/// If the index is out of range, it will be clipped.
 
 JILArray* JILArray_InsertItem(JILArray* _this, JILHandle* source, JILLong index)
 {
@@ -748,13 +757,12 @@ JILArray* JILArray_InsertItem(JILArray* _this, JILHandle* source, JILLong index)
 //------------------------------------------------------------------------------
 /// Remove 'length' elements from position 'index' of this array and return
 /// the result as a new array. This array will not be modified.
+/// If the index is out of range or the range is 0, returns a copy of this array.
 
 JILArray* JILArray_Remove(JILArray* _this, JILLong index, JILLong length)
 {
 	JILArray* result;
-	if( index < 0 )
-		index = 0;
-	if( (index < _this->size) && (length > 0) )
+	if( (index >= 0) && (index < _this->size) && (length > 0) )
 	{
 		JILLong i;
 		if( (index + length) > _this->size )
@@ -782,13 +790,12 @@ JILArray* JILArray_Remove(JILArray* _this, JILLong index, JILLong length)
 //------------------------------------------------------------------------------
 /// Extracts elements from this array and returns them in a new array. This
 /// array will not be modified by this operation.
+/// If the index is out of range or the range is 0, returns an empty array.
 
 JILArray* JILArray_SubArray(JILArray* _this, JILLong index, JILLong length)
 {
 	JILArray* result;
-	if( index < 0 )
-		index = 0;
-	if( (index < _this->size) && (length > 0) )
+	if( (index >= 0) && (index < _this->size) && (length > 0) )
 	{
 		JILLong i;
 		if( (index + length) > _this->size )
@@ -812,16 +819,13 @@ JILArray* JILArray_SubArray(JILArray* _this, JILLong index, JILLong length)
 // JILArray_Swap
 //------------------------------------------------------------------------------
 /// Exchange two elements in this array. Element 'index1' will be moved to
-/// 'index2' and element 'index2' will be moved to 'index1'. This function does
+/// 'index2' and element 'index2' will be moved to 'index1'. The function will
 /// modify this array.
+/// If any index is out of range or they are equal, the function does nothing.
 
 void JILArray_Swap(JILArray* _this, JILLong index1, JILLong index2)
 {
-	if( index1 < 0 )
-		index1 = 0;
-	if( index2 < 0 )
-		index2 = 0;
-	if( index1 < _this->size && index2 < _this->size && index1 != index2 )
+	if( (index1 >= 0) && (index2 >= 0) && (index1 < _this->size) && (index2 < _this->size) && (index1 != index2) )
 	{
 		JILHandle* ph = _this->ppHandles[index1];
 		_this->ppHandles[index1] = _this->ppHandles[index2];
@@ -1188,9 +1192,9 @@ void JILArrayHandleToString(JILState* ps, JILString* pOutStr, JILHandle* handle)
 //------------------------------------------------------------------------------
 // JILArrayPreAlloc
 //------------------------------------------------------------------------------
-/// Allocate a new array object and pre-allocate a buffer big enough to
-/// accommodate the given number of elements. Note that we do not take into
-/// account the array grain size here, for simplicity and performance reasons.
+// Allocate a new array object and pre-allocate a buffer big enough to
+// accommodate the given number of elements. Note that we do not take into
+// account the array grain size here, for simplicity and performance reasons.
 
 static JILArray* JILArrayPreAlloc(JILState* pState, JILLong length)
 {
@@ -1208,16 +1212,16 @@ static JILArray* JILArrayPreAlloc(JILState* pState, JILLong length)
 //------------------------------------------------------------------------------
 // JILArrayReAlloc
 //------------------------------------------------------------------------------
-/// Throw away old array and allocate a new one.<br>
-/// If keepData is TRUE:<br>
-///   The handles currently in the array will be taken into the new array, up to
-///   the specified size. If the new size is smaller than the old size, the
-///   exceeding handles will be released. If the new size is larger, the added
-///   handle pointers will be initialized with null handles.<br>
-/// If keepData is FALSE:<br>
-///   All handles currently in the array will be released. A new buffer will be
-///   allocated, but NOT initialized. The caller MUST initialize the buffer with
-///   new handle pointers immediately!<br>
+// Throw away old array and allocate a new one.<br>
+// If keepData is TRUE:<br>
+//   The handles currently in the array will be taken into the new array, up to
+//   the specified size. If the new size is smaller than the old size, the
+//   exceeding handles will be released. If the new size is larger, the added
+//   handle pointers will be initialized with null handles.<br>
+// If keepData is FALSE:<br>
+//   All handles currently in the array will be released. A new buffer will be
+//   allocated, but NOT initialized. The caller MUST initialize the buffer with
+//   new handle pointers immediately!<br>
 
 static void JILArrayReAlloc(JILArray* _this, JILLong newSize, JILLong keepData)
 {
@@ -1287,8 +1291,8 @@ static void JILArrayReAlloc(JILArray* _this, JILLong newSize, JILLong keepData)
 //------------------------------------------------------------------------------
 // JILArrayDeAlloc
 //------------------------------------------------------------------------------
-/// Deallocate all data contained in this array, but do not deallocate the array
-/// object itself. The result will be an array with zero elements.
+// Deallocate all data contained in this array, but do not deallocate the array
+// object itself. The result will be an array with zero elements.
 
 static void JILArrayDeAlloc(JILArray* _this)
 {

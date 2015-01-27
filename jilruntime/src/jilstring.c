@@ -1115,9 +1115,7 @@ void JILString_SubStr(JILString* _this, const JILString* source, JILLong index, 
 	if( bThis )
 		pSrc = JILString_Copy(_this);
 	// now we can continue
-	if( index < 0 )
-		index = 0;
-	if( (index >= pSrc->length) || (length <= 0) )
+	if( (index < 0) || (index >= pSrc->length) || (length <= 0) )
 	{
 		JILStringDeAlloc(_this);
 	}
@@ -1264,9 +1262,7 @@ void JILString_InsStr(JILString* _this, const JILString* source, JILLong index)
 
 void JILString_RemChrs(JILString* _this, JILLong index, JILLong length)
 {
-	if( index < 0 )
-		index = 0;
-	if( (index < _this->length) && (length > 0) )
+	if( (index >= 0) && (index < _this->length) && (length > 0) )
 	{
 		JILLong end;
 		if( (index + length) > _this->length )
@@ -1399,9 +1395,7 @@ JILString* JILString_InsertChar(const JILString* _this, JILLong chr, JILLong ind
 JILString* JILString_Remove(const JILString* _this, JILLong index, JILLong length)
 {
 	JILString* result;
-	if( index < 0 )
-		index = 0;
-	if( (index < _this->length) && (length > 0) )
+	if( (index >= 0) && (index < _this->length) && (length > 0) )
 	{
 		if( (index + length) > _this->length )
 			length = _this->length - index;
@@ -1577,9 +1571,7 @@ JILString* JILString_Reverse(const JILString* _this)
 JILString* JILString_SubString(const JILString* _this, JILLong index, JILLong length)
 {
 	JILString* result;
-	if( index < 0 )
-		index = 0;
-	if( (index < _this->length) && (length > 0) )
+	if( (index >= 0) && (index < _this->length) && (length > 0) )
 	{
 		if( (index + length) > _this->length )
 			length = _this->length - index;
@@ -1968,8 +1960,8 @@ JILArray* JILString_MatchArray(const JILString* _this, const JILArray* pArray)
 //------------------------------------------------------------------------------
 // JILStringPreAlloc
 //------------------------------------------------------------------------------
-/// Allocate a new string object and pre-allocate a string buffer big enough to
-/// accommodate the given number of characters.
+// Allocate a new string object and pre-allocate a string buffer big enough to
+// accommodate the given number of characters.
 
 static JILString* JILStringPreAlloc(JILState* pState, JILLong length)
 {
@@ -1984,7 +1976,7 @@ static JILString* JILStringPreAlloc(JILState* pState, JILLong length)
 //------------------------------------------------------------------------------
 // JILStringReAlloc
 //------------------------------------------------------------------------------
-/// Throw away old string buffer and allocate a new one.
+// Throw away old string buffer and allocate a new one.
 
 static void JILStringReAlloc(JILString* _this, JILLong newSize, JILLong keepData)
 {
@@ -2014,8 +2006,8 @@ static void JILStringReAlloc(JILString* _this, JILLong newSize, JILLong keepData
 //------------------------------------------------------------------------------
 // JILStringDeAlloc
 //------------------------------------------------------------------------------
-/// Deallocates all data contained by the string object, but not the string
-/// object itself. The result will be an empty string object of zero length.
+// Deallocates all data contained by the string object, but not the string
+// object itself. The result will be an empty string object of zero length.
 
 static void JILStringDeAlloc(JILString* _this)
 {
