@@ -11,11 +11,17 @@
 // Description:
 // ------------
 /// @file jilstring.c
-/// The built-in string object the virtual machine uses. The built-in string is
-/// a primitive data type, like the long and float types, and does only support
-/// very basic operations. However, more functions might be added here in the
-/// future, to make using and manipulating the string object from native typelibs
-/// or the application using the jilruntime library easier.
+/// The built-in string class the virtual machine uses. This is not to be
+/// confused with the internal string class of the compiler. This is the native
+/// type 'string' available in JewelScript.
+/// <p>The string is limited to a size of at most 2 GB of memory. It handles
+/// raw data and zero bytes in the string graciously, so it can also be used
+/// for UTF-8 strings. However, advanced string operations might corrupt UTF-8
+/// encoded strings, since they use the standard ANSI C string functions.
+/// The class does not support multi-byte strings like UTF-16 or higher.</p>
+/// <p>The class also provides a few methods that make using the string from the
+/// native C side easier. In general, all methods declared in this file may
+/// be used from the native C side as well.</p>
 //------------------------------------------------------------------------------
 
 #include "jilstdinc.h"
@@ -1096,7 +1102,7 @@ void JILString_Clear(JILString* _this)
 //------------------------------------------------------------------------------
 // JILString_SubStr
 //------------------------------------------------------------------------------
-/// Get a sub string from this string, starting at position 'index', extracting
+/// Get a sub string from 'source', starting at position 'index', extracting
 /// 'length' number of characters. This function differs from JILString_SubString
 /// only in that this function assigns the result of the operation back to this
 /// string.

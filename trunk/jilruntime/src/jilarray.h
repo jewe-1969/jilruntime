@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// File: JILArray.h                                         (c) 2004 jewe.org
+// File: JILArray.h                                            (c) 2015 jewe.org
 //------------------------------------------------------------------------------
 //
 // DISCLAIMER:
@@ -11,12 +11,13 @@
 // Description:
 // ------------
 /// @file jilarray.h
-///	This defines the built-in array object the virtual machine uses.
-/// The built-in array is a primitive data type, like the long and float types,
-/// and does only support very basic operations. However, more functions might
-/// be added here in the future, to make using and manipulating the array
-/// object from native typelibs or the application using the jilruntime library
-/// easier.
+/// This is the built-in array class. The JewelScript array can dynamically grow
+/// depending on the index used to access elements from it. In general, accessing
+/// an array element with an index that is out of range will cause the array to
+/// grow to the required number of elements. So one should be cautious to not use
+/// invalid array indices. The array index is a signed 32-bit value.
+/// Operator += can be used to add new elements to an array, as well as append an
+/// array to an array.
 //------------------------------------------------------------------------------
 
 #ifndef JILARRAY_H
