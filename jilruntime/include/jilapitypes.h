@@ -126,7 +126,7 @@ typedef enum
 	type_var			= 1,		///< Type ID used for typeless variables
 	type_int			= 2,		///< Type ID of an int value (C++ int32)
 	type_float			= 3,		///< Type ID of a float value (C++ double)
-	type_global			= 4,		///< Type ID of the global class, which is the root of all other user-defined types
+	type_global			= 4,		///< Type ID of the global class, which is the root of all following types
 	type_string			= 5,		///< Type ID of the built-in string class
 	// reserved			= 6,		//   Type ID used by internal 'stringMatch' class
 	// reserved			= 7,		//   Type ID used by delegate defined in string class
@@ -142,7 +142,7 @@ typedef enum
 	// reserved			= 17,		//   Type ID used by delegate defined in table class
 	type_exception		= 18,		///< Type ID of the exception interface
 	type_rt_exception	= 19,		///< Type ID of the runtime_exception class
-	type_delegate		= 20,		///< Generic delegate type used by the native side, user defined delegates have their own type-id
+	type_delegate		= 20,		///< Generic delegate type ID used by the API, user defined delegates have their own type ID
 
 	// additional constants
 	kNumPredefTypes				///< This and every following value is a type ID for a user defined type
@@ -160,7 +160,6 @@ typedef enum
 	tf_integral,				///< Type is an integral type (int or float)
 	tf_class,					///< Type is a class (native or script)
 	tf_interface,				///< Type is an interface
-	tf_namespace,				///< Type is a namespace
 	tf_thread,					///< Type is a cooperative thread (cofunction)
 	tf_delegate,				///< Type is a delegate (reference to a function or method)
 
