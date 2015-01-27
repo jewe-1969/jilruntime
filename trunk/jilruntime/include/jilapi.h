@@ -371,7 +371,7 @@ JILEXTERN JILError				JILUseFixedMemDynamic	(JILState* pState);
 /// 'fixed memory management' to allocate the block. The function is mainly
 /// intended for native type implementations that require fast allocation and
 /// deallocation of small objects.
-/// <p><b>Blocks allocated with this function <u>must</u> be freed using
+/// <p><b>Blocks allocated with this function <b>must</b> be freed using
 ///  JILMfree(), otherwise it will corrupt the memory management!</b></p>
 /// @see JILUseFixedMemory ().
 

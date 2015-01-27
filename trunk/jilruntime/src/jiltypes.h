@@ -38,13 +38,14 @@
 //------------------------------------------------------------------------------
 // misc constants
 //------------------------------------------------------------------------------
+/// Various constants used in the library.
 
 enum
 {
-	std_handle_null,		///< index number of the one-and-only null handle
-	kLogGarbageNone = 0,	///< don't list anything
-	kLogGarbageBrief = 1,	///< list leaked objects, but not their child objects, if they can be freed by feeing their parent
-	kLogGarbageAll = 2,		///< list all leaked objects
+	std_handle_null,		///< Index number of the one-and-only null handle (DO NOT CHANGE)
+	kLogGarbageNone = 0,	///< Don't list anything
+	kLogGarbageBrief = 1,	///< List leaked objects, but not their child objects, if they can be freed by feeing their parent
+	kLogGarbageAll = 2,		///< List all leaked objects
 };
 
 //------------------------------------------------------------------------------
@@ -85,6 +86,7 @@ typedef enum
 //------------------------------------------------------------------------------
 // flags for JILFuncInfo
 //------------------------------------------------------------------------------
+/// These flags describe the functions stored in the runtime's function segment.
 
 typedef enum
 {
