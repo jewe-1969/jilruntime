@@ -91,7 +91,7 @@ JILLong					JCLContainsOnly		(JCLString* _this, const JILChar* charSet);
 //------------------------------------------------------------------------------
 // JCLDeclStruct
 //------------------------------------------------------------------------------
-/// A little helper struct used when importing native types
+// A little helper struct used when importing native types
 
 typedef struct
 {
