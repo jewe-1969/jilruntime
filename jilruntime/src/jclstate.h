@@ -18,8 +18,6 @@
 #ifndef JCLSTATE_H
 #define JCLSTATE_H
 
-#include "jiltypes.h"
-#include "jcltools.h"
 #include "jclpair.h"
 
 //------------------------------------------------------------------------------

@@ -22,7 +22,6 @@
 #define JCLPAIR_H
 
 #include "jclstring.h"
-#include "jcltools.h"
 
 //------------------------------------------------------------------------------
 // class JCLPair

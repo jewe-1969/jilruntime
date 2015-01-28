@@ -17,7 +17,6 @@
 #ifndef JILMACHINE_H
 #define JILMACHINE_H
 
-#include "jiltypes.h"
 #include "jilsegment.h"
 
 //------------------------------------------------------------------------------

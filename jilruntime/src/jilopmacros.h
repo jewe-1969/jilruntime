@@ -10,9 +10,8 @@
 //
 // Description:
 // ------------
-/// @file jilopmacros.h
-///	Defines helper macros used to generate code for the virtual machine
-///	instruction procedures.
+// Defines helper macros used to generate code for the virtual machine
+// instruction procedures.
 //------------------------------------------------------------------------------
 
 #ifndef JILOPMACROS_H

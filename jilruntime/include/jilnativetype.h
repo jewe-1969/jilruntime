@@ -28,12 +28,12 @@
 #include "jilexception.h"
 
 //------------------------------------------------------------------------------
-// messages for the native type lib (NTL) proc
+// Messages for the native type library (NTL)
 //------------------------------------------------------------------------------
-/// Enumerates the messages passed into a native type libs callback function,
+/// Enumerates the messages sent to a native type library's callback function,
 /// the <b>type proc</b>.
 
-enum
+enum NTLMessage
 {
 	// runtime messages
 	NTL_Register,				///< Sent when registering type to the runtime

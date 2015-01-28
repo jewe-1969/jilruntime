@@ -19,7 +19,6 @@
 #define JCLOPTION_H
 
 #include "jclstring.h"
-#include "jcltools.h"
 
 /// Modes for MakeLocalVar()
 enum
