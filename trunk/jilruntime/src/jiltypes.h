@@ -127,6 +127,19 @@ typedef struct JILMethodInfo		JILMethodInfo;
 typedef struct JILRuntimeException	JILRuntimeException;
 
 //------------------------------------------------------------------------------
+// JILHandleData
+//------------------------------------------------------------------------------
+/// This determines the maximum size of the data a JILHandle can hold.
+/// The data size must be at least 64 bits, which this union guarantees.
+
+union JILHandleData
+{
+	JILLong		_int;
+	JILFloat	_float;
+	JILUnknown*	_ptr;
+};
+
+//------------------------------------------------------------------------------
 // struct JILHandle
 //------------------------------------------------------------------------------
 /// A small struct describing the type of any data the virtual machine deals
@@ -139,10 +152,10 @@ typedef struct JILRuntimeException	JILRuntimeException;
 
 struct JILHandle
 {
-	JILWord			type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
-	JILWord			flags;		///< Flags, see enum JILHandleFlags
-	JILLong			refCount;	///< Number of references to this handle (the encapsulated data)
-	JILChar			data[8];	///< Handle type dependent, see opaque structs in jilhandle.h
+	JILWord	type;					///< The type of the value this handle encapsulates, see struct JILTypeInfo
+	JILWord	flags;					///< Flags, see enum JILHandleFlags
+	JILLong	refCount;				///< Number of references to the value
+	union JILHandleData	data[1];	///< The handle's value, handle type dependent, see opaque structs in jilhandle.h
 };
 
 //------------------------------------------------------------------------------
