@@ -10,8 +10,7 @@
 //
 // Description:
 // ------------
-/// @file jilopcodes.h
-///	Defines the opcodes for JIL virtual machine instructions.
+//	Defines the opcodes for JIL virtual machine instructions.
 //------------------------------------------------------------------------------
 
 #ifndef JILOPCODES_H

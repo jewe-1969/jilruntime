@@ -63,6 +63,9 @@
 
 	<h2>Build options</h2>
 	- To configure the library's options, check the macros in jilplatform.h
+
+	<h2>Error and exception codes</h2>
+	- The libraries error and exception codes can be found in jilexception.h
 */
 
 #ifndef JILAPI_H

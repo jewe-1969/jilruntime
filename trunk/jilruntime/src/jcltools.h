@@ -10,10 +10,9 @@
 //
 // Description: 
 // ------------
-/// @file jcltools.h
-/// Pseudo class "templates" for rudimentary object oriented programming in C,
-/// and a dynamically growing array template.
-///	Seriously messy but extremely useful.
+// Pseudo class "templates" for rudimentary object oriented programming in C,
+// and a dynamically growing array template.
+// Seriously messy but extremely useful.
 //------------------------------------------------------------------------------
 
 #ifndef JCLTOOLS_H

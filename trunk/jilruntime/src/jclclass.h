@@ -26,8 +26,6 @@
 #ifndef JCLCLASS_H
 #define JCLCLASS_H
 
-#include "jiltypes.h"
-#include "jcltools.h"
 #include "jclpair.h"
 
 //------------------------------------------------------------------------------

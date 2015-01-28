@@ -97,8 +97,10 @@ typedef enum
 } JILAttachObjectID;
 
 //------------------------------------------------------------------------------
-// Enum values for JILBeginCall()
+// Enum values for JILCallFunction()
 //------------------------------------------------------------------------------
+/// Pass one of these values to JILCallFunction() to define the type of data
+/// you wish to pass as an argument.
 
 enum
 {
