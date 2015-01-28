@@ -274,6 +274,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\jilarraylist.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\jilcallntl.h"
 				>
 			</File>
