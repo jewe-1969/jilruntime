@@ -3495,7 +3495,7 @@ static JILBool IsClassRelocatable(JCLState* _this, JILLong type)
 			pClassB = GetClass(_this, pVA->miType);
 			if( pClassB->miNative )
 				continue;	// TODO: Can we be sure to exclude native types?
-			if( pClassB->miFamily == tf_interface )
+			if( pClassB->miFamily == tf_interface && _this->miPass == kPassPrecompile )
 				EmitWarning(_this, JCL_WARN_Interface_In_Inherit, 2, pClassA->mipName, pClassB->mipName);
 			nb = pClassB->mipVars->Count(pClassB->mipVars);
 			for( j = 0; j < nb; j++ )
@@ -12295,14 +12295,20 @@ static JILError p_lambda_operator(JCLState* _this, Array_JCLVar* pLocals, JCLVar
 	JILBool isBlock;
 	TypeInfo outType;
 	const JILChar* pfn;
+	JCLFunc* pFunc;
 
 	pFile = _this->mipFile;
 	pToken = NEW(JCLString);
 	pArgList = NEW(JCLString);
 	pExpression = NEW(JCLString);
 	pAnon = NEW(JCLString);
+	pFunc = CurrentFunc(_this);
 	JCLClrTypeInfo(&outType);
-	JCLSetString(pAnon, "anonymous delegate");
+
+	pFunc->ToString(pFunc, _this, pToken, kCompact);
+	JCLSetString(pAnon, "anonymous delegate defined in '");
+	JCLAppend(pAnon, JCLGetString(pToken));
+	JCLAppend(pAnon, "'");
 
 	// read argument list into string
 	err = pFile->ScanBlock(pFile, pArgList);

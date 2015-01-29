@@ -843,15 +843,9 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 		{
 			if( bEscape )
 			{
-				JILLong pos;
-				JILLong line;
-				JILLong column;
 				// skip end quote
 				JCLSeekForward(_this->mipText, 1);
 				// ignore whitespace
-				pos = JCLGetLocator(_this->mipText);
-				line = _this->miLine;
-				column = _this->miColumn;
 				err = Ignore(_this);
 				if( err )
 					goto error;
@@ -874,9 +868,6 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 				else
 				{
 					// we're done
-					JCLSetLocator(_this->mipText, pos);
-					_this->miLine = line;
-					_this->miColumn = column;
 					err = JCL_No_Error;
 					break;
 				}
