@@ -138,7 +138,7 @@ enum JILCompilerCodes
 	JCL_ERR_Not_A_Constructor,				// 1224
 	JCL_ERR_Cannot_Call_Foreign_Method,		// 1225
 	JCL_ERR_Calling_Method_From_Static,		// 1226
-	JCL_ERR_Import_Not_Supported,			// 1227
+	JCL_ERR_Import_Not_Supported,			// 1227 OBSOLETE
 	JCL_ERR_Not_An_Object,					// 1228
 	JCL_ERR_Illegal_NTL_Variable,			// 1229
 	JCL_ERR_Incomplete_Arg_List,			// 1230
