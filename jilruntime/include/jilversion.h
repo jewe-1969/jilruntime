@@ -17,7 +17,7 @@
 ///
 /// In general, version numbers are composed out of four numbers in byte range.
 /// For example "0.6.1.31" stands for product version 0.6, code revision 1.31.
-/// You can use JILRevisionToLong() to convert a string in this format into an
+/// You can use NTLRevisionToLong() to convert a string in this format into an
 /// integer version number.
 //------------------------------------------------------------------------------
 
@@ -39,14 +39,14 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.6"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.7"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the JewelScript compiler.
 
-#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "4.2"
+#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "4.3"
 
 //------------------------------------------------------------------------------
 // JIL_MACHINE_VERSION
@@ -62,6 +62,6 @@
 /// upon receiving the NTL_GetInterfaceVersion message, convert this string into
 /// an integer value and return it. @see NTLRevisionToLong ()
 
-#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "4.0"
+#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "4.1"
 
 #endif // JILVERSION_H

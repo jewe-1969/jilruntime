@@ -39,6 +39,11 @@ JILINLINE JILError CallNTLRegister(JILTypeProc proc, JILLong interfaceVersion, J
 	return proc(NULL, NTL_Register, interfaceVersion, pState, NULL);
 }
 
+JILINLINE JILError CallNTLOnImport(JILTypeProc proc, JILState* pState)
+{
+	return proc(NULL, NTL_OnImport, 0, pState, NULL);
+}
+
 JILINLINE JILError CallNTLInitialize(JILTypeInfo* pti)
 {
 	return pti->typeProc(TO_INSTANCE(pti), NTL_Initialize, 0, NULL, NULL);

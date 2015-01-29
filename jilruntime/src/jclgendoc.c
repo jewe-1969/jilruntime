@@ -376,7 +376,7 @@ JILError JCLAnalyzeParameters(JCLState* _this, const JILChar* pParams, JILTable*
 				JCLSeekForward(pOptions, 1);
 				JCLSpanExcluding(pOptions, ",;", pValue);
 				JCLTrim(pValue);
-				if( strcmp(JCLGetString(pName), "@ignore") == 0 )
+				if( JCLEquals(pName, "@ignore") )
 				{
 					JCLClass* pClass;
 					if( FindClass(_this, pValue, &pClass) )
@@ -744,7 +744,7 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 		{
 			JCLString* match = NULL;
 			// skip @define directive
-			if( strcmp(JCLGetString(tempstr), "@define") == 0 )
+			if( JCLEquals(tempstr, "@define") )
 			{
 				JILLong pos = JCLGetLocator(oldstr);
 				JCLSpanIncluding(oldstr, " \t", tempstr2);
@@ -761,7 +761,7 @@ static void AutoLinkKeywords(JILTable* pDict, JCLString* workstr, JCLString* con
 				}
 				JCLSetLocator(oldstr, pos);
 			}
-			else if( strcmp(JCLGetString(tempstr), "@include") == 0)
+			else if( JCLEquals(tempstr, "@include") )
 			{
 				JCLString* text;
 				JCLSpanIncluding(oldstr, " \t", tempstr2);
@@ -889,7 +889,7 @@ static void ScanTag(JILTable* pDict, JCLString* pTag)
 		len = JCLSpanIncluding(oldstr, kIdentifierSpan, tempstr);
 		if( len )
 		{
-			if( strcmp(JCLGetString(tempstr), "@define") == 0 )
+			if( JCLEquals(tempstr, "@define") )
 			{
 				JILLong pos = JCLGetLocator(oldstr);
 				JCLSpanIncluding(oldstr, " \t", tempstr2);

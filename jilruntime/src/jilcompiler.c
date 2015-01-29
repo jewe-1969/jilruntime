@@ -108,30 +108,25 @@ static JILError JCLBeginCompile(JILState* pVM, const JILChar* pName, const JILCh
 		JCLVerbosePrint(_this, "*** JewelScript compiler v%s [%s] ***\n", vers, buf1);
 		_this->miTimestamp = (JILFloat) clock();
 	}
-	_this->miNumCompiles++;
 	JCLVerbosePrint(_this, "Compiling '%s'\n", (strlen(pPath) > 0) ? pPath : pName);
 	// create a new file object
-	pFile = _this->mipFile = NEW(JCLFile);
+	pFile = NEW(JCLFile);
 	// open it
 	err = pFile->Open(pFile, pName, pText, pPath, GetGlobalOptions(_this));
-	if( !err )
-	{
-		err = cg_resume_intro(_this);
-		if( err )
-			goto exit;
-		// -- begin compiling, pass 1: Precompile
-		err = p_compile(_this, kPassPrecompile);
-		if( err )
-			goto exit;
-		// -- continue compiling, pass 2: Compile
-		err = p_compile(_this, kPassCompile);
-		if( err )
-			goto exit;
-	}
+	if( err )
+		goto exit;
+	err = cg_resume_intro(_this);
+	if( err )
+		goto exit;
+	// compile it
+	err = p_compile(_this, pFile);
+	if( err )
+		goto exit;
 
 exit:
+	pFile->Close(pFile);
+	FlushErrorsAndWarnings(_this);
 	DELETE(pFile);
-	_this->mipFile = NULL;
 	return err;
 }
 
@@ -592,29 +587,19 @@ JILError JCLImportClass(JILState* pState, const JILChar* pClassName)
 {
 	JILError err = JCL_No_Error;
 	JCLState* _this;
-	JCLString* className;
-	JCLFile* pFile;
+	JCLString* text;
 
 	if( (_this = pState->vmpCompiler) == NULL )
 		return JIL_ERR_No_Compiler;
 
-	className = NEW(JCLString);
-	pFile = NEW(JCLFile);
-	JCLSetString(className, pClassName);
-	pFile->Open(pFile, "JCLImportClass", "", "", GetGlobalOptions(_this));
-	_this->mipFile = pFile;
-	_this->miPass = kPassPrecompile;
-	err = p_import_class(_this, className);
+	text = NEW(JCLString);
+	JCLFormat(text, "import %s;", pClassName);
+	err = JCLCompile(pState, NULL, JCLGetString(text));
 	if( err )
 		goto exit;
-	_this->miPass = kPassCompile;
-	err = p_import_class(_this, className);
 
 exit:
-	if( _this != NULL )
-		_this->mipFile = NULL;
-	DELETE(pFile);
-	DELETE(className);
+	DELETE(text);
 	return err;
 }
 

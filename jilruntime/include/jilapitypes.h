@@ -130,7 +130,7 @@ typedef enum
 	type_float			= 3,		///< Type ID of a float value (C++ double)
 	type_global			= 4,		///< Type ID of the global class, which is the root of all following types
 	type_string			= 5,		///< Type ID of the built-in string class
-	// reserved			= 6,		//   Type ID used by internal 'stringMatch' class
+	// reserved			= 6,		//   Type ID used by internal 'string::match' class
 	// reserved			= 7,		//   Type ID used by delegate defined in string class
 	type_array			= 8,		///< Type ID of the built-in array class
 	// reserved			= 9,		//   Type ID used by delegate defined in array class

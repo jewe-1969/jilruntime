@@ -37,6 +37,7 @@ enum NTLMessage
 {
 	// runtime messages
 	NTL_Register,				///< Sent when registering type to the runtime
+	NTL_OnImport,				///< Sent when this native type is imported and before the package list or class declaration is compiled
 	NTL_Initialize,				///< Sent when the VM is initialized and this type will be used
 	NTL_NewObject,				///< Allocate a new object. This will be followed by the appropriate constructor call (NTL_CallMember) to initialize the object.
 	NTL_MarkHandles,			///< Garbage collection: Call NTLMarkHandle() for all handles your native type owns

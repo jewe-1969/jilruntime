@@ -77,7 +77,7 @@ JCLPair* Get_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 	for( index = 0; index < _this->Count(_this); index++ )
 	{
 		JCLPair* pp = _this->Get(_this, index);
-		if( strcmp(JCLGetString(pp->mipKey), JCLGetString(pKey)) == 0 )
+		if( JCLCompare(pp->mipKey, pKey) )
 		{
 			return pp;
 		}
@@ -133,7 +133,7 @@ JILLong IndexOf_JCLCollection(JCLCollection* _this, const JCLString* pKey)
 	for( index = 0; index < _this->Count(_this); index++ )
 	{
 		JCLPair* pp = _this->Get(_this, index);
-		if( strcmp(JCLGetString(pp->mipKey), JCLGetString(pKey)) == 0 )
+		if( JCLCompare(pp->mipKey, pKey) )
 			return index;
 	}
 	return -1;

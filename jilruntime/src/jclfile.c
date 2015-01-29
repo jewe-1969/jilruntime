@@ -225,6 +225,8 @@ void create_JCLFile( JCLFile* _this )
 	_this->mipOptions = NULL;
 	_this->miLocator = 0;
 	_this->miPass = 0;
+	_this->miLine = 0;
+	_this->miColumn = 0;
 	_this->miNative = JILFalse;
 }
 
@@ -270,6 +272,9 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	_this->mipTokens = NEW(Array_JCLFileToken);
 	_this->mipOptions = pOptions;
 	_this->miLocator = 0;
+	_this->miPass = 0;
+	_this->miLine = 1;
+	_this->miColumn = 0;
 	// copy arguments
 	JCLSetString(_this->mipName, pName);
 	JCLSetString(_this->mipText, pText);
@@ -280,7 +285,7 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 		if( JCLAtEnd(_this->mipText) )
 			break;
 		err = Ignore(_this);
-		if( err )
+		if( err || JCLAtEnd(_this->mipText) )
 			break;
 		err = GetToken(_this, pToken, &tokenID);
 		if( err )
@@ -288,6 +293,8 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 		loc = JCLGetLocator(_this->mipText);
 		pft = _this->mipTokens->New(_this->mipTokens);
 		pft->miLocation = loc;
+		pft->miLine = _this->miLine;
+		pft->miColumn = loc - _this->miColumn + 1;
 		pft->miTokenID = tokenID;
 		if( JCLGetLength(pToken) )
 		{
@@ -298,6 +305,8 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	if( err == JCL_ERR_End_Of_File )
 		err = JCL_No_Error;
 	DELETE(pToken);
+	DELETE(_this->mipText);
+	_this->mipText = NULL;
 	_this->mipOptions = NULL;
 	return err;
 }
@@ -530,7 +539,7 @@ static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 	// check what we have found
 	c = JCLGetCurrentChar(_this->mipText);
 	d = JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1);
-	// un-escaped string literal?
+	// verbatim string literal?
 	if( (c == '/' || c == '@') && d == '\"' )
 	{
 		// read the entire string literal
@@ -614,11 +623,11 @@ static JILError GetToken(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 static JILError Ignore(JCLFile* _this)
 {
 	JILError err = JCL_No_Error;
-	JILLong nextChar = 0;
-	JILLong comment = 0;
 	JILLong c = 0;
+	JILLong nextChar = 0;
+	JILBool comment = JILFalse;
 
-	while( !err )
+	for(;;)
 	{
 		if( JCLAtEnd(_this->mipText) )
 		{
@@ -629,10 +638,32 @@ static JILError Ignore(JCLFile* _this)
 		{
 			c = JCLGetCurrentChar(_this->mipText);
 			nextChar = JCLGetChar(_this->mipText, JCLGetLocator(_this->mipText) + 1);
-			if( !comment )
+			if( comment )
+			{
+				if( c == '*' && nextChar == '/' )
+				{
+					comment = JILFalse;
+					JCLSeekForward(_this->mipText, 2);
+				}
+				else
+				{
+					if( c == '\n' )
+					{
+						_this->miColumn = JCLGetLocator(_this->mipText) + 1;
+						_this->miLine++;
+					}
+					JCLSeekForward(_this->mipText, 1);
+				}
+			}
+			else
 			{
 				if( c <= 32 )
 				{
+					if( c == '\n' )
+					{
+						_this->miColumn = JCLGetLocator(_this->mipText) + 1;
+						_this->miLine++;
+					}
 					JCLSeekForward(_this->mipText, 1);
 				}
 				else if( c == '#' || (c == '/' && nextChar == '/') )
@@ -642,25 +673,13 @@ static JILError Ignore(JCLFile* _this)
 				}
 				else if( c == '/' && nextChar == '*' )
 				{
-					comment = 1;
+					comment = JILTrue;
 					JCLSeekForward(_this->mipText, 2);
 				}
 				else
 				{
 					// found something non-white spacey
 					break;
-				}
-			}
-			else
-			{
-				if( c == '*' && nextChar == '/' )
-				{
-					comment = 0;
-					JCLSeekForward(_this->mipText, 2);
-				}
-				else
-				{
-					JCLSeekForward(_this->mipText, 1);
 				}
 			}
 		}
@@ -692,49 +711,18 @@ JILLong GetTokenID(const JILChar* string, const JCLToken* pTokenList)
 
 void GetCurrentPosition(JCLFile* _this, JILLong* pColumn, JILLong* pLine)
 {
-	JCLString* str;
-	JILLong length;
-	JILLong i;
-	JILLong loc;
-	JILLong line = 1;
-	JILLong column = 1;
-	char c;
-	str = _this->mipText;
-	loc = _this->miLocator - 1; // because GetToken() advances BEFORE we examine the token
-	if( loc < 0 )
-		loc = 0;
-	if( loc < _this->mipTokens->Count(_this->mipTokens) )
-		length = _this->mipTokens->Get(_this->mipTokens, loc)->miLocation;
-	else
-		length = JCLGetLength(str);
-	for( i = 0; i < length; i++ )
+	JILLong loc = _this->miLocator - 1; // because GetToken() advances BEFORE we can examine the token
+	if( loc >= 0 && loc < _this->mipTokens->Count(_this->mipTokens) )
 	{
-		c = JCLGetChar(str, i);
-		if( c == 13 )
-		{
-			if( JCLGetChar(str, i+1) == 10 )
-				i++;
-			line++;
-			column = 1;
-		}
-		else if( c == 10 )
-		{
-			if( JCLGetChar(str, i+1) == 13 )
-				i++;
-			line++;
-			column = 1;
-		}
-		else if( c == 9 )
-		{
-			column += 4 - ((column - 1) % 4);
-		}
-		else
-		{
-			column++;
-		}
+		JCLFileToken* pft = _this->mipTokens->Get(_this->mipTokens, loc);
+		*pColumn = pft->miColumn;
+		*pLine = pft->miLine;
 	}
-	*pColumn = column;
-	*pLine = line;
+	else
+	{
+		*pColumn = 0;
+		*pLine = 0;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -856,10 +844,12 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 			if( bEscape )
 			{
 				JILLong pos;
+				JILLong line;
 				// skip end quote
 				JCLSeekForward(_this->mipText, 1);
 				// ignore whitespace
 				pos = JCLGetLocator(_this->mipText);
+				line = _this->miLine;
 				err = Ignore(_this);
 				if( err )
 					goto error;
@@ -883,6 +873,7 @@ static JILError GetStrLiteral(JCLFile* _this, JCLString* string)
 				{
 					// we're done
 					JCLSetLocator(_this->mipText, pos);
+					_this->miLine = line;
 					err = JCL_No_Error;
 					break;
 				}
@@ -977,6 +968,8 @@ static JILError FindTokenAtPosition(JCLFile* _this, JCLString* string, JILLong* 
 void create_JCLFileToken(JCLFileToken* _this)
 {
 	_this->miLocation = 0;
+	_this->miLine = 0;
+	_this->miColumn = 0;
 	_this->miTokenID = 0;
 	_this->mipToken = NULL;
 }
@@ -988,6 +981,8 @@ void create_JCLFileToken(JCLFileToken* _this)
 void copy_JCLFileToken(JCLFileToken* _this, const JCLFileToken* src)
 {
 	_this->miLocation = src->miLocation;
+	_this->miLine = src->miLine;
+	_this->miColumn = src->miColumn;
 	_this->miTokenID = src->miTokenID;
 	if( src->mipToken )
 	{

@@ -93,7 +93,7 @@ END_CLASS( JCLState )
 // public functions
 //------------------------------------------------------------------------------
 
-JILError	p_compile			(JCLState*, JILLong);
+JILError	p_compile			(JCLState*, JCLFile*);
 JILLong		FindClass			(JCLState*, const JCLString*, JCLClass**);
 JILLong		FindFunction		(JCLState*, JILLong, const JCLString*, JILLong, JCLFunc**);
 JILLong		NumClasses			(JCLState*);
@@ -115,7 +115,6 @@ JILError	JCLCreateType		(JCLState*, const JILChar*, JILLong, JILTypeFamily, JILB
 JILBool		IsMethodInherited	(JCLState*, JILLong, JILLong);
 JILLong		TypeFamily			(JCLState*, JILLong);
 void		JCLGetAbsolutePath	(JCLState* _this, JCLString* pOut, const JCLString* pIn);
-JILError	p_import_class		(JCLState* _this, JCLString* pClassName);
 void		RemoveParentNamespace(JCLString*, const JCLString*);
 void		GetParentNamespace	(JCLString*, const JCLString*);
 void		RemoveClassNamespace(JCLString*, JCLClass*);

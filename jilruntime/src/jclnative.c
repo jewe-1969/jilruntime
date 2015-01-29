@@ -253,6 +253,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "//------------------------------------------------------------------------------\n");
 	fprintf(outStream, "\n");
 	fprintf(outStream, "static JILError %sRegister    (JILState* pVM);\n", sFuncPrefix);
+	fprintf(outStream, "static JILError %sOnImport    (JILState* pVM);\n", sFuncPrefix);
 	fprintf(outStream, "static JILError %sGetDecl     (JILUnknown* pDataIn);\n", sFuncPrefix);
 	fprintf(outStream, "static JILError %sNew         (NTLInstance* pInst, %s** ppObject);\n", sFuncPrefix, sObjectName);
 	fprintf(outStream, "static JILError %sDelete      (NTLInstance* pInst, %s* _this);\n", sFuncPrefix, sObjectName);
@@ -274,6 +275,7 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "	{\n");
 	fprintf(outStream, "		// runtime messages\n");
 	fprintf(outStream, "		case NTL_Register:				return %sRegister((JILState*) pDataIn);\n", sFuncPrefix);
+	fprintf(outStream, "		case NTL_OnImport:				return %sOnImport((JILState*) pDataIn);\n", sFuncPrefix);
 	fprintf(outStream, "		case NTL_Initialize:			break;\n");
 	fprintf(outStream, "		case NTL_NewObject:				return %sNew(pInst, (%s**) ppDataOut);\n", sFuncPrefix, sObjectName);
 	fprintf(outStream, "		case NTL_DestroyObject:			return %sDelete(pInst, (%s*) pDataIn);\n", sFuncPrefix, sObjectName);
@@ -310,6 +312,21 @@ JILError JCLCreateBindingCode(JCLState* _this, JCLClass* pClass, const JILChar* 
 	fprintf(outStream, "	// If your type library consists of multiple related classes, you could register any helper classes here.\n");
 	fprintf(outStream, "	// That way your application only needs to register the main class to the script runtime.\n");
 	fprintf(outStream, "	// JILError err = JILRegisterNativeType(pVM, bind_MyHelperClass_proc);\n");
+	fprintf(outStream, "	return JIL_No_Exception;\n");
+	fprintf(outStream, "}\n");
+	fprintf(outStream, "\n");
+
+	// create onimport handler
+	fprintf(outStream, "//------------------------------------------------------------------------------\n");
+	fprintf(outStream, "// %sOnImport\n", sFuncPrefix);
+	fprintf(outStream, "//------------------------------------------------------------------------------\n");
+	fprintf(outStream, "\n");
+	fprintf(outStream, "static JILError %sOnImport(JILState* pVM)\n", sFuncPrefix);
+	fprintf(outStream, "{\n");
+	fprintf(outStream, "	// This function is called when your native type is imported by the compiler,\n");
+	fprintf(outStream, "	// right before your package list and class declaration are compiled.\n");
+	fprintf(outStream, "	// This may be useful to compile interface declarations and such.\n");
+	fprintf(outStream, "	// JILError err = JCLCompile(pVM, \"my declarations\", kMyDeclarations);\n");
 	fprintf(outStream, "	return JIL_No_Exception;\n");
 	fprintf(outStream, "}\n");
 	fprintf(outStream, "\n");

@@ -379,6 +379,7 @@ static JILError		p_class_implements	(JCLState*, JCLClass*);
 static JILError		p_class_extends		(JCLState*, JCLClass*);
 static JILError		p_class_hybrid		(JCLState*, JCLClass*);
 static JILError		p_class_inherits	(JCLState*, JCLClass*);
+static JILError		p_compile_pass		(JCLState*, JCLFile*);
 static JILError		p_function			(JCLState*, JILLong, JILBool);
 static JILError		p_function_body		(JCLState*);
 static JILError		p_function_pass		(JCLState*);
@@ -415,7 +416,8 @@ static JILError		p_member_call		(JCLState*, Array_JCLVar*, JILLong, const JCLStr
 static JILError		p_match_function	(JCLState*, Array_JCLVar*, JILLong, const JCLString*, JCLVar*, TypeInfo*, JCLFunc*, JCLFunc**);
 static JILError		p_if				(JCLState*, Array_JCLVar*);
 static JILError		p_import			(JCLState*);
-static JILError		p_import_class_list	(JCLState*, const char*);
+static JILError		p_import_class		(JCLState*, JCLString*);
+static JILError		p_import_class_list	(JCLState*, const JILChar*);
 static JILError		p_import_all		(JCLState*);
 static JILError		p_new				(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**);
 static JILError		p_for				(JCLState*, Array_JCLVar*);
@@ -1739,7 +1741,7 @@ static JCLVar* FindLocalVar(JCLState* _this, const JCLString* pName)
 		pVar = _this->mipSpecialVars->Get(_this->mipSpecialVars, i);
 		if( pVar && (pVar->miUsage == kUsageVar) && !pVar->miHidden && JCLCompare(pVar->mipName, pName) )
 		{
-			if(strcmp(JCLGetString(pVar->mipName), "base") == 0 )
+			if( JCLEquals(pVar->mipName, "base") )
 				return pVar;
 			return pVar;
 		}
@@ -1828,7 +1830,7 @@ static JCLVar* GetSpecialVar(JCLState* _this, const JILChar* pName)
 	for( i = 0; i < _this->mipSpecialVars->Count(_this->mipSpecialVars); i++ )
 	{
 		pVar = _this->mipSpecialVars->Get(_this->mipSpecialVars, i);
-		if( strcmp(JCLGetString(pVar->mipName), pName) == 0 )
+		if( JCLEquals(pVar->mipName, pName) )
 			return pVar;
 	}
 	return NULL;
@@ -3195,7 +3197,7 @@ static JILBool AllMembersInited(JCLState* _this, JILLong typeID, JCLString* pArg
 //------------------------------------------------------------------------------
 // Push a new macro onto the stack of used files
 
-static JILError PushMacro(JCLState* _this, const JILChar* pText, const JILChar* pPath, JCLFile** ppOut )
+static JILError PushMacro(JCLState* _this, const JILChar* pText, const JILChar* pPath, JCLFile** ppOut)
 {
 	JILError err;
 	JCLFile* pImport;
@@ -3766,12 +3768,13 @@ JCLOption* GetOptions(JCLState* _this)
 // PushOptions
 //------------------------------------------------------------------------------
 // Push a new set of options onto the stack. The new set will be initialized
-// from the GLOBAL compiler options.
+// from the parent compiler options.
 
 static void PushOptions(JCLState* _this)
 {
+	JCLOption* par = GetOptions(_this);
 	JCLOption* opt = _this->mipOptionStack->New(_this->mipOptionStack);
-	opt->Copy(opt, GetGlobalOptions(_this));
+	opt->Copy(opt, par);
 }
 
 //------------------------------------------------------------------------------
@@ -4296,20 +4299,68 @@ JILBool IsMethodInherited(JCLState* _this, JILLong typeID, JILLong fn)
 // This is called from external modules to begin compilation of a file or
 // code snippet.
 
-JILError p_compile(JCLState* _this, JILLong pass)
+JILError p_compile(JCLState* _this, JCLFile* pNewFile)
 {
 	JILError err = JCL_No_Error;
+	JILLong pass = _this->miPass;
+
+	// phase 1: precompile
+	_this->miPass = kPassPrecompile;
+	GetClass(_this, type_global)->miHasBody = JILFalse;
+	err = p_compile_pass(_this, pNewFile);
+	if( err )
+		goto exit;
+
+	// phase 2: compile
+	_this->miPass = kPassCompile;
+	GetClass(_this, type_global)->miHasBody = JILTrue;
+	err = p_compile_pass(_this, pNewFile);
+	if( err )
+		goto exit;
+
+exit:
 	_this->miPass = pass;
+	return err;
+}
+
+//------------------------------------------------------------------------------
+// p_compile_pass
+//------------------------------------------------------------------------------
+// Begin a compile pass and save and restore the current compiler state to
+// allow re-entrance / nested compilations.
+
+static JILError p_compile_pass(JCLState* _this, JCLFile* pNewFile)
+{
+	JILError err = JCL_No_Error;
+	JCLFile* pFile;
+	Array_JCLString* pNameStack;
+	Array_JILLong* pUsing;
+
+	// push new compiler options and save current state
+	PushOptions(_this);
+	pFile = _this->mipFile;
+	pNameStack = _this->mipUseNamespace;
+	pUsing = _this->mipUsing;
+	_this->mipFile = pNewFile;
+	_this->mipUseNamespace = NEW(Array_JCLString);
+	_this->mipUsing = NEW(Array_JILLong);
 	_this->mipFile->SetLocator(_this->mipFile, 0);
-	if( pass == kPassCompile )
-	{
-		// mark global class as fully declared
-		if( ClassDefined(_this, type_global) )
-			GetClass(_this, type_global)->miHasBody = JILTrue;
-	}
+
+	// compile global scope
 	err = p_root(_this);
-	// flush any errors and warnings
-	FlushErrorsAndWarnings(_this);
+	if( err )
+		goto exit;
+
+exit:
+	// return to previous state
+	PopOptions(_this);
+	DELETE(_this->mipUseNamespace);
+	DELETE(_this->mipUsing);
+	_this->mipUseNamespace = pNameStack;
+	_this->mipUsing = pUsing;
+	_this->mipFile = pFile;
+	if( _this->miPass == kPassCompile )
+		_this->miNumCompiles++;
 	return err;
 }
 
@@ -4915,17 +4966,16 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 	JCLClass* pSrcClass;
 	JCLFunc* pFunc;
 	JCLFunc* pSFunc;
-	JCLVar* pBaseVar;
 	JCLVar* pVar;
 	JILState* pMachine;
 	JILLong i;
 	JILLong classIdx;
+	JILLong numFuncs;
 	JILBool bStrict;
 	JILBool bVirtual;
 	JILTypeInfo* pTI;
 
 	pBaseName = NEW(JCLString);
-	pBaseVar = NEW(JCLVar);
 	pFile = _this->mipFile;
 	classIdx = pClass->miType;
 	pClassName = pClass->mipName;
@@ -4956,8 +5006,15 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 				MangleNamePrivate(_this, pVar->mipName, pSrcClass->miType);
 		}
 		// copy over all function declarations from source class
-		pClass->mipFuncs->Copy(pClass->mipFuncs, pSrcClass->mipFuncs);
-		for( i = 0; i < NumFuncs(_this, pSrcClass->miType); i++ )
+		numFuncs = NumFuncs(_this, pSrcClass->miType);
+		for( i = 0; i < numFuncs; i++ )
+		{
+			pSFunc = pSrcClass->mipFuncs->Get(pSrcClass->mipFuncs, i);
+			pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
+			pFunc->CopyDeclaration(pFunc, pSFunc);
+		}
+		// process function declarations
+		for( i = 0; i < numFuncs; i++ )
 		{
 			pFunc = pClass->mipFuncs->Get(pClass->mipFuncs, i);
 			// set class index
@@ -4967,8 +5024,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 			// store function index for link process
 			pFunc->miLnkMethod = pFunc->miFuncIdx;
 			pFunc->miLnkClass = pSrcClass->miType;
-			// set 'base' variable index
-			pFunc->miLnkBaseVar = pBaseVar->miMember;
 			// special treatment for private (mangle name so it's no longer accessible)
 			if( pFunc->miPrivate )
 				MangleNamePrivate(_this, pFunc->mipName, pSrcClass->miType);
@@ -4980,14 +5035,16 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 				{
 					// create new function for the old constructor
 					pSFunc = pClass->mipFuncs->New(pClass->mipFuncs);
-					pSFunc->Copy(pSFunc, pFunc);
+					pSFunc->CopyDeclaration(pSFunc, pFunc);
+					pSFunc->miFuncIdx = pClass->mipFuncs->Count(pClass->mipFuncs) - 1;
 					pSFunc->miLnkMethod = pFunc->miLnkMethod;
+					pSFunc->miLnkClass = pSrcClass->miType;
 					// modify it accordingly
 					pSFunc->miVirtual = JILFalse;	// base ctor MUST NOT be virtual!
 					pSFunc->miNoOverride = JILTrue;	// function is not overridable
 					pSFunc->miPrivate = JILTrue;	// function is not callable
 					// add to function segment
-					err = JILCreateFunction(pMachine, pClass->miType, pClass->mipFuncs->Count(pClass->mipFuncs) - 1, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
+					err = JILCreateFunction(pMachine, pClass->miType, pSFunc->miFuncIdx, GetFuncInfoFlags(pSFunc), JCLGetString(pSFunc->mipName), &(pSFunc->miHandle));
 					ERROR_IF(err, err, NULL, goto exit);
 					// update constructor name
 					RemoveParentNamespace(pFunc->mipName, pClassName);
@@ -5006,7 +5063,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 						pClass->miMethodInfo.ctor = pFunc->miFuncIdx;
 					}
 					pFunc->miLnkMethod = -1;
-					pFunc->miLnkBaseVar = 0;
 				}
 				else
 				{
@@ -5030,7 +5086,6 @@ static JILError p_class_extends(JCLState* _this, JCLClass* pClass)
 
 exit:
 	DELETE( pBaseName );
-	DELETE( pBaseVar );
 	return err;
 }
 
@@ -5169,7 +5224,7 @@ static JILError p_class_inherits(JCLState* _this, JCLClass* pClass)
 					JILBool bReplaced = JILFalse;
 					// not found - create new function
 					pFunc = pClass->mipFuncs->New(pClass->mipFuncs);
-					pFunc->Copy(pFunc, pSFunc);
+					pFunc->CopyDeclaration(pFunc, pSFunc);
 					pFunc->miFuncIdx = pClass->mipFuncs->Count(pClass->mipFuncs) - 1;
 					pFunc->miClassID = pClass->miType;
 					// replace function types
@@ -6213,15 +6268,6 @@ static JILError p_function_extends(JCLState* _this, JCLFunc* pFunc)
 	// make sure it's the name of the base class!
 	RemoveParentNamespace(pToken, pSrcClass->mipName);
 	ERROR_IF(!JCLCompare(pToken, pBaseName), JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
-
-	// move 'this' into 'base'
-	//JCLSetString(pToken, "this");
-	//pThis = FindLocalVar(_this, pToken);
-	//JCLSetString(pToken, "base");
-	//pBase = FindMemberVar(_this, pClass->miType, pToken);
-	//err = cg_move_var(_this, pThis, pBase);
-	//ERROR_IF(err, err, NULL, goto exit);
-	//pBase->miInited = JILTrue;
 
 	// call specified constructor
 	err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, kOnlyCtor);
@@ -9712,19 +9758,16 @@ exit:
 //------------------------------------------------------------------------------
 // Import a class.
 
-JILError p_import_class(JCLState* _this, JCLString* pClassName)
+static JILError p_import_class(JCLState* _this, JCLString* pClassName)
 {
 	JILError err = JCL_No_Error;
 	JILLong classIdx;
 	JCLClass* pClass;
 	JILBool bNative;
-	JCLFile* pFile;
 	JCLFile* pNewFile = NULL;
 	JCLString* pToken = NULL;
 	JCLString* pWorkstr = NULL;
 	JCLString* pFilePath = NULL;
-	Array_JCLString* pNameStack;
-	Array_JILLong* pUsing;
 	JILTypeListItem* pItem;
 	JILTypeProc proc;
 	const char* pDecl = NULL;
@@ -9733,15 +9776,13 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 	JCLDeclStruct declStruct = {0};
 
 	pToken = NEW(JCLString);
-	pFile = _this->mipFile;
 	pFilePath = NEW(JCLString);
 
 	// check if class is already imported
 	pNewFile = FindImport(_this, pClassName);
-	if( pNewFile && pNewFile->miPass >= _this->miPass ) // fix: don't import higher pass file on lower compile pass
+	if( pNewFile && pNewFile->miPass >= _this->miPass ) // don't import higher pass file on lower compile pass
 		goto exit;
 
-	// are we in PreCompile pass?
 	if( _this->miPass == kPassPrecompile )
 	{
 		// see if a typelib with that name exists...
@@ -9765,21 +9806,29 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 			}
 			// get the type proc
 			proc = pItem->typeProc;
+			// send NTL_OnImport message
+			err = CallNTLOnImport(proc, _this->mipMachine);
+			if( err != JIL_No_Exception && err != JIL_ERR_Unsupported_Native_Call )
+				ERROR(err, pClassName, goto exit);
 			// try to get package string
-			CallNTLGetPackageString(proc, &pPackage);
+			err = CallNTLGetPackageString(proc, &pPackage);
+			if( err != JIL_No_Exception && err != JIL_ERR_Unsupported_Native_Call )
+				ERROR(err, pClassName, goto exit);
+			// try to get base interface name
+			err = CallNTLGetBaseName(proc, &pBase);
+			if( err != JIL_No_Exception && err != JIL_ERR_Unsupported_Native_Call )
+				ERROR(err, pClassName, goto exit);
 			// try to get class declaration
 			declStruct.pString = NEW(JCLString);
 			declStruct.pState = _this->mipMachine;
 			err = CallNTLGetDeclString(proc, &declStruct, &pDecl);
-			ERROR_IF(err, JCL_ERR_Import_Not_Supported, pClassName, goto exit);
-			// try to get base class / interface name
-			CallNTLGetBaseName(proc, &pBase);
+			ERROR_IF(err, err, pClassName, goto exit);
 			// assemble string
 			JCLSetString(pToken, "class ");
 			JCLAppend(pToken, JCLGetString(pClassName));
 			if( pBase )
 			{
-				JCLAppend(pToken, " : ");
+				JCLAppend(pToken, " implements ");
 				JCLAppend(pToken, pBase);
 			}
 			JCLAppend(pToken, " { ");
@@ -9831,7 +9880,6 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 		// if we have a package string, attach it to the file
 		JCLSetString(pNewFile->mipPackage, pPackage);
 	}
-
 	// set current compile pass
 	pNewFile->miPass = _this->miPass;
 	// import classes from package string first
@@ -9841,32 +9889,12 @@ JILError p_import_class(JCLState* _this, JCLString* pClassName)
 		if( err )
 			goto exit;
 	}
-	// reset locator to beginning of file
-	pNewFile->SetLocator(pNewFile, 0);
-	// set new file scope
-	_this->mipFile = pNewFile;
-	// push new compiler options
-	PushOptions(_this);
-	pNameStack = _this->mipUseNamespace;
-	pUsing = _this->mipUsing;
-	_this->mipUseNamespace = NEW(Array_JCLString);
-	_this->mipUsing = NEW(Array_JILLong);
-	// begin parsing
-	err = p_root(_this);
-	_this->miNumCompiles += _this->miPass;
-	// pop compiler options from stack
-	PopOptions(_this);
-	DELETE(_this->mipUseNamespace);
-	DELETE(_this->mipUsing);
-	_this->mipUseNamespace = pNameStack;
-	_this->mipUsing = pUsing;
-	// return to old file scope
-	_this->mipFile = pFile;
+	// compile the file
+	err = p_compile_pass(_this, pNewFile);
 	if( err )
 		goto exit;
-
-	// to save some memory, we can free the file's text contents after the 2nd pass
-	if( pNewFile->miPass == kPassCompile )
+	// we can free some memory at the end of the compile pass
+	if( _this->miPass == kPassCompile )
 		pNewFile->Close(pNewFile);
 
 exit:
@@ -9882,7 +9910,7 @@ exit:
 //------------------------------------------------------------------------------
 // Import classes from a comma seperated list.
 
-static JILError p_import_class_list(JCLState* _this, const char* pList)
+static JILError p_import_class_list(JCLState* _this, const JILChar* pList)
 {
 	JILError err = JCL_No_Error;
 	JCLString* pToken;

@@ -27,9 +27,10 @@
 // forward declarations
 //------------------------------------------------------------------------------
 
-JILError			JCLLinkFunction		(JCLFunc* _this, JCLState* pCompiler);
-static JCLString*	toString_JCLFunc	(JCLFunc*, JCLState*, JCLString*, JILLong);
-static JCLString*	toXml_JCLFunc		(JCLFunc*, JCLState*, JCLString*);
+JILError			JCLLinkFunction			(JCLFunc* _this, JCLState* pCompiler);
+static JCLString*	toString_JCLFunc		(JCLFunc*, JCLState*, JCLString*, JILLong);
+static JCLString*	toXml_JCLFunc			(JCLFunc*, JCLState*, JCLString*);
+static void			copyDeclaration_JCLFunc	(JCLFunc*, const JCLFunc*);
 
 /******************************************************************************/
 /**************************** class JCLLiteral ********************************/
@@ -238,6 +239,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->LinkCode = JCLLinkFunction;
 	_this->ToString = toString_JCLFunc;
 	_this->ToXml = toXml_JCLFunc;
+	_this->CopyDeclaration = copyDeclaration_JCLFunc;
 
 	// alloc objects in our struct
 	_this->mipName = NEW(JCLString);
@@ -249,12 +251,11 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miHandle = 0;
 	_this->miFuncIdx = 0;
 	_this->miClassID = 0;
-	_this->miLnkAddr = 0;
 	_this->miLnkDelegate = -1;
 	_this->miLnkMethod = -1;
-	_this->miLnkClass = 0;
-	_this->miLnkBaseVar = 0;
 	_this->miLnkRelIdx = -1;
+	_this->miLnkAddr = 0;
+	_this->miLnkClass = 0;
 	_this->miLnkVarOffset = 0;
 	_this->miRetFlag = JILFalse;
 	_this->miYieldFlag = JILFalse;
@@ -315,9 +316,11 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miHandle = src->miHandle;
 	_this->miFuncIdx = src->miFuncIdx;
 	_this->miClassID = src->miClassID;
+	_this->miLnkDelegate = src->miLnkDelegate;
+	_this->miLnkMethod = src->miLnkMethod;
+	_this->miLnkRelIdx = src->miLnkRelIdx;
 	_this->miLnkAddr = src->miLnkAddr;
 	_this->miLnkClass = src->miLnkClass;
-	_this->miLnkBaseVar = src->miLnkBaseVar;
 	_this->miLnkVarOffset = src->miLnkVarOffset;
 	_this->miRetFlag = src->miRetFlag;
 	_this->miMethod = src->miMethod;
@@ -335,17 +338,38 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miLinked = src->miLinked;
 	_this->miNaked = src->miNaked;
 	_this->mipParentStack = src->mipParentStack;
-
-	// make sure other classes do not inherit these
-	_this->miLnkDelegate = -1;
-	_this->miLnkMethod = -1;
-	_this->miLnkRelIdx = -1;
-
 	for( i = 0; i < kNumRegisters; i++ )
 	{
 		_this->miLocalRegs[i] = src->miLocalRegs[i];
 		_this->miRegUsage[i] = src->miRegUsage[i];
 	}
+}
+
+//------------------------------------------------------------------------------
+// JCLFunc::CopyDeclaration
+//------------------------------------------------------------------------------
+// Copies only the declaration relevant information from the source function.
+
+static void copyDeclaration_JCLFunc(JCLFunc* _this, const JCLFunc* src)
+{
+	_this->mipName->Copy(_this->mipName, src->mipName);
+	_this->mipTag->Copy(_this->mipTag, src->mipTag);
+	_this->mipResult->Copy(_this->mipResult, src->mipResult);
+	_this->mipArgs->Copy(_this->mipArgs, src->mipArgs);
+	_this->miFuncIdx = src->miFuncIdx;
+	_this->miClassID = src->miClassID;
+	_this->miMethod = src->miMethod;
+	_this->miCtor = src->miCtor;
+	_this->miConvertor = src->miConvertor;
+	_this->miAccessor = src->miAccessor;
+	_this->miCofunc = src->miCofunc;
+	_this->miAnonymous = src->miAnonymous;
+	_this->miExplicit = src->miExplicit;
+	_this->miStrict = src->miStrict;
+	_this->miVirtual = src->miVirtual;
+	_this->miNoOverride = src->miNoOverride;
+	_this->miPrivate = src->miPrivate;
+	_this->miNaked = src->miNaked;
 }
 
 //------------------------------------------------------------------------------

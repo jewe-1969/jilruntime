@@ -53,21 +53,21 @@ DECL_ARRAY( JCLLiteral )
 FORWARD_CLASS( JCLFunc )
 DECL_CLASS( JCLFunc )
 
-	JILError			(*LinkCode)		(JCLFunc*, JCLState*);
-	JCLString*			(*ToString)		(JCLFunc*, JCLState*, JCLString*, JILLong);
-	JCLString*			(*ToXml)		(JCLFunc*, JCLState*, JCLString*);
+	JILError			(*LinkCode)			(JCLFunc*, JCLState*);
+	JCLString*			(*ToString)			(JCLFunc*, JCLState*, JCLString*, JILLong);
+	JCLString*			(*ToXml)			(JCLFunc*, JCLState*, JCLString*);
+	void				(*CopyDeclaration)	(JCLFunc*, const JCLFunc*);
 
 	JCLString*			mipName;		// function name
 	JCLString*			mipTag;			// tag string
 	JILLong				miHandle;		// JIL data handle index
 	JILLong				miFuncIdx;		// index of function
 	JILLong				miClassID;		// typeID of class
-	JILLong				miLnkAddr;		// code address after linking
 	JILLong				miLnkDelegate;	// link-to-delegate: index of member variable holding delegate
 	JILLong				miLnkMethod;	// link-to-method: index of method / accessor to call
-	JILLong				miLnkClass;		// link-to-method: class type ID for miLnkMethod
-	JILLong				miLnkBaseVar;	// index of 'base' variable for link code generation
 	JILLong				miLnkRelIdx;	// index of source function for code relocation
+	JILLong				miLnkAddr;		// code address after linking
+	JILLong				miLnkClass;		// link-to-method: class type ID for miLnkMethod
 	JILLong				miLnkVarOffset;	// variable relocation offset
 	JILBool				miRetFlag;		// encountered return statement
 	JILBool				miYieldFlag;	// encountered yield statement
@@ -90,7 +90,7 @@ DECL_CLASS( JCLFunc )
 	Array_JILLong*		mipCode;		// buffer to compile code to
 	Array_JCLLiteral*	mipLiterals;	// literals
 	Array_JCLVar*		mipParentStack;	// parent stack in case of closure
-	JILLong				miLocalRegs[kNumRegisters];	// regs used for local variables
+	JILLong				miLocalRegs[kNumRegisters];	// regs used for local variables // TODO: Remove miLocalRegs[]
 	JILLong				miRegUsage[kNumRegisters];	// counts how often regs were allocated in function
 
 END_CLASS( JCLFunc )
