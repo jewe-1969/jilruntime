@@ -39,12 +39,10 @@ COMPILER TODO:
 	- accessor method always creates static calls, should take virtual into account
 	- auto-conversion always creates static calls, should take virtual into account
 	- there may be more parts of compiler and linker always creating static calls
+	- remove miLocalRegs[]
 
 	BUGS:
 	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
-
-	Missing features:
-	* enum
 
 	Future ideas:
 	* It would be easy to support 'readonly' variables now
@@ -55,6 +53,7 @@ COMPILER TODO:
 		other structs and static arrays of those types.)
 	* Generic classes ( class<T> )
 	* try / catch
+	* enum
 */
 
 //------------------------------------------------------------------------------
