@@ -25,8 +25,6 @@
 
 static const JILLong kStringAllocGrain = 32;
 
-static const JILLong kFormatWorstCaseBufferSize = 16384;
-
 //------------------------------------------------------------------------------
 // static functions
 //------------------------------------------------------------------------------
@@ -316,7 +314,7 @@ void JCLSubString(JCLString* _this, const JCLString* source, JILLong index, JILL
 //------------------------------------------------------------------------------
 // JCLFill
 //------------------------------------------------------------------------------
-// JCLFill this string with the number of characters.
+// Fill this string with the number of characters.
 
 void JCLFill(JCLString* _this, JILLong chr, JILLong size)
 {
@@ -450,27 +448,18 @@ void JCLRandomIdentifier(JCLString* _this, JILLong length)
 
 JILLong JCLFormat(JCLString* _this, const JILChar* pFormat, ...)
 {
-#if JIL_NO_FPRINTF
-	JCLSetString(_this, pFormat);
-	return JCLGetLength(_this);
-#else
 	size_t len;
 	va_list arguments;
 	va_start( arguments, pFormat );
-
 	// make string real big
-	Reallocate(_this, kFormatWorstCaseBufferSize, JILFalse);
-
+	Reallocate(_this, JIL_FORMAT_MAX_BUFFER_SIZE, JILFalse);
 	// print into the string buffer
-	len = JIL_VSNPRINTF( _this->m_String, kFormatWorstCaseBufferSize, pFormat, arguments );
-	_this->m_String[len] = 0;
-
+	len = JIL_VSNPRINTF(_this->m_String, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, arguments);
 	// shrink string to actual length
 	Reallocate(_this, len, JILTrue);
-
+	_this->m_String[len] = 0;
 	va_end( arguments );
 	return len;
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -481,20 +470,15 @@ JILLong JCLFormat(JCLString* _this, const JILChar* pFormat, ...)
 
 JILLong JCLFormatTime(JCLString* _this, const JILChar* pFormat, time_t time)
 {
-#if JIL_NO_FPRINTF
-	JCLSetString(_this, pFormat);
-	return JCLGetLength(_this);
-#else
 	size_t len;
 	// make string real big
-	Reallocate(_this, kFormatWorstCaseBufferSize, JILFalse);
+	Reallocate(_this, JIL_FORMAT_MAX_BUFFER_SIZE, JILFalse);
 	// format the time
-	len = strftime(_this->m_String, kFormatWorstCaseBufferSize, pFormat, gmtime(&time));
-	_this->m_String[len] = 0;
+	len = strftime(_this->m_String, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, gmtime(&time));
 	// shrink string to actual length
 	Reallocate(_this, len, JILTrue);
+	_this->m_String[len] = 0;
 	return len;
-#endif
 }
 
 //------------------------------------------------------------------------------

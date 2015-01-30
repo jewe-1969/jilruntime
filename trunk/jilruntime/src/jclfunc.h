@@ -90,7 +90,6 @@ DECL_CLASS( JCLFunc )
 	Array_JILLong*		mipCode;		// buffer to compile code to
 	Array_JCLLiteral*	mipLiterals;	// literals
 	Array_JCLVar*		mipParentStack;	// parent stack in case of closure
-	JILLong				miLocalRegs[kNumRegisters];	// regs used for local variables
 	JILLong				miRegUsage[kNumRegisters];	// counts how often regs were allocated in function
 
 END_CLASS( JCLFunc )

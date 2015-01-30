@@ -220,7 +220,7 @@ JILError JILStringProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknow
 		case NTL_GetInterfaceVersion:	return NTLRevisionToLong(JIL_TYPE_INTERFACE_VERSION);
 		case NTL_GetAuthorVersion:		return NTLRevisionToLong(JIL_LIBRARY_VERSION);
 		case NTL_GetClassName:			(*(const JILChar**) ppDataOut) = kClassName; break;
-		case NTL_GetPackageString:		(*(const char**) ppDataOut) = kPackageList; break;
+		case NTL_GetPackageString:		(*(const JILChar**) ppDataOut) = kPackageList; break;
 		case NTL_GetDeclString:			(*(const JILChar**) ppDataOut) = kClassDeclaration; break;
 		case NTL_GetBuildTimeStamp:		(*(const JILChar**) ppDataOut) = kTimeStamp; break;
 		case NTL_GetAuthorName:			(*(const JILChar**) ppDataOut) = kAuthorName; break;
@@ -394,20 +394,20 @@ static JILError StringCallMember(NTLInstance* pInst, JILLong funcID, JILString* 
 		case kCtorLong:
 		{
 			JILChar buf[32];
-			JILSnprintf(buf, 32, "%d", NTLGetArgInt(ps, 0));
+			JILSnprintf(buf, sizeof(buf), "%d", NTLGetArgInt(ps, 0));
 			JILString_Assign(_this, buf);
 			break;
 		}
 		case kCtorFloat:
 		{
 			JILChar buf[32];
-			JILSnprintf(buf, 32, "%.15g", NTLGetArgFloat(ps, 0));
+			JILSnprintf(buf, sizeof(buf), "%.15g", NTLGetArgFloat(ps, 0));
 			JILString_Assign(_this, buf);
 			break;
 		}
 		case kConvLong:
 		{
-			char* dummy;
+			JILChar* dummy;
 			NTLReturnInt(ps, strtol(JILString_String(_this), &dummy, 10));
 			break;
 		}
@@ -849,7 +849,7 @@ JILLong JILString_FindChar(const JILString* _this, JILLong chr, JILLong index)
 		index = 0;
 	if( index < _this->length )
 	{
-		char* pos = strchr( _this->string + index, chr );
+		JILChar* pos = strchr( _this->string + index, chr );
 		if( pos )
 		{
 			result = (JILLong) (pos - _this->string);
@@ -869,7 +869,7 @@ JILLong JILString_FindCharR(const JILString* _this, JILLong chr, JILLong index)
 	JILLong result = -1;
 	if( _this->length && index >= 0 )
 	{
-		char* pos;
+		JILChar* pos;
 		if( index >= _this->length )
 			index = _this->length - 1;
 		for( pos = _this->string + index; pos >= _this->string; pos-- )
@@ -899,7 +899,7 @@ JILLong JILString_FindString(const JILString* _this, const JILString* other, JIL
 			index = 0;
 		if( index < _this->length )
 		{
-			char* pos = strstr( _this->string + index, JILString_String(other) );
+			JILChar* pos = strstr( _this->string + index, JILString_String(other) );
 			if( pos )
 			{
 				result = (JILLong) (pos - _this->string);
@@ -925,7 +925,7 @@ JILLong JILString_FindStringR(const JILString* _this, const JILString* other, JI
 			index = 0;
 		if( index < _this->length )
 		{
-			char* pos;
+			JILChar* pos;
 			JILString* thisCopy = JILString_Reverse(_this);
 			JILString* othrCopy = JILString_Reverse(other);
 			pos = strstr( thisCopy->string + index, JILString_String(othrCopy) );
@@ -1178,7 +1178,7 @@ JILLong JILString_SpanExcl(const JILString* _this, const JILString* pCharSet, JI
 void JILString_InsChr(JILString* _this, JILLong chr, JILLong index)
 {
 	JILLong oldLen;
-	char* pOldStr;
+	JILChar* pOldStr;
 	if( index < 0 )
 		index = 0;
 	if( index > _this->length )
@@ -1195,7 +1195,7 @@ void JILString_InsChr(JILString* _this, JILLong chr, JILLong index)
 	if( pOldStr )
 		memcpy( _this->string, pOldStr, index );
 	// copy middle part
-	_this->string[index] = (char) chr;
+	_this->string[index] = (JILChar) chr;
 	// copy right part
 	if( pOldStr )
 		memcpy( _this->string + index + 1, pOldStr + index, oldLen - index );
@@ -1216,7 +1216,7 @@ void JILString_InsStr(JILString* _this, const JILString* source, JILLong index)
 	if( JILString_Length(source) )
 	{
 		JILLong oldLen;
-		char* pOldStr;
+		JILChar* pOldStr;
 		// clone, if given object is this
 		const JILString* pSrc = source;
 		JILLong bThis = (pSrc == _this);
@@ -1416,8 +1416,8 @@ JILString* JILString_Remove(const JILString* _this, JILLong index, JILLong lengt
 //------------------------------------------------------------------------------
 // JILString_ReplaceChar
 //------------------------------------------------------------------------------
-/// Replace all occurrences of the search char in this string with the given
-/// replace char, and return the result as a new string. This string is not
+/// Replace all occurrences of the search JILChar in this string with the given
+/// replace JILChar, and return the result as a new string. This string is not
 /// modified.
 
 JILString* JILString_ReplaceChar(const JILString* _this, JILLong schr, JILLong rchr)
@@ -1426,7 +1426,7 @@ JILString* JILString_ReplaceChar(const JILString* _this, JILLong schr, JILLong r
 	JILString* result = JILStringPreAlloc(_this->pState, _this->length);
 	for( i = 0; i < result->length; i++ )
 	{
-		JILLong c = (unsigned char)_this->string[i];
+		JILLong c = _this->string[i];
 		if( c == schr )
 			c = rchr;
 		result->string[i] = c;
@@ -1642,7 +1642,7 @@ JILString* JILString_ToUpper(const JILString* _this)
 	if( _this->length > 0 )
 	{
 		JILLong l;
-		char* dest;
+		JILChar* dest;
 		const JILChar* src;
 		result = JILStringPreAlloc(_this->pState, _this->length);
 		l = _this->length;
@@ -1673,7 +1673,7 @@ JILString* JILString_ToLower(const JILString* _this)
 	if( _this->length > 0 )
 	{
 		JILLong l;
-		char* dest;
+		JILChar* dest;
 		const JILChar* src;
 		result = JILStringPreAlloc(_this->pState, _this->length);
 		l = _this->length;
@@ -1709,7 +1709,7 @@ JILString* JILString_EncodeURL(const JILString* _this, const JILString* exceptCh
 		JILLong c;
 		JILLong l;
 		const JILChar* src;
-		char buf[4] = {0};
+		JILChar buf[16] = {0};
 		result = JILString_New(_this->pState);
 		l = _this->length;
 		src = _this->string;
@@ -1718,7 +1718,7 @@ JILString* JILString_EncodeURL(const JILString* _this, const JILString* exceptCh
 			c = (JILByte)*src++;
 			if(	(strchr(exceptChars->string, c) == NULL) && (c < 0x20 || c >= 0x80 || (strchr(pEncodeChars, c) != NULL)) )
 			{
-				JILSnprintf(buf, 4, "%%%2.2X", c);
+				JILSnprintf(buf, sizeof(buf), "%%%2.2X", c);
 				JILString_AppendCStr(result, buf);
 			}
 			else
@@ -1753,10 +1753,10 @@ JILString* JILString_DecodeURL(const JILString* _this, const JILString* exceptCh
 		JILLong c;
 		JILLong d;
 		JILLong l;
-		char* dummy;
-		char* dest;
+		JILChar* dummy;
+		JILChar* dest;
 		const JILChar* src;
-		char buf[4] = {0};
+		JILChar buf[16] = {0};
 		result = JILStringPreAlloc(_this->pState, _this->length);
 		l = _this->length;
 		dest = result->string;
@@ -1768,7 +1768,7 @@ JILString* JILString_DecodeURL(const JILString* _this, const JILString* exceptCh
 			{
 				if( l >= 2 && isxdigit(src[0]) && isxdigit(src[1]) )
 				{
-					JILStrncpy(buf, 4, src, 2);
+					JILStrncpy(buf, sizeof(buf), src, 2);
 					d = strtol(buf, &dummy, 16);
 					if( strchr(exceptChars->string, d) == NULL )
 					{
@@ -1984,7 +1984,7 @@ static void JILStringReAlloc(JILString* _this, JILLong newSize, JILLong keepData
 	// first we check, if reallocation is necessary
 	if( newMaxLength != _this->maxLength )
 	{
-		char* pNewBuffer = NULL;
+		JILChar* pNewBuffer = NULL;
 		pNewBuffer = _this->pState->vmMalloc( _this->pState, newMaxLength );
 		if( pNewBuffer )
 		{

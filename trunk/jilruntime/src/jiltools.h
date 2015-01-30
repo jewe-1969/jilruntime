@@ -23,6 +23,12 @@
 #include "jiltypes.h"
 
 //------------------------------------------------------------------------------
+// JIL_FORMAT_MAX_BUFFER_SIZE
+//------------------------------------------------------------------------------
+
+#define JIL_FORMAT_MAX_BUFFER_SIZE	16384
+
+//------------------------------------------------------------------------------
 // JILMIN, JILMAX
 //------------------------------------------------------------------------------
 
@@ -129,7 +135,7 @@ JILINLINE JILLong JILRevisionToLong(const JILChar* pRevision)
 
 JILINLINE const JILChar* JILLongToRevision(JILChar* pRevision, JILLong revision)
 {
-	JILSnprintf(pRevision, 16, "%d.%d.%d.%d",
+	JILSnprintf(pRevision, sizeof(JILChar) * 16, "%d.%d.%d.%d",
 		(revision >> 24) & 255,
 		(revision >> 16) & 255,
 		(revision >> 8)  & 255,
