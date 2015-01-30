@@ -1416,8 +1416,8 @@ JILString* JILString_Remove(const JILString* _this, JILLong index, JILLong lengt
 //------------------------------------------------------------------------------
 // JILString_ReplaceChar
 //------------------------------------------------------------------------------
-/// Replace all occurrences of the search JILChar in this string with the given
-/// replace JILChar, and return the result as a new string. This string is not
+/// Replace all occurrences of the search character in this string with the given
+/// replace character, and return the result as a new string. This string is not
 /// modified.
 
 JILString* JILString_ReplaceChar(const JILString* _this, JILLong schr, JILLong rchr)
