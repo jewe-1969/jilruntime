@@ -99,8 +99,6 @@ static const JILChar*	kAuthorName		=	"www.jewe.org";
 static const JILChar*	kAuthorString	=	"Built-in array class for JewelScript.";
 static const JILChar*	kTimeStamp		=	"06/15/2005";
 
-static const int kStaticBufferSize = 4096;
-
 //------------------------------------------------------------------------------
 // forward declare proc message handler functions
 //------------------------------------------------------------------------------
@@ -1110,27 +1108,27 @@ void JILArrayHandleToStringF(JILState* ps, JILString* pOutStr, const JILString* 
 	JILChar* pBuffer;
 	typeID = NTLHandleToTypeID(ps, handle);
 	vec = NTLHandleToObject(ps, typeID, handle);
-	pBuffer = (JILChar*) malloc(kStaticBufferSize);
+	pBuffer = (JILChar*) malloc(JIL_FORMAT_MAX_BUFFER_SIZE);
 	switch( typeID )
 	{
 		case type_int:
 		{
 			JILLong* pLong = (JILLong*) vec;
-			JILSnprintf(pBuffer, kStaticBufferSize, JILString_String(pFormat), *pLong);
+			JILSnprintf(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, JILString_String(pFormat), *pLong);
 			JILString_Assign(pOutStr, pBuffer);
 			break;
 		}
 		case type_float:
 		{
 			JILFloat* pFloat = (JILFloat*) vec;
-			JILSnprintf(pBuffer, kStaticBufferSize, JILString_String(pFormat), *pFloat);
+			JILSnprintf(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, JILString_String(pFormat), *pFloat);
 			JILString_Assign(pOutStr, pBuffer);
 			break;
 		}
 		case type_string:
 		{
 			JILString* pStr = (JILString*) vec;
-			JILSnprintf(pBuffer, kStaticBufferSize, JILString_String(pFormat), JILString_String(pStr));
+			JILSnprintf(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, JILString_String(pFormat), JILString_String(pStr));
 			JILString_Assign(pOutStr, pBuffer);
 			break;
 		}
@@ -1140,7 +1138,7 @@ void JILArrayHandleToStringF(JILState* ps, JILString* pOutStr, const JILString* 
 			if( hstr != NULL )
 			{
 				JILString* pStr = (JILString*) NTLHandleToObject(ps, type_string, hstr);
-				JILSnprintf(pBuffer, kStaticBufferSize, JILString_String(pFormat), JILString_String(pStr));
+				JILSnprintf(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, JILString_String(pFormat), JILString_String(pStr));
 				JILString_Assign(pOutStr, pBuffer);
 				NTLFreeHandle(ps, hstr);
 			}

@@ -276,10 +276,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->mipParentStack = NULL;
 
 	for( i = 0; i < kNumRegisters; i++ )
-	{
-		_this->miLocalRegs[i] = 0;
 		_this->miRegUsage[i] = 0;
-	}
 }
 
 //------------------------------------------------------------------------------
@@ -339,10 +336,7 @@ void copy_JCLFunc(JCLFunc* _this, const JCLFunc* src)
 	_this->miNaked = src->miNaked;
 	_this->mipParentStack = src->mipParentStack;
 	for( i = 0; i < kNumRegisters; i++ )
-	{
-		_this->miLocalRegs[i] = src->miLocalRegs[i];
 		_this->miRegUsage[i] = src->miRegUsage[i];
-	}
 }
 
 //------------------------------------------------------------------------------

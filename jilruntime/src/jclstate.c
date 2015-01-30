@@ -39,7 +39,6 @@ COMPILER TODO:
 	- accessor method always creates static calls, should take virtual into account
 	- auto-conversion always creates static calls, should take virtual into account
 	- there may be more parts of compiler and linker always creating static calls
-	- remove miLocalRegs[]
 
 	BUGS:
 	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
@@ -73,16 +72,8 @@ COMPILER TODO:
 //------------------------------------------------------------------------------
 // Register allocation constants
 //------------------------------------------------------------------------------
-// Number of registers to reserve for local variables. Don't reserve too many
-// registers for local variables, leave AT LEAST 16 registers free for temporary
-// values. CAUTION: The first 3 regs (r0,r1,r2) MUST REMAIN reserved!
-// Using a higher number of registers for local variables will only give a minor
-// improvement in speed. If compiler option "stack-locals" is enabled, all
-// local variables will be created on the stack and this constant will be
-// disregarded.
 
-static const JILLong kMaxVarRegisters	= 5;	// registers used for local variables
-static const JILLong kFirstVarRegister	= 3;	// first three regs are reserved!
+static const JILLong kFirstVarRegister	= 3;	// first three regs are reserved, DO NOT CHANGE!
 
 // This defines how many registers will be saved to the stack with single pushes
 // rather than using the PUSHR / POPR instruction. If more registers have to be
@@ -762,7 +753,7 @@ void FatalError(JCLState* _this, const JILChar* pFile, JILLong line, const JILCh
 	#ifdef _DEBUG
 	#if !JIL_NO_FPRINTF
 	if( _this->mipMachine->vmLogOutputProc == NULL )
-		fprintf(stdout, "%s", JCLGetString(str1));
+		fputs(JCLGetString(str1), stdout);
 	#endif
 	#endif
 	// call fatal error handler, if installed
@@ -780,25 +771,19 @@ void FatalError(JCLState* _this, const JILChar* pFile, JILLong line, const JILCh
 
 void JCLVerbosePrint(JCLState* _this, const JILChar* pFormat, ...)
 {
-	#if !JIL_NO_FPRINTF
 	JILState* pVM = _this->mipMachine;
 	if( pVM->vmLogOutputProc && GetOptions(_this)->miVerboseEnable )
 	{
-		int len;
-		char* pBuffer;
+		JILChar* pBuffer;
 		va_list arguments;
 		va_start( arguments, pFormat );
-
-		pBuffer = (char*) malloc(4096);
-		len = JIL_VSNPRINTF( pBuffer, 4090, pFormat, arguments );
-		pBuffer[len] = 0;
-
+		pBuffer = (JILChar*) malloc(JIL_FORMAT_MAX_BUFFER_SIZE);
+		JIL_VSNPRINTF(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, arguments);
+		pBuffer[JIL_FORMAT_MAX_BUFFER_SIZE - 1] = 0;
 		pVM->vmLogOutputProc(pVM, pBuffer);
-
 		free(pBuffer);
 		va_end( arguments );
 	}
-	#endif
 }
 
 //------------------------------------------------------------------------------
@@ -1615,17 +1600,15 @@ static JCLVar* SimRegisterGet(JCLState* _this, JILLong regNum)
 //------------------------------------------------------------------------------
 // MakeLocalVar
 //------------------------------------------------------------------------------
-// Create a new local variable, either in a register, or on the stack. Caller
-// must maintain an array of local variables. The new variable object will be
-// created in this array, and a pointer to it will be then moved either to the
-// stack or into a register.
+// Create a new local variable on the stack. Caller must maintain an array of
+// local variables. The new variable object will be created in this array, and
+// a pointer to it will be then moved to the stack.
 // The given pVarDesc argument is used to specify the name, type and flags of
 // the variable. Pass the result of the IsFullTypeDecl() call in pVarDesc.
 // ATTENTION: This function generates code!
 
-static JILError MakeLocalVar(JCLState* _this, Array_JCLVar* pLocals, JILLong where, const JCLVar* pVarDesc)
+static JILError MakeLocalVar(JCLState* _this, Array_JCLVar* pLocals, JILLong mode, const JCLVar* pVarDesc)
 {
-	int i;
 	JILError err = JCL_No_Error;
 	JCLVar* pVar;
 
@@ -1641,47 +1624,10 @@ static JILError MakeLocalVar(JCLState* _this, Array_JCLVar* pLocals, JILLong whe
 	pVar = pLocals->New(pLocals);
 	pVar->Copy(pVar, pVarDesc);
 
-	// should we auto choose the location?
-	if( where == kLocalAuto )
-	{
-		where = kLocalStack;
-		// check if we can use a register
-		if( _this->miNumVarRegisters < kMaxVarRegisters )
-		{
-			for( i = kFirstVarRegister; i < kNumRegisters; i++ )
-			{
-				if( SimRegisterGet(_this, i) == NULL )
-				{
-					where = kLocalRegister;
-					break;
-				}
-			}
-		}
-	}
-	if( where == kLocalRegister )
-	{
-		// make a register var
-		if( _this->miNumVarRegisters >= kMaxVarRegisters )
-			FATALERROREXIT("MakeLocalVar", "Unable to allocate var register");
-		for( i = kFirstVarRegister; i < kNumRegisters; i++ )
-		{
-			if( SimRegisterGet(_this, i) == NULL )
-			{
-				SimRegisterSet(_this, i, pVar);
-				CurrentFunc(_this)->miRegUsage[i]++;
-				CurrentFunc(_this)->miLocalRegs[i]++;
-				break;
-			}
-		}
-		if( i == kNumRegisters )
-			FATALERROREXIT("MakeLocalVar", "Unable to allocate var register");
-	}
-	else if( where == kLocalStack )
-	{
-		// make a stack var
-		cg_push_multi(_this, 1);	// push one null handle
-		SimStackPush(_this, pVar, JILFalse);
-	}
+	// make a stack var
+	cg_push_multi(_this, 1);	// push one null handle
+	SimStackPush(_this, pVar, JILFalse);
+
 exit:
 	return err;
 }
@@ -1690,7 +1636,7 @@ exit:
 // FreeLocalVars
 //------------------------------------------------------------------------------
 // The local variables of a code block no longer exist and should be removed
-// from the stack or registers. Caller must pass in the array of local variables.
+// from the stack. Caller must pass in the array of local variables.
 // ATTENTION: This function generates code!
 
 static void FreeLocalVars(JCLState* _this, Array_JCLVar* pLocals)
@@ -1711,13 +1657,6 @@ static void FreeLocalVars(JCLState* _this, Array_JCLVar* pLocals)
 		numStack++;
 		cg_pop_multi(_this, numStack);
 		SimStackPop(_this, numStack);
-	}
-	// now unset all register vars
-	for( i = 0; i < pLocals->Count(pLocals); i++ )
-	{
-		pVar = pLocals->Get(pLocals, i);
-		if( pVar->miMode == kModeRegister )
-			SimRegisterUnset(_this, pVar->miIndex);
 	}
 	pLocals->Trunc(pLocals, 0);
 }
@@ -1744,14 +1683,6 @@ static JCLVar* FindLocalVar(JCLState* _this, const JCLString* pName)
 				return pVar;
 			return pVar;
 		}
-	}
-
-	// search var registers
-	for( i = kFirstVarRegister; i < kNumRegisters; i++ )
-	{
-		pVar = SimRegisterGet(_this, i);
-		if( pVar && (pVar->miUsage == kUsageVar) && !pVar->miHidden && JCLCompare(pVar->mipName, pName) )
-			return pVar;
 	}
 
 	// search the stack from top down
@@ -1849,6 +1780,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 	JILError err = JCL_No_Error;
 	int i;
 	JCLVar* pVar;
+	JCLString* str = NEW(JCLString);
 	if( ppVar )
 	{
 		*ppVar = NULL;
@@ -1857,6 +1789,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 		{
 			if( SimRegisterGet(_this, i) == NULL )
 			{
+				JCLFormat(str, "@r%d", i);
 				pVar = NEW(JCLVar);
 				pVar->miType = type_var;
 				pVar->miElemType = type_var;
@@ -1866,10 +1799,10 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 				if( src )
 				{
 					pVar->Copy(pVar, src);
-					JCLClear(pVar->mipName);
 					pVar->miMode = kModeUnused;
 					pVar->miIniType = pVar->miType;
 				}
+				JCLAppend(pVar->mipName, JCLGetString(str));
 				pVar->miUsage = kUsageTemp;
 				pVar->miRef = JILTrue;
 				pVar->miWeak = JILFalse;
@@ -1884,6 +1817,7 @@ static JILError MakeTempVar(JCLState* _this, JCLVar** ppVar, const JCLVar* src)
 			FATALERROREXIT("MakeTempVar", "No free temporary register found");
 	}
 exit:
+	DELETE(str);
 	return err;
 }
 

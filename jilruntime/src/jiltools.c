@@ -22,12 +22,6 @@
 #include "jclstring.h"
 
 //------------------------------------------------------------------------------
-// kFormatWorstCaseBufferSize
-//------------------------------------------------------------------------------
-
-static const JILLong kFormatWorstCaseBufferSize = 4096;
-
-//------------------------------------------------------------------------------
 // JILMessageLog
 //------------------------------------------------------------------------------
 
@@ -35,17 +29,13 @@ void JILMessageLog(JILState* pState, const JILChar* pFormat, ...)
 {
 	if( pState->vmLogOutputProc )
 	{
-		JILLong len;
 		JILChar* pBuffer;
 		va_list arguments;
 		va_start( arguments, pFormat );
-
-		pBuffer = (JILChar*) malloc(kFormatWorstCaseBufferSize);
-		len = JIL_VSNPRINTF( pBuffer, kFormatWorstCaseBufferSize - 1, pFormat, arguments );
-		pBuffer[len] = 0;
-
+		pBuffer = (JILChar*) malloc(JIL_FORMAT_MAX_BUFFER_SIZE);
+		JIL_VSNPRINTF(pBuffer, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, arguments);
+		pBuffer[JIL_FORMAT_MAX_BUFFER_SIZE - 1] = 0;
 		pState->vmLogOutputProc( pState, pBuffer );
-
 		free(pBuffer);
 		va_end( arguments );
 	}
@@ -58,14 +48,14 @@ void JILMessageLog(JILState* pState, const JILChar* pFormat, ...)
 JILLong JILSnprintf(JILChar* pDest, JILLong destSize, const JILChar* pFormat, ...)
 {
 	JILLong len = 0;
-	va_list arguments;
-	va_start( arguments, pFormat );
 	if( pDest && destSize > 0 )
 	{
+		va_list arguments;
+		va_start( arguments, pFormat );
 		len = JIL_VSNPRINTF( pDest, destSize, pFormat, arguments );
 		pDest[destSize - 1] = 0;
+		va_end( arguments );
 	}
-	va_end( arguments );
 	return len;
 }
 

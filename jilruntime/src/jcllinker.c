@@ -2035,103 +2035,6 @@ static JILError InsertRegisterSaving(JCLFunc* pFunc, JCLState* pCompiler)
 }
 
 //------------------------------------------------------------------------------
-// OptimizeNotAndBranch
-//------------------------------------------------------------------------------
-// Optimizes a not instruction followed by a tsteq into a tstne instruction.
-// It also removes branches that just branch to the next instruction.
-// Example:
-//      cseql r3,r4,r3
-//		unot r3
-//		tsteq r3,6
-// Is optimized into:
-//      cseql r3,r4,r3
-//		tstne r3,6
-//
-// TODO: This optimization has been removed because it caused problems with new && and || operator implementations
-//       We MUST be able to rely on register contents to reflect TRUE or FALSE for the whole expression.
-
-/*static JILError OptimizeNotAndBranch(JCLFunc* pFunc, OptimizeReport* pReport)
-{
-	JILError err = JCL_No_Error;
-	JILLong opaddr;
-	JILLong opsize;
-	JILLong opcode;
-	JILLong reg;
-	JILLong offset;
-	JILBool bCond;
-	JILBool bCont;
-	OpcodeInfo info;
-	CodeBlock* _this = pFunc->mipCode;
-
-	do
-	{
-		pReport->totalPasses++;
-		bCont = JILFalse;
-		for( opaddr = 0; opaddr < _this->count; opaddr += opsize )
-		{
-			opcode = _this->array[opaddr];
-			opsize = JILGetInstructionSize(opcode);
-			if( opcode == op_unot_r )
-			{
-				JILLong opaddr2;
-				JILLong opsize2;
-				JILLong opcode2;
-				reg = _this->array[opaddr + 1];
-				opaddr2 = opaddr + opsize;
-				opcode2 = _this->array[opaddr2];
-				opsize2 = JILGetInstructionSize(opcode2);
-				if( IsTestEqual(_this, opaddr2, &info) &&
-					InstructionUsesRegister(_this, opaddr2, reg) &&
-					!IsAddrBranchTarget(_this, opaddr2) )
-				{
-					JILLong buffer[8];
-					JILLong newSize;
-					// check if this branch jumps to next instruction
-					IsBranchInstruction(_this, opaddr2, &offset, &bCond);
-					if( offset == opsize2 )
-					{
-						// remove unot and testeq
-						DeleteCode(_this, opaddr, opsize + opsize2);
-						pReport->instr_removed += 2;
-						opsize = 0;
-						bCont = JILTrue;
-					}
-					else
-					{
-						DeleteCode(_this, opaddr, opsize);	// delete unot
-						pReport->instr_removed++;
-						if( CreateInstruction(&info, buffer, &newSize) && newSize == opsize2 )
-						{
-							// csne instruction is same size so we can just memcpy without ReplaceCode()
-							memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
-						}
-						opaddr += newSize;
-						opsize = 0;
-						bCont = JILTrue;
-					}
-				}
-			}
-			else if( IsBranchInstruction(_this, opaddr, &offset, &bCond) )
-			{
-				// check if this branch jumps to next instruction
-				if( offset == opsize )
-				{
-					// remove branch
-					DeleteCode(_this, opaddr, opsize);
-					pReport->instr_removed++;
-					opsize = 0;
-					bCont = JILTrue;
-				}
-			}
-		}
-		if( bCont )
-			pReport->numPasses++;
-	} while( bCont );
-	pReport->count_after = _this->count;
-	return err;
-}*/
-
-//------------------------------------------------------------------------------
 // OptimizeMoveOperations
 //------------------------------------------------------------------------------
 // Optimizes two move/copy instructions into a single one, if possible.
@@ -2161,29 +2064,25 @@ static JILError OptimizeMoveOperations(JCLFunc* pFunc, OptimizeReport* pReport)
 				GetCopyToRegister(_this, opaddr, &mtrInfo) ||
 				GetWrefToRegister(_this, opaddr, &mtrInfo) )
 			{
-				JILLong reg = mtrInfo.operand[dst].data[0];	// exclude registers used as local variables
-				if( pFunc->miLocalRegs[reg] == 0 )
+				JILLong opsize2;
+				JILLong opaddr2 = opaddr + opsize;
+				if( opaddr2 < _this->count )
 				{
-					JILLong opsize2;
-					JILLong opaddr2 = opaddr + opsize;
-					if( opaddr2 < _this->count )
+					opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
+					if( GetMoveFromRegister(_this, opaddr2, &mfrInfo) &&
+						!IsAddrBranchTarget(_this, opaddr2) )
 					{
-						opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
-						if( GetMoveFromRegister(_this, opaddr2, &mfrInfo) &&
-							!IsAddrBranchTarget(_this, opaddr2) )
+						JILLong buffer[8];
+						JILLong newSize = 0;
+						if( CreateCombinedMove(_this, &mtrInfo, &mfrInfo, buffer, &newSize) )
 						{
-							JILLong buffer[8];
-							JILLong newSize = 0;
-							if( CreateCombinedMove(_this, &mtrInfo, &mfrInfo, buffer, &newSize) )
-							{
-								ReplaceCode(_this, opaddr, opsize + opsize2, newSize);
-								memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
-								opsize = newSize;
-								if( newSize )
-									pReport->instr_added++;
-								pReport->instr_removed += 2;
-								bCont = JILTrue;
-							}
+							ReplaceCode(_this, opaddr, opsize + opsize2, newSize);
+							memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
+							opsize = newSize;
+							if( newSize )
+								pReport->instr_added++;
+							pReport->instr_removed += 2;
+							bCont = JILTrue;
 						}
 					}
 				}
@@ -2233,8 +2132,7 @@ static JILError OptimizeOperationAndMove(JCLFunc* pFunc, OptimizeReport* pReport
 			opsize = JILGetInstructionSize( _this->array[opaddr] );
 			if( GetOpcodeInfo(_this, opaddr, &info) && info.operand[dst].type == ot_ear )
 			{
-				JILLong reg = info.operand[dst].data[0];	// exclude registers used as local variables
-				if( IsOpcodeSwappable(info.base_opcode) && pFunc->miLocalRegs[reg] == 0 )
+				if( IsOpcodeSwappable(info.base_opcode) )
 				{
 					JILLong opsize2;
 					JILLong opaddr2 = opaddr + opsize;
@@ -2299,27 +2197,23 @@ static JILError OptimizeMathOperations(JCLFunc* pFunc, OptimizeReport* pReport)
 		opsize = JILGetInstructionSize( _this->array[opaddr] );
 		if( GetMoveToRegister(_this, opaddr, &ins1Info) )
 		{
-			JILLong reg = ins1Info.operand[dst].data[0];	// exclude registers used as local variables
-			if( pFunc->miLocalRegs[reg] == 0 )
+			JILLong opsize2;
+			JILLong opaddr2 = opaddr + opsize;
+			if( opaddr2 < _this->count )
 			{
-				JILLong opsize2;
-				JILLong opaddr2 = opaddr + opsize;
-				if( opaddr2 < _this->count )
+				opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
+				if( GetMathFromRegister(_this, opaddr2, &ins2Info) )
 				{
-					opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
-					if( GetMathFromRegister(_this, opaddr2, &ins2Info) )
+					JILLong buffer[8];
+					JILLong newSize = 0;
+					if( CreateCombinedMath(_this, &ins1Info, &ins2Info, buffer, &newSize) )
 					{
-						JILLong buffer[8];
-						JILLong newSize = 0;
-						if( CreateCombinedMath(_this, &ins1Info, &ins2Info, buffer, &newSize) )
-						{
-							ReplaceCode(_this, opaddr, opsize + opsize2, newSize);
-							memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
-							opsize = newSize;
-							pReport->instr_added++;
-							pReport->instr_removed += 2;
-							bCont = JILTrue;
-						}
+						ReplaceCode(_this, opaddr, opsize + opsize2, newSize);
+						memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
+						opsize = newSize;
+						pReport->instr_added++;
+						pReport->instr_removed += 2;
+						bCont = JILTrue;
 					}
 				}
 			}
@@ -2361,38 +2255,30 @@ static JILError OptimizeCompareOperations(JCLFunc* pFunc, OptimizeReport* pRepor
 		opsize = JILGetInstructionSize( _this->array[opaddr] );
 		if( GetMoveToRegister(_this, opaddr, &move1Info) )
 		{
-			JILLong reg = move1Info.operand[dst].data[0];	// exclude registers used as local variables
-			if( pFunc->miLocalRegs[reg] == 0 )
+			JILLong opsize2;
+			JILLong opaddr2 = opaddr + opsize;
+			if( opaddr2 < _this->count )
 			{
-				JILLong opsize2;
-				JILLong opaddr2 = opaddr + opsize;
-				if( opaddr2 < _this->count )
+				opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
+				if( GetMoveToRegister(_this, opaddr2, &move2Info) )
 				{
-					opsize2 = JILGetInstructionSize( _this->array[opaddr2] );
-					if( GetMoveToRegister(_this, opaddr2, &move2Info) )
+					JILLong opsize3;
+					JILLong opaddr3 = opaddr2 + opsize2;
+					if( opaddr3 < _this->count )
 					{
-						reg = move2Info.operand[dst].data[0];	// exclude registers used as local variables
-						if( pFunc->miLocalRegs[reg] == 0 )
+						opsize3 = JILGetInstructionSize( _this->array[opaddr3] );
+						if( GetCompareRegister(_this, opaddr3, &cmpInfo) )
 						{
-							JILLong opsize3;
-							JILLong opaddr3 = opaddr2 + opsize2;
-							if( opaddr3 < _this->count )
+							JILLong buffer[16];
+							JILLong newSize = 0;
+							if( CreateCombinedCompare(_this, &move1Info, &move2Info, &cmpInfo, buffer, &newSize) )
 							{
-								opsize3 = JILGetInstructionSize( _this->array[opaddr3] );
-								if( GetCompareRegister(_this, opaddr3, &cmpInfo) )
-								{
-									JILLong buffer[16];
-									JILLong newSize = 0;
-									if( CreateCombinedCompare(_this, &move1Info, &move2Info, &cmpInfo, buffer, &newSize) )
-									{
-										ReplaceCode(_this, opaddr, opsize + opsize2 + opsize3, newSize);
-										memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
-										opsize = newSize;
-										pReport->instr_added += 2;
-										pReport->instr_removed += 3;
-										bCont = JILTrue;
-									}
-								}
+								ReplaceCode(_this, opaddr, opsize + opsize2 + opsize3, newSize);
+								memcpy(_this->array + opaddr, buffer, newSize * sizeof(JILLong));
+								opsize = newSize;
+								pReport->instr_added += 2;
+								pReport->instr_removed += 3;
+								bCont = JILTrue;
 							}
 						}
 					}
@@ -2961,11 +2847,6 @@ static JILError optimizeCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 		_this->ToString(_this, pCompiler, pFuncName, kFullDecl | kCompact);
 		JCLVerbosePrint(pCompiler, "Optimizing %s ...\n", JCLGetString(pFuncName));
 		report.count_before = _this->mipCode->count;
-
-		// optimize not and branch
-//		err = OptimizeNotAndBranch(_this, &report);
-//		if( err )
-//			goto exit;
 
 		// optimize consecutive pushes and pops
 		err = OptimizeCombinePushPop(_this, &report);
