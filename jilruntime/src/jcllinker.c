@@ -2838,7 +2838,6 @@ static JILError optimizeCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 	JILError err = JCL_No_Error;
 	OptimizeReport report = {0};
 	JILLong optLevel = _this->miOptLevel;
-	JILLong localVarMode = kLocalStack;
 	JCLString* pFuncName = NEW(JCLString);
 
 	pCompiler->miOptSizeBefore += _this->mipCode->count * sizeof(JILLong);
@@ -2883,12 +2882,9 @@ static JILError optimizeCode_JCLFunc(JCLFunc* _this, JCLState* pCompiler)
 			if( optLevel > 2 )
 			{
 				// optimize register replacing
-				if( localVarMode == kLocalStack )
-				{
-					err = OptimizeRegisterReplacing(_this, &report);
-					if( err )
-						goto exit;
-				}
+				err = OptimizeRegisterReplacing(_this, &report);
+				if( err )
+					goto exit;
 
 				// optimize register saving code
 				err = OptimizeRegisterSaving(_this, &report);
