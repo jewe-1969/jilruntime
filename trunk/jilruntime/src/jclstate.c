@@ -6521,17 +6521,15 @@ static JILError p_local_decl(JCLState* _this, Array_JCLVar* pLocals, JCLVar* pVa
 	JCLString* pToken;
 	JCLVar* pAnyVar;
 	JILLong tokenID;
-	JILLong localVarMode;
 	TypeInfo outType;
 
 	pToken = NEW(JCLString);
 	pFile = _this->mipFile;
 	JCLClrTypeInfo( &outType );
-	localVarMode = kLocalStack;
 
 	for(;;)
 	{
-		err = MakeLocalVar(_this, pLocals, localVarMode, pVar);
+		err = MakeLocalVar(_this, pLocals, 0, pVar);
 		ERROR_IF(err, err, pVar->mipName, goto exit);
 		// peek if we have a "=" token...
 		err = pFile->PeekToken(pFile, pToken, &tokenID);
@@ -10506,7 +10504,7 @@ static JILError p_switch(JCLState* _this, Array_JCLVar* pParentLocals)
 	pDummyVar->miElemType = type_var;
 	pDummyVar->miElemRef = JILFalse;
 	JCLRandomIdentifier(pDummyVar->mipName, 16);
-	err = MakeLocalVar(_this, pLocals, kLocalStack, pDummyVar);
+	err = MakeLocalVar(_this, pLocals, 0, pDummyVar);
 	DELETE(pDummyVar);
 	ERROR_IF(err, err, NULL, goto exit);
 	pSwitchVar = SimStackGet(_this, 0);

@@ -20,14 +20,6 @@
 
 #include "jclstring.h"
 
-/// Modes for MakeLocalVar()
-enum
-{
-	kLocalAuto,					///< use registers if available, otherwise use stack (default)
-	kLocalRegister,				///< force using registers, fail if none available (not recommended)
-	kLocalStack					///< force using stack (never use registers)
-};
-
 /// Modes for Error JCLFormat option
 enum
 {
