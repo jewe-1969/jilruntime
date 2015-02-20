@@ -256,6 +256,8 @@ void copy_JCLFile( JCLFile* _this, const JCLFile* src )
 //------------------------------------------------------------------------------
 // JCLFile::Open
 //------------------------------------------------------------------------------
+// Initializes this file object and pre-compiles the given source code into an
+// array of token objects.
 
 static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar* pText, const JILChar* pPath, JCLOption* pOptions)
 {
@@ -314,9 +316,9 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 //------------------------------------------------------------------------------
 // JCLFile::PeekToken
 //------------------------------------------------------------------------------
-// Reads a token from the source file and returns the token type ID as a
-// positive integer value (see enum JCToken). For certain token types, the
-// specific sub-string is return in [pToken].
+// Reads a token from the token array and returns the token ID as a
+// positive integer value (see enum TokenID). For certain token types, the
+// string representation of the token is returned in pToken.
 
 static JILError peekToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 {
@@ -337,7 +339,7 @@ static JILError peekToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pT
 //------------------------------------------------------------------------------
 // JCLFile::GetToken
 //------------------------------------------------------------------------------
-// Reads the next token from the source file and advances the read position.
+// Reads the next token from the token array and advances the read position.
 
 static JILError getToken_JCLFile(JCLFile* _this, JCLString* pToken, JILLong* pTokenID)
 {
@@ -451,26 +453,32 @@ static JILError scanStatement_JCLFile(JCLFile* _this, JCLString* outStr)
 {
 	JILError err;
 	JILLong tokenID;
-	JILLong hier;
+	JILLong h1, h2, h3;
 	JILLong savePos;
 	JCLString* pToken = NEW(JCLString);
 	JCLClear(outStr);
-	hier = 0;
+	h1 = h2 = h3 = 0;
 	for(;;) 
 	{
 		savePos = _this->miLocator;
 		err = getToken_JCLFile(_this, pToken, &tokenID);
 		if( err )
 			break;
-		if( tokenID == tk_semicolon && hier == 0 )
-			break;
-		if( tokenID == tk_curly_close && hier == 0 )
-			break;
+		if( !h1 && !h2 && !h3 )
+		{
+			if( tokenID == tk_semicolon || tokenID == tk_curly_close )
+				break;
+		}
 		TokenToString(_this, tokenID, pToken, outStr);
-		if( tokenID == tk_curly_open || tokenID == tk_round_open || tokenID == tk_square_open )
-			hier++;
-		else if( tokenID == tk_curly_close || tokenID == tk_round_close || tokenID == tk_square_close )
-			hier--;
+		switch( tokenID )
+		{
+			case tk_curly_open: h1++; break;
+			case tk_round_open: h2++; break;
+			case tk_square_open: h3++; break;
+			case tk_curly_close: h1--; break;
+			case tk_round_close: h2--; break;
+			case tk_square_close: h3--; break;
+		}
 	}
 	_this->miLocator = savePos;
 	DELETE(pToken);
@@ -486,35 +494,37 @@ static JILError scanExpression_JCLFile(JCLFile* _this, JCLString* outStr)
 {
 	JILError err;
 	JILLong tokenID;
-	JILLong hier;
+	JILLong h1, h2, h3;
 	JILLong savePos;
 	JCLString* pToken = NEW(JCLString);
 	JCLClear(outStr);
-	hier = 0;
+	h1 = h2 = h3 = 0;
 	for(;;) 
 	{
 		savePos = _this->miLocator;
 		err = getToken_JCLFile(_this, pToken, &tokenID);
 		if( err )
 			break;
-		if( hier == 0 )
+		if( !h1 && !h2 && !h3 )
 		{
-			if( tokenID == tk_colon )
-				break;
-			if( tokenID == tk_comma )
-				break;
-			if( tokenID == tk_round_close )
-				break;
-			if( tokenID == tk_semicolon )
-				break;
-			if( tokenID == tk_curly_close )
+			if( tokenID == tk_colon
+			||	tokenID == tk_ternary
+			||	tokenID == tk_comma
+			||	tokenID == tk_round_close
+			||	tokenID == tk_semicolon
+			||	tokenID == tk_curly_close )
 				break;
 		}
 		TokenToString(_this, tokenID, pToken, outStr);
-		if( tokenID == tk_curly_open || tokenID == tk_round_open || tokenID == tk_square_open )
-			hier++;
-		else if( tokenID == tk_curly_close || tokenID == tk_round_close || tokenID == tk_square_close )
-			hier--;
+		switch( tokenID )
+		{
+			case tk_curly_open: h1++; break;
+			case tk_round_open: h2++; break;
+			case tk_square_open: h3++; break;
+			case tk_curly_close: h1--; break;
+			case tk_round_close: h2--; break;
+			case tk_square_close: h3--; break;
+		}
 	}
 	_this->miLocator = savePos;
 	DELETE(pToken);
