@@ -41,7 +41,8 @@ COMPILER TODO:
 	- there may be more parts of compiler and linker always creating static calls
 
 	BUGS:
-	- statement doesn't compile:   if (FileFilter().Site.IsComplete)
+	- statement doesn't compile:        if (FileFilter().Site.IsComplete)
+	- ternary and null don't compile:   return (cond) ? a : null;
 
 	Future ideas:
 	* It would be easy to support 'readonly' variables now
