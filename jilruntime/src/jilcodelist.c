@@ -371,7 +371,7 @@ JILLong JILListHandle(JILState* pState, JILHandle* pHandle, JILChar* pString, JI
 			JILSnprintf( pString, maxString, "%s %g", JILGetHandleTypeName(pState, type), JILGetFloatHandle(pHandle)->f );
 			break;
 		case type_string:
-			JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 32 );
+			JILCopyEscString( tempstr, JILString_String(JILGetStringHandle(pHandle)->str), 30 );
 			JILSnprintf( pString, maxString, "%s \"%s\"", JILGetHandleTypeName(pState, type), tempstr );
 			break;
 		case type_array:
