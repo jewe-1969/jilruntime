@@ -1177,3 +1177,29 @@ JEWELSCRIPT COMPILER ISSUES
 
 
 ------------------------------------------------------------------------------------------------------------------------
+
+56. Closure captures too many parent stack items
+
+  Currently, the NEWDGC instruction copies everything that is on the parent function's stack into the closure. This is
+  in most cases inconsequential, but in any case inefficient. Even if a function has no local variables, creating a
+  closure in that function can copy a large number of items from the stack to the closure, if there are many temporary
+  values currently on the parent function's stack.
+  
+  One problem this can cause is the creation of reference cycles. If the closure is created in a method of a class and
+  'r0' (this) happens to have been saved on the stack (which is quite common), then a reference to 'this' will be
+  stored in the closure, creating a reference cycle if the class keeps a reference to the closure.
+  
+  To make closures more efficient and avoid unwanted references, the closure should only capture actual local variables
+  created by the USER, not temporary values saved on the stack by the compiler.
+  
+  To do this, the NEWDGC instruction must be changed: Instead of the current stack counter, the instruction will get
+  the actual number of local variables as an operand. The instruction will then allocate an array of handles of the
+  given size, but will not automatically fill it with values from the stack.
+  
+  A new instruction must be created: MOVEDGC. This instruction has three operands: MOVEDGC (sp+1), 0, r3
+  
+  MOVEDGC will move a reference from the stack to the closure. The first operand specifies the source variable, the
+  second operand the storage location (index) in the closure, and the third operand is a register holding a closure.
+
+  To make this work, the compiler needs to create an alternative list of parent variables when compiling the
+  closure's body. Stack offsets of parent variables must match the order / index of items in the closure.
