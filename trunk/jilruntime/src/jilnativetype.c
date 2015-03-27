@@ -517,6 +517,35 @@ void NTLFreeHandle(JILState* pState, JILHandle* handle)
 }
 
 //------------------------------------------------------------------------------
+// NTLDisposeObject
+//------------------------------------------------------------------------------
+
+JILError NTLDisposeObject(JILState* pState, JILHandle* pHandle)
+{
+	JILTypeInfo* pTypeInfo;
+	JILLong i;
+	JILHandle** ppS;
+	JILHandle* pNull;
+	JILLong size;
+
+	pTypeInfo = JILTypeInfoFromType(pState, pHandle->type);
+	if( pTypeInfo->family != tf_class || pTypeInfo->isNative )
+		return JIL_ERR_Invalid_Handle_Type;
+
+	// release and clear all members
+	pNull = JILGetNullHandle(pState);
+	size = pTypeInfo->instanceSize;
+	ppS = JILGetObjectHandle(pHandle)->ppHandles;
+	for( i = 0; i < size; i++ )
+	{
+		JILAddRef(pNull);
+		JILRelease(pState, *ppS);
+		*ppS++ = pNull;
+	}
+	return JIL_No_Exception;
+}
+
+//------------------------------------------------------------------------------
 // NTLMarkHandle
 //------------------------------------------------------------------------------
 

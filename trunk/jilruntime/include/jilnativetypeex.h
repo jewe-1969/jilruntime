@@ -225,6 +225,30 @@ JILEXTERN void			NTLReferHandle			(JILState* pState, JILHandle* handle);
 JILEXTERN void			NTLFreeHandle			(JILState* pState, JILHandle* handle);
 
 //------------------------------------------------------------------------------
+// NTLDisposeObject
+//------------------------------------------------------------------------------
+/// Release all member variables of a script object and set them to 'null'.
+/// Normally, calling this function is not necessary. Releasing the handle to
+/// your object should also release all of it's members. However, if the object
+/// holds a reference that causes it to indirectly reference itself, this will
+/// create a reference cycle. Usually this happens when the object stores a
+/// reference to a delegate and the delegate in turn stores a reference to the
+/// object.
+/// <p>This function can be called on any script object to 'force release'
+/// all it's members, so that any reference cycles that may have been created
+/// by the object are broken up.</p>
+/// <p>After calling this, all member variables of the object are set to 'null',
+/// so calling this again will not create any ill effects. However, caution
+/// should be taken. If other objects access members of this object after this
+/// function has been called, this may cause a null-reference exception.</p>
+/// <p>If the given handle is not a reference to a script object, an error is
+/// returned.</p>
+/// This function does not release the given handle; you still need to call
+/// NTLFreeHandle() to release it.
+
+JILEXTERN JILError		NTLDisposeObject		(JILState* pState, JILHandle* pHandle);
+
+//------------------------------------------------------------------------------
 // NTLMarkHandle
 //------------------------------------------------------------------------------
 /// Call this for all handles your native class owns if your native type
