@@ -604,6 +604,27 @@ exit:
 }
 
 //------------------------------------------------------------------------------
+// JCLImportAllNatives
+//------------------------------------------------------------------------------
+
+JILError JCLImportAllNatives(JILState* pState)
+{
+	JILError err = JCL_No_Error;
+	JCLState* _this;
+
+	if( (_this = pState->vmpCompiler) == NULL )
+		return JIL_ERR_No_Compiler;
+
+	_this->miPass = kPassPrecompile;
+	err = p_import_all(_this);
+	if( err )
+		goto exit;
+
+exit:
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // JCLFreeCompiler
 //------------------------------------------------------------------------------
 
