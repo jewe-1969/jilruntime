@@ -391,6 +391,12 @@ static JCLString* toString_JCLFunc(JCLFunc* _this, JCLState* pCompiler, JCLStrin
 	// write keyword 'function' or 'method' in full decl mode
 	if( flags & kFullDecl )
 	{
+		if( _this->miStrict )
+			JCLAppend(outString, "strict ");
+		if( _this->miPrivate )
+			JCLAppend(outString, "private ");
+		if( _this->miVirtual )
+			JCLAppend(outString, "virtual ");
 		if( _this->miExplicit )
 			JCLAppend(outString, "explicit ");
 		if( _this->miAccessor )
@@ -473,13 +479,14 @@ static JCLString* toXml_JCLFunc(JCLFunc* _this, JCLState* pState, JCLString* pOu
 	JCLAppend(pOut, "\" name=\"");
 	JCLAppend(pOut, JCLGetString(_this->mipName));
 	JCLAppend(pOut, "\" mode=\"");
-	if( _this->miStrict || _this->miExplicit )
-	{
-		if( _this->miStrict )
-			JCLAppend(pOut, "strict ");
-		if( _this->miExplicit )
-			JCLAppend(pOut, "explicit ");
-	}
+	if( _this->miStrict )
+		JCLAppend(pOut, "strict ");
+	if( _this->miPrivate )
+		JCLAppend(pOut, "private ");
+	if( _this->miVirtual )
+		JCLAppend(pOut, "virtual ");
+	if( _this->miExplicit )
+		JCLAppend(pOut, "explicit ");
 	JCLFormat(workstr, "%d", _this->miFuncIdx);
 	JCLAppend(pOut, "\" index=\"");
 	JCLAppend(pOut, JCLGetString(workstr));

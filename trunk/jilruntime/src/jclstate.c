@@ -4553,12 +4553,23 @@ static JILError p_class(JCLState* _this, JILLong modifier)
 			goto exit;
 		err = pFile->GetToken(pFile, pToken, &tokenID);
 		ERROR_IF(err, err, pToken, goto exit);
-	}	// we expect to see a "{"
+	}
+	// check for tag
+	if( tokenID == tk_square_open )
+	{
+		pFile->SetLocator(pFile, pFile->GetLocator(pFile) - 1);
+		err = p_tag(_this, CurrentClass(_this)->mipTag);
+		if( err )
+			goto exit;
+		err = pFile->GetToken(pFile, pToken, &tokenID);
+		ERROR_IF(err, err, pToken, goto exit);
+	}
+	// we expect to see a "{"
 	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	pClass->miHasBody = JILTrue;
 	SetCurrentNamespace(_this, pClassName);
-	// check for tag
+	// check for tag again (this is for native types)
 	err = p_tag(_this, CurrentClass(_this)->mipTag);
 	if( err )
 		goto exit;
@@ -5522,10 +5533,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		}
 		SetCompileContext(_this, classIdx, pFunc->miFuncIdx);
 	}
-	// check for ";" or "{" or "hybrid" or "extends"
+	// check for ";" or "{" or "[" or "hybrid" or "extends" or "inherits"
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
-	if( (tokenID == tk_curly_open || tokenID == tk_hybrid || tokenID == tk_extends || tokenID == tk_inherits) && _this->miPass == kPassCompile )
+	if( _this->miPass == kPassCompile && (tokenID == tk_curly_open || tokenID == tk_square_open || tokenID == tk_hybrid || tokenID == tk_extends || tokenID == tk_inherits) )
 	{
 		JCLVar* src;
 		JCLVar* dst;
@@ -5565,7 +5576,7 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 		if( err )
 			goto exit;
 	}
-	else if( tokenID == tk_semicolon || tokenID == tk_hybrid || tokenID == tk_extends || tokenID == tk_inherits || _this->miPass == kPassPrecompile )
+	else if( _this->miPass == kPassPrecompile || tokenID == tk_semicolon )
 	{
 		JCLFunc* pFunc2;
 		if( tokenID == tk_semicolon )
@@ -5623,6 +5634,10 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 					}
 				}
 			}
+			// check for tag
+			err = p_tag(_this, pFunc->mipTag);
+			if( err )
+				goto exit;
 			// skip code block
 			err = p_skip_block(_this);
 			if( err )
@@ -5834,7 +5849,7 @@ static JILError p_function_pass(JCLState* _this)
 			err = p_function_hybrid(_this, pFunc);
 			if( err)
 				goto exit;
-			// expect "}"
+			// expect ")"
 			err = pFile->GetToken(pFile, pToken, &tokenID);
 			ERROR_IF(err, err, pToken, goto exit);
 			ERROR_IF(tokenID != tk_round_close, JCL_ERR_Unexpected_Token, pToken, goto exit);
@@ -5867,6 +5882,10 @@ static JILError p_function_pass(JCLState* _this)
 			}
 		}
 	}
+	// check for tag
+	err = p_tag(_this, pFunc->mipTag);
+	if( err )
+		goto exit;
 	// parse block (function body)
 	err = pFile->PeekToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
@@ -11587,6 +11606,10 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	pClass = CurrentClass(_this);
 	pClass->miModifier = modifier;
 
+	// check for tag
+	err = p_tag(_this, CurrentClass(_this)->mipTag);
+	if( err )
+		goto exit;
 	// we expect to find a "{" or ";"
 	err = pFile->GetToken(pFile, pToken, &tokenID);
 	ERROR_IF(err, err, pToken, goto exit);
@@ -11595,7 +11618,7 @@ static JILError p_interface(JCLState* _this, JILLong modifier)
 	if( tokenID != tk_curly_open )
 		ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
 	pClass->miHasBody = JILTrue;
-	// check for tag
+	// check for tag again (old style)
 	err = p_tag(_this, CurrentClass(_this)->mipTag);
 	if( err )
 		goto exit;
@@ -12968,7 +12991,7 @@ static JILError p_strict(JCLState* _this)
 			err = p_virtual( _this, kModeStrict );
 			break;
 		case tk_private:
-			err = p_private( _this, kModePrivate );
+			err = p_private( _this, kModeStrict );
 			break;
 		default:
 			ERROR(JCL_ERR_Unexpected_Token, pToken, goto exit);
