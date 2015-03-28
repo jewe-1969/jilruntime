@@ -113,7 +113,7 @@ static void WrapIntoTag(JCLString* string, const JILChar* pTag);
 //------------------------------------------------------------------------------
 
 static JILBool OnlyFunctions(JCLFunc* pFunc)	{ return !pFunc->miMethod; }
-static JILBool OnlyCtors(JCLFunc* pFunc)		{ return pFunc->miCtor; }
+static JILBool OnlyCtors(JCLFunc* pFunc)		{ return pFunc->miCtor && !pFunc->miPrivate; }
 static JILBool OnlyConvertors(JCLFunc* pFunc)	{ return pFunc->miConvertor; }
 static JILBool OnlyMethods(JCLFunc* pFunc)		{ return pFunc->miMethod && !pFunc->miAccessor && !pFunc->miCtor && !pFunc->miConvertor; }
 static JILBool OnlyProperties(JCLFunc* pFunc)	{ return pFunc->miAccessor; }
@@ -183,17 +183,21 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 	// inheritance
 	if( pClass->miFamily == tf_class && (pClass->miBaseType || pClass->miHybridBase) )
 	{
-		JCLClass* pInt = GetClass(_this, pClass->miBaseType);
-		JCLSetString(workstr, JCLGetString(pInt->mipName));
+		JCLClass* pBase = GetClass(_this, pClass->miBaseType);
+		JCLSetString(workstr, JCLGetString(pBase->mipName));
 		if( pClass->miHybridBase )
 		{
 			JCLClass* pHyb = GetClass(_this, pClass->miHybridBase);
 			JCLAppend(workstr, " hybrid ");
 			JCLAppend(workstr, JCLGetString(pHyb->mipName));
 		}
+		if( pBase->miFamily == tf_interface )
+			JCLSetString(tagstr1, "implements");
+		else
+			JCLSetString(tagstr1, "extends");
 		AutoLinkKeywords(pDict, workstr, pClass->mipName);
 		fprintf(pFile, "<h3>Inheritance</h3>\n");
-		fprintf(pFile, "<table id='table1'><tr><td id='light'><pre>class %s : %s</pre></p></td></tr></table>\n", JCLGetString(pClass->mipName), JCLGetString(workstr));
+		fprintf(pFile, "<table id='table1'><tr><td id='light'><pre>class %s %s %s</pre></p></td></tr></table>\n", JCLGetString(pClass->mipName), JCLGetString(tagstr1), JCLGetString(workstr));
 	}
 	// write function tables
 	WriteFunctionTable(_this, pClass, pFile, OnlyFunctions, "Global Functions", &Anchor, pDict);
@@ -219,7 +223,7 @@ JILError JCLCreateClassDoc(JCLState* _this, JCLClass* pClass, JILTable* pDict, c
 		WriteFunctionDesc(_this, pClass, pFile, OnlyProperties, &Anchor, pDict);
 	}
 	// end of file
-	JCLSetString(workstr, "{application}");
+	JCLSetString(workstr, "{application} {appversion}");
 	AutoLinkKeywords(pDict, workstr, NULL);
 	fprintf(pFile, "<div id='footer'><a href='index.html'>%s class documentation</a>", JCLGetString(workstr));
 	JCLFormatTime(workstr, "%Y-%m-%d %H:%M:%S", time(NULL));
@@ -307,7 +311,7 @@ JILError JCLCreateClassIndex(JCLState* _this, JILTable* pDict, const JILChar* pP
 	ERROR_IF(pFile == NULL, JCL_ERR_Native_Code_Generator, workstr, goto exit);
 
 	// header, title, etc
-	JCLSetString(workstr, "{application}");
+	JCLSetString(workstr, "{application} {appversion}");
 	AutoLinkKeywords(pDict, workstr, NULL);
 	fprintf(pFile, "<!DOCTYPE html>\n");
 	fprintf(pFile, "<html>\n<head>\n<title>%s Class Documentation</title>\n", JCLGetString(workstr));
@@ -846,7 +850,6 @@ static void AutoInsertVariables(JILTable* pDict, JCLString* workstr)
 	{
 		if( JCLBeginsWith(oldstr, "{") )
 		{
-			JILLong pos = JCLGetLocator(oldstr);
 			len = JCLSpanBetween(oldstr, '{', '}', tempstr);
 			if( len > 0 )
 			{
@@ -859,7 +862,6 @@ static void AutoInsertVariables(JILTable* pDict, JCLString* workstr)
 					continue;
 				}
 			}
-			JCLSetLocator(oldstr, pos);
 		}
 		JCLSpanExcluding(oldstr, "{", tempstr);
 		JCLAppend(workstr, JCLGetString(tempstr));
