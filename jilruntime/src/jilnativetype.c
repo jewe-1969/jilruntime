@@ -528,6 +528,8 @@ JILError NTLDisposeObject(JILState* pState, JILHandle* pHandle)
 	JILHandle* pNull;
 	JILLong size;
 
+	if( pHandle == NULL )
+		return JIL_ERR_Illegal_Argument;
 	pTypeInfo = JILTypeInfoFromType(pState, pHandle->type);
 	if( pTypeInfo->family != tf_class || pTypeInfo->isNative )
 		return JIL_ERR_Invalid_Handle_Type;
