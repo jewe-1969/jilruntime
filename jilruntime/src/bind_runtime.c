@@ -18,12 +18,45 @@
 #include "jilarray.h"
 #include "jilcodelist.h"
 
-//------------------------------------------------------------------------------
-// class declaration string
-//------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+// function enumeration - this must be kept in sync with the class declaration below.
+//-----------------------------------------------------------------------------------
 
-static const char* kClassDeclaration =
-	TAG("Static class containing functions that provide information about the JewelScript runtime.")
+enum {
+	fn_traceException,
+	fn_runtimeChecks,
+	fn_debugBuild,
+	fn_releaseBuild,
+	fn_libraryVersion,
+	fn_runtimeVersion,
+	fn_compilerVersion,
+	fn_typeInterfaceVersion,
+	fn_stackSize,
+	fn_instructionCounter,
+	fn_getTypeName,
+	fn_getTypeID,
+	fn_getTypeFamily,
+	fn_getBaseType,
+	fn_isTypeNative,
+	fn_getTypeVersion,
+	fn_getTypeAuthor,
+	fn_getTypeDescription,
+	fn_getTypeTimeStamp,
+	fn_getNumTypes,
+	fn_generateBindings,
+	fn_generateDocs,
+	fn_printLog,
+	fn_clone,
+	fn_printDebugInfo,
+	fn_disposeObject
+};
+
+//--------------------------------------------------------------------------------------------
+// class declaration string - order of declarations must be kept in sync with the enumeration.
+//--------------------------------------------------------------------------------------------
+
+static const JILChar* kClassDeclaration =
+	TAG("Static class that provides access to functions of the JewelScript runtime.")
 	"function int traceException ();" TAG("Returns true if the virtual machine supports the trace exception.")
 	"function int runtimeChecks ();" TAG("Returns true if the virtual machine performs extended runtime checks.")
 	"function int debugBuild ();" TAG("Returns true if this is a debug build of the runtime.")
@@ -47,40 +80,41 @@ static const char* kClassDeclaration =
 	"function int generateBindings (const string path);" TAG("Generates native binding code at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 	"function int generateDocs (const string path, const string args);" TAG("Generates HTML documentation at the specified path. To save memory, the application can free the compiler before executing the script, in which case this function will do nothing.")
 	"function printLog (const string[] args);" TAG("Uses the runtime's logging callback to output the given string arguments. A line-feed is added after printing all arguments.")
-	"function var clone(const var o);" TAG("Creates a copy of the given object by calling it's copy constructor. Script objects that have no copy constructor will be copied by the runtime. If a native object has no copy constructor, this function returns null. <p><b>Script objects that inherit base class should define a copy constructor, otherwise base references may not be initialized properly.</b></p>")
-	"function printDebugInfo(const var o);" TAG("Outputs information on the given object.")
-	"function int disposeObject(var o);" TAG("Frees all members of the given script object and sets them to null. This can be used to automatically set all member variables of any script object to null. This may help you fix memory leaks due to reference-cycles. You should only call this for objects that aren't needed anymore. Your script should not access any members of the specified object after this function returns or you'll risk a null-reference exception. Calling this multiple times for the same script object is harmless. If the specified reference is not a script object, the function returns an error. If it was successful it returns zero.")
+	"function var clone (const var o);" TAG("Creates a copy of the given object by calling it's copy constructor. Script objects that have no copy constructor will be copied by the runtime. If a native object has no copy constructor, this function returns null.<p>Special care should be taken if the specified object has references to delegates. While this function will also copy the source object's delegates, these may reference the source object. If that is unwanted, it is recommended to add a copy constructor to the class and initialize these delegates manually. This is especially true for hybrid classes.</p><p>Script objects that inherit base class should also define a copy constructor to ensure the object is initialized properly.</p>")
+	"function printDebugInfo (const var o);" TAG("Outputs information on the given object.")
+	"function int disposeObject (var o);" TAG("Frees all members of the given script object and sets them to null. This can be used to automatically set all member variables of any script object to null. This may help you fix memory leaks due to reference-cycles.<p>You should only call this for objects that aren't needed anymore. Your script should not access any members of the specified object after this function returns, or you'll risk a null-reference exception. Calling this multiple times for the same script object is harmless.</p>If the specified reference is not a script object, the function returns an error. If it was successful, it returns zero.")
 ;
 
 //------------------------------------------------------------------------------
 // class info constants
 //------------------------------------------------------------------------------
 
-static const char*	kClassName		=	"runtime"; // The class name that will be used in JewelScript.
-static const char*	kPackageList	=	"";
-static const char*	kAuthorName		=	"www.jewe.org";
-static const char*	kAuthorString	=	"Provides access to the JewelScript compiler and runtime.";
-static const char*	kTimeStamp		=	"16.02.2010";
+static const JILChar*	kClassName		=	"runtime";
+static const JILChar*	kPackageList	=	"";
+static const JILChar*	kAuthorName		=	"www.jewe.org";
+static const JILChar*	kAuthorString	=	"Static class that provides access to functions of the JewelScript runtime.";
+static const JILChar*	kTimeStamp		=	"2015-03-28 22:07:07";
 
 //------------------------------------------------------------------------------
 // forward declare internal functions
 //------------------------------------------------------------------------------
 
-static JILError bind_runtime_GetDecl		(JILUnknown* pDataIn);
-static JILError bind_runtime_CallStatic		(NTLInstance* pInst, JILLong funcID);
+static JILError bind_runtime_GetDecl     (JILUnknown* pDataIn);
+static JILError bind_runtime_CallStatic  (NTLInstance* pInst, JILLong funcID);
 
 //------------------------------------------------------------------------------
 // native type proc
 //------------------------------------------------------------------------------
 // This is the function you need to register with the script runtime.
 
-JILError JILRuntimeProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown* pDataIn, JILUnknown** ppDataOut)
+JILEXTERN JILError JILRuntimeProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnknown* pDataIn, JILUnknown** ppDataOut)
 {
 	int result = JIL_No_Exception;
 	switch( msg )
 	{
 		// runtime messages
 		case NTL_Register:				break;
+		case NTL_OnImport:				break;
 		case NTL_Initialize:			break;
 		case NTL_MarkHandles:			break;
 		case NTL_CallStatic:			return bind_runtime_CallStatic(pInst, param);
@@ -89,12 +123,12 @@ JILError JILRuntimeProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnkno
 		// class information queries
 		case NTL_GetInterfaceVersion:	return NTLRevisionToLong(JIL_TYPE_INTERFACE_VERSION);
 		case NTL_GetAuthorVersion:		return NTLRevisionToLong(JIL_LIBRARY_VERSION);
-		case NTL_GetClassName:			(*(const char**) ppDataOut) = kClassName; break;
-		case NTL_GetPackageString:		(*(const char**) ppDataOut) = kPackageList; break;
+		case NTL_GetClassName:			(*(const JILChar**) ppDataOut) = kClassName; break;
+		case NTL_GetPackageString:		(*(const JILChar**) ppDataOut) = kPackageList; break;
 		case NTL_GetDeclString:			return bind_runtime_GetDecl(pDataIn);
-		case NTL_GetBuildTimeStamp:		(*(const char**) ppDataOut) = kTimeStamp; break;
-		case NTL_GetAuthorName:			(*(const char**) ppDataOut) = kAuthorName; break;
-		case NTL_GetAuthorString:		(*(const char**) ppDataOut) = kAuthorString; break;
+		case NTL_GetBuildTimeStamp:		(*(const JILChar**) ppDataOut) = kTimeStamp; break;
+		case NTL_GetAuthorName:			(*(const JILChar**) ppDataOut) = kAuthorName; break;
+		case NTL_GetAuthorString:		(*(const JILChar**) ppDataOut) = kAuthorString; break;
 		// return error on unknown messages
 		default:						result = JIL_ERR_Unsupported_Native_Call; break;
 	}
@@ -107,8 +141,7 @@ JILError JILRuntimeProc(NTLInstance* pInst, JILLong msg, JILLong param, JILUnkno
 
 static JILError bind_runtime_GetDecl(JILUnknown* pDataIn)
 {
-	// Dynamically build the class declaration
-	NTLDeclareVerbatim(pDataIn, kClassDeclaration); // add the static part of the class declaration
+	NTLDeclareVerbatim(pDataIn, kClassDeclaration);
 	return JIL_No_Exception;
 }
 
@@ -118,65 +151,65 @@ static JILError bind_runtime_GetDecl(JILUnknown* pDataIn)
 
 static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 {
-	JILError result = JIL_No_Exception;
+	JILError error = JIL_No_Exception;
 	JILState* ps = NTLInstanceGetVM(pInst);		// get pointer to VM
 	switch( funcID )
 	{
-		case 0: // function int traceException ()
+		case fn_traceException: // function int traceException ()
 		{
 			NTLReturnInt(ps, (ps->vmVersion.BuildFlags & kTraceExceptionEnabled) == kTraceExceptionEnabled);
 			break;
 		}
-		case 1: // function int runtimeChecks ()
+		case fn_runtimeChecks: // function int runtimeChecks ()
 		{
 			NTLReturnInt(ps, (ps->vmVersion.BuildFlags & kExtendedRuntimeChecks) == kExtendedRuntimeChecks);
 			break;
 		}
-		case 2: // function int debugBuild ()
+		case fn_debugBuild: // function int debugBuild ()
 		{
 			NTLReturnInt(ps, (ps->vmVersion.BuildFlags & kDebugBuild) == kDebugBuild);
 			break;
 		}
-		case 3: // function int releaseBuild ()
+		case fn_releaseBuild: // function int releaseBuild ()
 		{
 			NTLReturnInt(ps, (ps->vmVersion.BuildFlags & kReleaseBuild) == kReleaseBuild);
 			break;
 		}
-		case 4: // function string libraryVersion ()
+		case fn_libraryVersion: // function string libraryVersion ()
 		{
 			JILChar buf[32];
 			NTLReturnString(ps, JILLongToRevision(buf, ps->vmVersion.LibraryVersion));
 			break;
 		}
-		case 5: // function string runtimeVersion ()
+		case fn_runtimeVersion: // function string runtimeVersion ()
 		{
 			JILChar buf[32];
 			NTLReturnString(ps, JILLongToRevision(buf, ps->vmVersion.RuntimeVersion));
 			break;
 		}
-		case 6: // function string compilerVersion ()
+		case fn_compilerVersion: // function string compilerVersion ()
 		{
 			JILChar buf[32];
 			NTLReturnString(ps, JILLongToRevision(buf, ps->vmVersion.CompilerVersion));
 			break;
 		}
-		case 7: // function string typeInterfaceVersion ()
+		case fn_typeInterfaceVersion: // function string typeInterfaceVersion ()
 		{
 			JILChar buf[32];
 			NTLReturnString(ps, JILLongToRevision(buf, ps->vmVersion.TypeInterfaceVersion));
 			break;
 		}
-		case 8: // function int stackSize ()
+		case fn_stackSize: // function int stackSize ()
 		{
 			NTLReturnInt(ps, ps->vmDataStackSize);
 			break;
 		}
-		case 9: // function int instructionCounter ()
+		case fn_instructionCounter: // function int instructionCounter ()
 		{
 			NTLReturnInt(ps, ps->vmInstructionCounter);
 			break;
 		}
-		case 10: // function string getTypeName (int type)
+		case fn_getTypeName: // function string getTypeName (int type)
 		{
 			const JILChar* pResult = "(invalid)";
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -188,13 +221,13 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnString(ps, pResult);
 			break;
 		}
-		case 11: // function int getTypeID (const string name)
+		case fn_getTypeID: // function int getTypeID (const string name)
 		{
 			const JILChar* arg_0 = NTLGetArgString(ps, 0);
 			NTLReturnInt(ps, NTLTypeNameToTypeID(ps, arg_0));
 			break;
 		}
-		case 12: // function int getTypeFamily (int type)
+		case fn_getTypeFamily: // function int getTypeFamily (int type)
 		{
 			JILLong tf = tf_undefined;
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -206,7 +239,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnInt(ps, tf);
 			break;
 		}
-		case 13: // function int getBaseType (int type)
+		case fn_getBaseType: // function int getBaseType (int type)
 		{
 			JILLong base = 0;
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -218,7 +251,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnInt(ps, base);
 			break;
 		}
-		case 14: // function int isTypeNative (int type)
+		case fn_isTypeNative: // function int isTypeNative (int type)
 		{
 			JILLong isNative = JILFalse;
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -230,7 +263,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnInt(ps, isNative);
 			break;
 		}
-		case 15: // function int getTypeVersion (int type)
+		case fn_getTypeVersion: // function int getTypeVersion (int type)
 		{
 			JILChar buf[32];
 			JILLong version = 0;
@@ -244,7 +277,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnString(ps, JILLongToRevision(buf, version));
 			break;
 		}
-		case 16: // function string getTypeAuthor (int type)
+		case fn_getTypeAuthor: // function string getTypeAuthor (int type)
 		{
 			const JILChar* pName = "(invalid)";
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -257,7 +290,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnString(ps, pName);
 			break;
 		}
-		case 17: // function string getTypeDescription (int type)
+		case fn_getTypeDescription: // function string getTypeDescription (int type)
 		{
 			const JILChar* pDescription = "(invalid)";
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -270,7 +303,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnString(ps, pDescription);
 			break;
 		}
-		case 18: // function string getTypeTimeStamp (int type)
+		case fn_getTypeTimeStamp: // function string getTypeTimeStamp (int type)
 		{
 			const JILChar* pTimeStamp = "(invalid)";
 			JILLong type = NTLGetArgInt(ps, 0);
@@ -283,22 +316,22 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnString(ps, pTimeStamp);
 			break;
 		}
-		case 19: // function int getNumTypes ()
+		case fn_getNumTypes: // function int getNumTypes ()
 		{
 			NTLReturnInt(ps, ps->vmUsedTypeInfoSegSize);
 			break;
 		}
-		case 20: // function int generateBindings (const string path)
+		case fn_generateBindings: // function int generateBindings (const string path)
 		{
 			NTLReturnInt(ps, JCLGenerateBindings(ps, NTLGetArgString(ps, 0)));
 			break;
 		}
-		case 21: // function int generateDocs (const string path, const string args)
+		case fn_generateDocs: // function int generateDocs (const string path, const string args)
 		{
 			NTLReturnInt(ps, JCLGenerateDocs(ps, NTLGetArgString(ps, 0), NTLGetArgString(ps, 1)));
 			break;
 		}
-		case 22: // function printLog (const string[] args)
+		case fn_printLog: // function printLog (const string[] args)
 		{
 			JILArray* pArray;
 			JILString* pResult;
@@ -311,7 +344,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			}
 			break;
 		}
-		case 23: // function var clone(const var o)
+		case fn_clone: // function var clone (const var o)
 		{
 			JILHandle* hArg = NTLGetArgHandle(ps, 0);
 			JILHandle* hResult = NTLCopyHandle(ps, hArg);
@@ -320,7 +353,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLFreeHandle(ps, hResult);
 			break;
 		}
-		case 24: // function printDebugInfo(const var o)
+		case fn_printDebugInfo: // function printDebugInfo (const var o)
 		{
 			JILHandle* hArg = NTLGetArgHandle(ps, 0);
 			JILLong* pL = (JILLong*) hArg->data;
@@ -328,7 +361,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLFreeHandle(ps, hArg);
 			break;
 		}
-		case 25: // function disposeObject (var o)
+		case fn_disposeObject: // function disposeObject (var o)
 		{
 			JILHandle* hArg = NTLGetArgHandle(ps, 0);
 			NTLReturnInt(ps, NTLDisposeObject(ps, hArg));
@@ -337,9 +370,9 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 		}
 		default:
 		{
-			result = JIL_ERR_Invalid_Function_Index;
+			error = JIL_ERR_Invalid_Function_Index;
 			break;
 		}
 	}
-	return result;
+	return error;
 }

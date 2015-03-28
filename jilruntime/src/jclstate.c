@@ -409,7 +409,6 @@ static JILError		p_if				(JCLState*, Array_JCLVar*);
 static JILError		p_import			(JCLState*);
 static JILError		p_import_class		(JCLState*, JCLString*);
 static JILError		p_import_class_list	(JCLState*, const JILChar*);
-static JILError		p_import_all		(JCLState*);
 static JILError		p_new				(JCLState*, Array_JCLVar*, JCLVar*, JCLVar**, JCLVar**);
 static JILError		p_for				(JCLState*, Array_JCLVar*);
 static JILError		p_while				(JCLState*, Array_JCLVar*);
@@ -9895,7 +9894,7 @@ exit:
 //------------------------------------------------------------------------------
 // Parse an import all statement.
 
-static JILError p_import_all(JCLState* _this)
+JILError p_import_all(JCLState* _this)
 {
 	JILError err = JCL_No_Error;
 	JCLString* pClassName;

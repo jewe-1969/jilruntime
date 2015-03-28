@@ -240,6 +240,23 @@ JILEXTERN JILError				JCLForwardClass			(JILState* pState, const JILChar* pClass
 JILEXTERN JILError				JCLImportClass			(JILState* pState, const JILChar* pClassName);
 
 //------------------------------------------------------------------------------
+// JCLImportAllNatives
+//------------------------------------------------------------------------------
+/// Automatically imports all native classes that are currently registered to
+/// the runtime. This is essentially the same as compiling the statement:</p>
+/// <pre>import all;</pre>
+/// <p>This function is intended for use with the HTML documentation generator
+/// and the JCLGenerateDocs() API function. Calling this may cause a high CPU
+/// load, if many complex classes have been registered with the runtime.
+/// The function should only be called <b>once</b> and only for documentation
+/// generation purposes.</p>
+/// Automatically importing all classes may lead to duplicate symbols, in which
+/// case this function aborts compilation and returns an error. You can avoid
+/// duplicate symbols by using namespaces for all your native bindings.
+
+JILEXTERN JILError				JCLImportAllNatives		(JILState* pState);
+
+//------------------------------------------------------------------------------
 // JCLFreeCompiler
 //------------------------------------------------------------------------------
 /// <p>You may call this to destroy all objects allocated by the compiler if you

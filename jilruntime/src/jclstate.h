@@ -94,6 +94,7 @@ END_CLASS( JCLState )
 //------------------------------------------------------------------------------
 
 JILError	p_compile			(JCLState*, JCLFile*);
+JILError	p_import_all		(JCLState*);
 JILLong		FindClass			(JCLState*, const JCLString*, JCLClass**);
 JILLong		FindFunction		(JCLState*, JILLong, const JCLString*, JILLong, JCLFunc**);
 JILLong		NumClasses			(JCLState*);
