@@ -530,19 +530,28 @@ JILError NTLDisposeObject(JILState* pState, JILHandle* pHandle)
 
 	if( pHandle == NULL )
 		return JIL_ERR_Illegal_Argument;
-	pTypeInfo = JILTypeInfoFromType(pState, pHandle->type);
-	if( pTypeInfo->family != tf_class || pTypeInfo->isNative )
-		return JIL_ERR_Invalid_Handle_Type;
-
-	// release and clear all members
-	pNull = JILGetNullHandle(pState);
-	size = pTypeInfo->instanceSize;
-	ppS = JILGetObjectHandle(pHandle)->ppHandles;
-	for( i = 0; i < size; i++ )
+	if( pHandle->refCount > 0 )
 	{
-		JILAddRef(pNull);
-		JILRelease(pState, *ppS);
-		*ppS++ = pNull;
+		// get type info
+		pTypeInfo = JILTypeInfoFromType(pState, pHandle->type);
+		if( pTypeInfo->family != tf_class || pTypeInfo->isNative )
+			return JIL_ERR_Invalid_Handle_Type;
+		// release and clear all members
+		pNull = JILGetNullHandle(pState);
+		size = pTypeInfo->instanceSize;
+		ppS = JILGetObjectHandle(pHandle)->ppHandles;
+		for( i = 0; i < size; i++ )
+		{
+			JILAddRef(pNull);
+			JILRelease(pState, *ppS);
+			*ppS++ = pNull;
+		}
+	}
+	else
+	{
+		JIL_INSERT_DEBUG_CODE(
+			JILMessageLog(pState, "Native type disposes dead object (%s). This may indicate a reference cycle.\n", JILGetHandleTypeName(pState, pHandle->type));
+		)
 	}
 	return JIL_No_Exception;
 }
