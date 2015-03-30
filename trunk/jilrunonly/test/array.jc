@@ -10,7 +10,7 @@ using stdlib;   // get rid of stdlib namespace
 /*
  *  function main
  *
- *  The type of data in an array is by default typeless, so you normally can't access
+ *  The type of data in an array is by default typeless, so you can't access
  *  any object members from an object in an array. This is because the compiler
  *  can't know there are Person instances in the array. Hence, writing:
  *
@@ -23,13 +23,13 @@ using stdlib;   // get rid of stdlib namespace
  *
  *      myArray[0].Person::Print();
  *
- *  This will tell the compiler to interprete the item in the array as an instance
+ *  This will tell the compiler to interpret the item in the array as an instance
  *  of class Person and call it's member function Print().
  *  Of course this would fail at runtime, if we would use this expression and there
  *  are values of a different type in the array.
  *
- *  Note that since v0.9, you can use type-safe arrays, which allow you to easily
- *  access members from objects:
+ *  Since v0.9, you can use type-safe arrays, which allow you to easily access
+ *  members from objects:
  *
  *      Person[] myArray;
  *      myArray[0] = new Person();
@@ -87,7 +87,7 @@ function string main(const string[] args)
  *  Print our addresses to console
  */
 
-function PrintAddresses( const Person[] addresses )
+function PrintAddresses(const Person[] addresses)
 {
     println("Addresses:");
     addresses.enumerate(function(e, a){ e.Person::Print(); }, null);
