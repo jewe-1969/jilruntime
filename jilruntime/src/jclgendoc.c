@@ -1179,17 +1179,31 @@ static void LoadTextInclude(JCLString* fileName, JCLString* text)
 //------------------------------------------------------------------------------
 // WrapIntoTag
 //------------------------------------------------------------------------------
-// Wraps the given text into a tag, but only if the text doesn't contain that
-// tag already. Will only work for simple tags without attributes.
+// Wraps the given text into a tag, while avoiding nesting of the tag.
+// Will only work for simple tags without attributes, actually just intended
+// to avoid nesting <p> tags.
 
 static void WrapIntoTag(JCLString* string, const JILChar* pTag)
 {
 	JCLString* tag = NEW(JCLString);
 	JCLFormat(tag, "<%s>", pTag);
-	if( JCLFindString(string, JCLGetString(tag), 0) < 0 )
+	JILLong pos = JCLFindString(string, JCLGetString(tag), 0);
+	if( pos < 0 )
 	{
 		tag->Copy(tag, string);
 		JCLFormat(string, "<%s>%s</%s>", pTag, JCLGetString(tag), pTag);
+	}
+	else
+	{
+		JCLString* workstr = NEW(JCLString);
+		JCLSubString(workstr, string, 0, pos); // get beginning of string up to <p>
+		JCLAppend(tag, JCLGetString(workstr)); // add to result
+		JCLFormat(workstr, "</%s>", pTag); // create end-tag
+		JCLAppend(tag, JCLGetString(workstr)); // add to result
+		JCLSubString(workstr, string, pos, JCLGetLength(string) - pos); // get rest of string
+		JCLAppend(tag, JCLGetString(workstr)); // add to result
+		string->Copy(string, tag); // copy result
+		DELETE(workstr);
 	}
 	DELETE(tag);
 }
