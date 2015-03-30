@@ -152,9 +152,9 @@ union JILHandleData
 
 struct JILHandle
 {
-	JILWord	type;					///< The type of the value this handle encapsulates, see struct JILTypeInfo
-	JILWord	flags;					///< Flags, see enum JILHandleFlags
-	JILLong	refCount;				///< Number of references to the value
+	JILLong		type;				///< The type of the value this handle encapsulates, see struct JILTypeInfo
+	JILLong		flags;				///< Flags, see enum JILHandleFlags
+	JILLong		refCount;			///< Number of references to the value
 	union JILHandleData	data[1];	///< The handle's value, handle type dependent, see opaque structs in jilhandle.h
 };
 
@@ -371,9 +371,9 @@ struct JILFuncInfo
 
 struct JILDataHandle
 {
-	JILWord				type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
+	JILLong				type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
 	JILLong				index;		///< The index number this handle should have as a runtime handle
-	JILChar				data[8];	///< The handle data, type dependant
+	JILByte				data[8];	///< The handle data, type dependant
 };
 
 //------------------------------------------------------------------------------

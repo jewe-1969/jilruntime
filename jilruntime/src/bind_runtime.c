@@ -66,7 +66,7 @@ static const JILChar* kClassDeclaration =
 	"function string compilerVersion ();" TAG("Returns the version number of the compiler.")
 	"function string typeInterfaceVersion ();" TAG("Returns the version number of the native type interface.")
 	"function int stackSize ();" TAG("Returns the stack size specified when initializing this runtime.")
-	"function int instructionCounter ();" TAG("Returns the current value of the instruction counter. The instruction counter is a signed 32-bit integer that is increased for each executed VM instruction. If this feature has been disabled, the result is always 0.")
+	"function float instructionCounter ();" TAG("Returns the current value of the instruction counter. The instruction counter is an unsigned 64-bit integer that is increased for each executed VM instruction. If this feature has been disabled, the result is always 0.")
 	"function string getTypeName (int type);" TAG("Returns the type name for the specified type identifier number.")
 	"function int getTypeID (const string name);" TAG("Returns the type ID for the specified type name. If the name is not a type name, returns 0.")
 	"function int getTypeFamily (int type);" TAG("Returns the type family ID for the specified type ID.")
@@ -204,9 +204,9 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 			NTLReturnInt(ps, ps->vmDataStackSize);
 			break;
 		}
-		case fn_instructionCounter: // function int instructionCounter ()
+		case fn_instructionCounter: // function float instructionCounter ()
 		{
-			NTLReturnInt(ps, ps->vmInstructionCounter);
+			NTLReturnFloat(ps, ps->vmInstructionCounter);
 			break;
 		}
 		case fn_getTypeName: // function string getTypeName (int type)
