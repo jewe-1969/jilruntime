@@ -748,7 +748,7 @@
 	handle1 = *operand1;\
 	pNewHandle->type = handle1->type;\
 	pNewHandle->flags |= HF_PERSIST;\
-	memcpy(pNewHandle->data, handle1->data, sizeof(handle1->data));\
+	memcpy(pNewHandle->data, handle1->data, sizeof(JILHandleData));\
 	JIL_STORE_HANDLE(pState, operand2, pNewHandle);\
 	JILRelease( pState, pNewHandle );\
 	pNewHandle = NULL;\

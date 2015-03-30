@@ -132,12 +132,13 @@ typedef struct JILRuntimeException	JILRuntimeException;
 /// This determines the maximum size of the data a JILHandle can hold.
 /// The data size must be at least 64 bits, which this union guarantees.
 
-union JILHandleData
+typedef union
 {
 	JILLong		_int;
 	JILFloat	_float;
 	JILUnknown*	_ptr;
-};
+
+} JILHandleData;
 
 //------------------------------------------------------------------------------
 // struct JILHandle
@@ -152,10 +153,11 @@ union JILHandleData
 
 struct JILHandle
 {
-	JILLong		type;				///< The type of the value this handle encapsulates, see struct JILTypeInfo
-	JILLong		flags;				///< Flags, see enum JILHandleFlags
-	JILLong		refCount;			///< Number of references to the value
-	union JILHandleData	data[1];	///< The handle's value, handle type dependent, see opaque structs in jilhandle.h
+	JILLong			type;				///< The type of the value this handle encapsulates, see struct JILTypeInfo
+	JILLong			flags;				///< Flags, see enum JILHandleFlags
+	JILLong			refCount;			///< Number of references to the value
+	JILLong			reserved;			///< Reserved to ensure 8-byte alignment for 64-bit float
+	JILHandleData	data[1];			///< The handle's value, handle type dependent, see opaque structs in jilhandle.h
 };
 
 //------------------------------------------------------------------------------
@@ -373,7 +375,7 @@ struct JILDataHandle
 {
 	JILLong				type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
 	JILLong				index;		///< The index number this handle should have as a runtime handle
-	JILByte				data[8];	///< The handle data, type dependant
+	JILHandleData		data[1];	///< The handle data, type dependant
 };
 
 //------------------------------------------------------------------------------
