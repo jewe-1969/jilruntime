@@ -118,7 +118,7 @@ function string main(const string[] args)
     printf("fib(32) = %d, %d recursions\n", {fib(32), fib_r});
     printf("Time: %g s\n", t.tickDiff() / 1000.0);
 
-    print("\n*** ACKERMAN ***\n");
+    print("\n*** ACK ***\n");
     print("Recursively calculates the Ackerman sequence.\n");
     t.tickDiff();
     printf("ack(3,8) = %d, %d recursions\n", {ack(3,8), ack_r});
