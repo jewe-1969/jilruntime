@@ -39,7 +39,7 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.17"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.18"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION
@@ -53,7 +53,7 @@
 //------------------------------------------------------------------------------
 /// This is the version number of the virtual machine.
 
-#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "4.0"
+#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "4.1"
 
 //------------------------------------------------------------------------------
 // JIL_TYPE_INTERFACE_VERSION
