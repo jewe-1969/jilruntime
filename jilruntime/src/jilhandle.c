@@ -431,7 +431,7 @@ JILHandle* JILCreateWeakRef(JILState* pState, JILHandle* srcHandle)
 	JILHandle* pResult = JILGetNewHandle(pState);
 	pResult->type = srcHandle->type;
 	pResult->flags |= HF_PERSIST;
-	memcpy(pResult->data, srcHandle->data, sizeof(srcHandle->data));
+	memcpy(pResult->data, srcHandle->data, sizeof(JILHandleData));
 	return pResult;
 }
 

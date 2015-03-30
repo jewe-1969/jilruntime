@@ -49,6 +49,7 @@ struct JILHandleInt
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILLong		l;
 };
 
@@ -62,6 +63,7 @@ struct JILHandleFloat
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILFloat	f;
 };
 
@@ -76,6 +78,7 @@ struct JILHandleString
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILString*	str;		// pointer to string, keep opaque with JILHandleNObject::ptr
 };
 
@@ -90,6 +93,7 @@ struct JILHandleArray
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILArray*	arr;		// pointer to array, keep opaque with JILHandleNObject::ptr
 };
 
@@ -104,6 +108,7 @@ struct JILHandleObject
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILHandle**	ppHandles;	// pointer to object (which is an array of pointers to JILHandle objects)
 };
 
@@ -117,6 +122,7 @@ struct JILHandleNObject
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILUnknown*	ptr;		// pointer to native object
 };
 
@@ -130,6 +136,7 @@ struct JILHandleContext
 	JILLong		type;
 	JILLong		flags;
 	JILLong		refCount;
+	JILLong		reserved;
 	JILContext*	pContext;	// pointer to context
 };
 
@@ -143,6 +150,7 @@ struct JILHandleDelegate
 	JILLong			type;
 	JILLong			flags;
 	JILLong			refCount;
+	JILLong			reserved;
 	JILDelegate*	pDelegate;	// pointer to delegate struct
 };
 

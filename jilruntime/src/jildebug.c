@@ -69,7 +69,7 @@ JILError JILGetDataHandle(JILState* pState, JILLong hObject, JILHandle* pOutData
 		pOutData->type = pDH->type;
 		pOutData->flags = 0;
 		pOutData->refCount = 1;
-		memcpy(pOutData->data, pDH->data, sizeof(pDH->data));
+		memcpy(pOutData->data, pDH->data, sizeof(JILHandleData));
 		result = JIL_No_Exception;
 	}
 	return result;
