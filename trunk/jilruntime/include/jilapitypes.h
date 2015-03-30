@@ -53,16 +53,17 @@ typedef struct Seg_JILFuncInfo		Seg_JILFuncInfo;
 // type definitions
 //------------------------------------------------------------------------------
 
-typedef unsigned int	JILDWord;
-typedef unsigned short	JILWord;
-typedef unsigned char	JILByte;
+typedef unsigned long long	JILUInt64;
+typedef unsigned int		JILUInt32;
+typedef unsigned short		JILUInt16;
+typedef unsigned char		JILByte;
 
-typedef int				JILError;
-typedef int				JILLong;
-typedef char			JILChar;
-typedef int				JILBool;
-typedef double			JILFloat;
-typedef void			JILUnknown;
+typedef int					JILError;
+typedef int					JILLong;
+typedef char				JILChar;
+typedef int					JILBool;
+typedef double				JILFloat;
+typedef void				JILUnknown;
 
 //------------------------------------------------------------------------------
 // JIL exception vector numbers
@@ -362,7 +363,7 @@ struct JILState
 	JILLong				vmRunLevel;					///< Counts the number of nested byte-code execution calls
 	JILLong				vmDocGenMode;				///< Mode value for documentation generator
 	JILLong				vmLogGarbageMode;			///< Mode for the runtime option "log-garbage"
-	JILDWord			vmInstructionCounter;		///< Incremented for each executed instruction (only if JIL_USE_INSTRUCTION_COUNTER is enabled)
+	JILUInt64			vmInstructionCounter;		///< Incremented for each executed instruction (only if JIL_USE_INSTRUCTION_COUNTER is enabled)
 	JILFloat			vmTimeLastGC;				///< Time (ANSI clocks) when the GC was last executed
 
 	Seg_JILDataHandle*	vmpDataSegment;				///< Pointer to the data segment

@@ -46,10 +46,10 @@ typedef struct JILHandleDelegate	JILHandleDelegate;
 
 struct JILHandleInt
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILLong			l;
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILLong		l;
 };
 
 //------------------------------------------------------------------------------
@@ -59,10 +59,10 @@ struct JILHandleInt
 
 struct JILHandleFloat
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILFloat		f;
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILFloat	f;
 };
 
 //------------------------------------------------------------------------------
@@ -73,10 +73,10 @@ struct JILHandleFloat
 
 struct JILHandleString
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILString*		str;		// pointer to string, keep opaque with JILHandleNObject::ptr
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILString*	str;		// pointer to string, keep opaque with JILHandleNObject::ptr
 };
 
 //------------------------------------------------------------------------------
@@ -87,10 +87,10 @@ struct JILHandleString
 
 struct JILHandleArray
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILArray*		arr;		// pointer to array, keep opaque with JILHandleNObject::ptr
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILArray*	arr;		// pointer to array, keep opaque with JILHandleNObject::ptr
 };
 
 //------------------------------------------------------------------------------
@@ -101,10 +101,10 @@ struct JILHandleArray
 
 struct JILHandleObject
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILHandle**		ppHandles;	// pointer to object (which is an array of pointers to JILHandle objects)
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILHandle**	ppHandles;	// pointer to object (which is an array of pointers to JILHandle objects)
 };
 
 //------------------------------------------------------------------------------
@@ -114,10 +114,10 @@ struct JILHandleObject
 
 struct JILHandleNObject
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILUnknown*		ptr;		// pointer to native object
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILUnknown*	ptr;		// pointer to native object
 };
 
 //------------------------------------------------------------------------------
@@ -127,10 +127,10 @@ struct JILHandleNObject
 
 struct JILHandleContext
 {
-	JILWord			type;
-	JILWord			flags;
-	JILLong			refCount;
-	JILContext*		pContext;	// pointer to context
+	JILLong		type;
+	JILLong		flags;
+	JILLong		refCount;
+	JILContext*	pContext;	// pointer to context
 };
 
 //------------------------------------------------------------------------------
@@ -140,8 +140,8 @@ struct JILHandleContext
 
 struct JILHandleDelegate
 {
-	JILWord			type;
-	JILWord			flags;
+	JILLong			type;
+	JILLong			flags;
 	JILLong			refCount;
 	JILDelegate*	pDelegate;	// pointer to delegate struct
 };

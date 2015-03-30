@@ -235,7 +235,7 @@ static int StdLibCall(NTLInstance* pInst, int funcID)
 		}
 		case kRandInit:
 		{
-			srand( (JILDWord)time(NULL) );
+			srand( (JILUInt32)time(NULL) );
 			break;
 		}
 		case kRandSeed:

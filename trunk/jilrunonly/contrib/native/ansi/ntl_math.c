@@ -118,8 +118,8 @@ static const int	kAuthorVersion	=	0x00000003;
 // forward declare static functions
 //------------------------------------------------------------------------------
 
-void				MathSetRandomSeed(JILDWord seed);
-JILDWord			MathRandom();
+void				MathSetRandomSeed(JILUInt32 seed);
+JILUInt32			MathRandom();
 static int			MathCall(NTLInstance* pInst, int funcID);
 static JILFloat		MathWhiteNoise();
 static JILFloat		MathGaussianNoise();
@@ -139,7 +139,7 @@ int MathProc(NTLInstance* pInst, int msg, int param, void* pDataIn, void** ppDat
 	{
 		// runtime messages
 		case NTL_Register:				break;
-		case NTL_Initialize:			MathSetRandomSeed((JILDWord)time(NULL)); break;
+		case NTL_Initialize:			MathSetRandomSeed((JILUInt32)time(NULL)); break;
 		case NTL_NewObject:				result = JIL_ERR_Unsupported_Native_Call; break;
 		case NTL_MarkHandles:			break;
 		case NTL_CallStatic:			return MathCall(pInst, param);
@@ -316,11 +316,11 @@ static int MathCall(NTLInstance* pInst, int funcID)
 // References: Hal Chamberlain, "Musical Applications of Microprocessors"
 // (Posted by Phil Burk)
 
-static JILDWord MathRandSeed = 0;
+static JILUInt32 MathRandSeed = 0;
 
-void MathSetRandomSeed(JILDWord seed){ MathRandSeed = seed; }
+void MathSetRandomSeed(JILUInt32 seed){ MathRandSeed = seed; }
 
-JILDWord MathRandom()
+JILUInt32 MathRandom()
 {
 	MathRandSeed = (MathRandSeed * 196314165) + 907633515;
 	return MathRandSeed;
