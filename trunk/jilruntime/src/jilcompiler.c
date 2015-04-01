@@ -406,23 +406,23 @@ JILError JCLGenerateDocs(JILState* pVM, const JILChar* pPath, const JILChar* pPa
 
 	if( (_this = pVM->vmpCompiler) == NULL )
 		return JIL_ERR_No_Compiler;
-	JCLVerbosePrint(_this, "Generating HTML documentation for all ");
+	JCLVerbosePrint(_this, "Generating HTML documentation for ");
 	switch (pVM->vmDocGenMode)
 	{
-		case 0:
+		case JIL_GenDocs_User:
 			startClass = kNumPredefTypes;
 			endClass = NumClasses(_this);
 			JCLVerbosePrint(_this, "user classes...\n");
 			break;
-		case 1:
+		case JIL_GenDocs_BuiltIn:
 			startClass = type_global;
 			endClass = kNumPredefTypes;
 			JCLVerbosePrint(_this, "built-in classes...\n");
 			break;
-		case 2:
+		case JIL_GenDocs_All:
 			startClass = type_global;
 			endClass = NumClasses(_this);
-			JCLVerbosePrint(_this, "classes...\n");
+			JCLVerbosePrint(_this, "all classes...\n");
 			break;
 	}
 	pTable = JILTable_NewNativeManaged(pVM, JCLStringDestructor);

@@ -193,6 +193,17 @@ enum
 };
 
 //------------------------------------------------------------------------------
+// modes for HTML documentation generator
+//------------------------------------------------------------------------------
+
+enum
+{
+	JIL_GenDocs_User = 0,		///< Generate documentation for user classes only (not built-in classes)
+	JIL_GenDocs_BuiltIn,		///< Generate documentation for built-in classes only (not user classes)
+	JIL_GenDocs_All				///< Generate documentation for all classes
+};
+
+//------------------------------------------------------------------------------
 // misc constants
 //------------------------------------------------------------------------------
 

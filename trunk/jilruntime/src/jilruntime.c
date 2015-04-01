@@ -724,11 +724,11 @@ JILError JILHandleRuntimeOptions(JILState* pState, const JILChar* pName, const J
 	else if( strcmp(pName, "document") == 0 )
 	{
 		if( strcmp(pValue, "user") == 0 || strcmp(pValue, "default") == 0 )
-			pState->vmDocGenMode = 0;
+			pState->vmDocGenMode = JIL_GenDocs_User;
 		else if( strcmp(pValue, "builtin") == 0 )
-			pState->vmDocGenMode = 1;
+			pState->vmDocGenMode = JIL_GenDocs_BuiltIn;
 		else if( strcmp(pValue, "all") == 0 )
-			pState->vmDocGenMode = 2;
+			pState->vmDocGenMode = JIL_GenDocs_All;
 		else
 			return JCL_WARN_Invalid_Option_Value;
 	}
