@@ -1185,9 +1185,10 @@ static void LoadTextInclude(JCLString* fileName, JCLString* text)
 
 static void WrapIntoTag(JCLString* string, const JILChar* pTag)
 {
+	JILLong pos;
 	JCLString* tag = NEW(JCLString);
 	JCLFormat(tag, "<%s>", pTag);
-	JILLong pos = JCLFindString(string, JCLGetString(tag), 0);
+	pos = JCLFindString(string, JCLGetString(tag), 0);
 	if( pos < 0 )
 	{
 		tag->Copy(tag, string);
