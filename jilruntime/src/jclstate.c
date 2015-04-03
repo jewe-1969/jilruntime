@@ -6250,6 +6250,7 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 {
 	JILError err = JCL_No_Error;
 	Array_JCLVar* pLocals;
+	Array_JILLong* pInherits;
 	JCLClass* pClass;
 	JCLClass* pSrcClass;
 	JCLFile* pFile;
@@ -6257,7 +6258,7 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 	JCLString* pBaseName;
 	TypeInfo outType;
 	JILLong tokenID;
-	JILLong i;
+	JILLong i, j;
 	JILLong savePos;
 
 	pToken = NEW(JCLString);
@@ -6265,6 +6266,8 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 	pLocals = NEW(Array_JCLVar);
 	pClass = GetClass(_this, pFunc->miClassID);
 	pFile = _this->mipFile;
+	pInherits = NEW(Array_JILLong);
+	pInherits->Copy(pInherits, pClass->mipInherits);
 
 	for(;;)
 	{
@@ -6276,14 +6279,20 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 		ERROR_IF(tokenID != tk_identifier, JCL_ERR_Unexpected_Token, pBaseName, goto exit);
 
 		// make sure it's the name of a base class!
-		for( i = 0; i < pClass->mipInherits->count; i++ )
+		for( i = 0; i < pInherits->count; i++ )
 		{
-			pSrcClass = GetClass(_this, pClass->mipInherits->Get(pClass->mipInherits, i));
+			j = pInherits->Get(pInherits, i);
+			if (j == 0)
+				continue;
+			pSrcClass = GetClass(_this, j);
 			RemoveParentNamespace(pToken, pSrcClass->mipName);
 			if( JCLCompare(pToken, pBaseName) )
 				break;
 		}
-		ERROR_IF(i == pClass->mipInherits->count, JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
+		ERROR_IF(i == pInherits->count, JCL_ERR_Not_A_Constructor, pBaseName, goto exit);
+
+		// mark base as used
+		pInherits->Set(pInherits, i, 0);
 
 		// call specified constructor
 		err = p_member_call(_this, pLocals, pClass->miType, pBaseName, NULL, NULL, &outType, kOnlyCtor);
@@ -6311,11 +6320,27 @@ static JILError p_function_inherits(JCLState* _this, JCLFunc* pFunc)
 		break;
 	}
 
+	// check if all base constructors have been called
+	err = JCL_No_Error;
+	for (i = 0; i < pInherits->count; i++)
+	{
+		j = pInherits->Get(pInherits, i);
+		if (j > 0)
+		{
+			pFunc->ToString(pFunc, _this, pBaseName, kClearFirst | kCompact);
+			pSrcClass = GetClass(_this, j);
+			EmitWarning(_this, JCL_WARN_Missing_Base_Ctor, 2, pBaseName, pSrcClass->mipName);
+			err = JCL_ERR_Unexpected_Token;
+		}
+	}
+	ERROR_IF(err, err, pToken, goto exit);
+
 exit:
 	FreeLocalVars(_this, pLocals);
 	DELETE( pLocals );
 	DELETE( pToken );
 	DELETE( pBaseName );
+	DELETE(pInherits);
 	return err;
 }
 

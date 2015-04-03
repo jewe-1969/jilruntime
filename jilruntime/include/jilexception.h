@@ -30,7 +30,7 @@
 enum
 { 
 	JIL_Num_Exception_Strings =	51,
-	JCL_Num_Compiler_Codes =	124
+	JCL_Num_Compiler_Codes =	125
 };
 
 //------------------------------------------------------------------------------
@@ -237,6 +237,7 @@ enum JILCompilerCodes
 	JCL_WARN_Unsafe_This_Operation,			// 1524
 	JCL_WARN_Func_Inherited_As,				// 1525
 	JCL_WARN_Invalid_Docs_Parameter,		// 1526
+	JCL_WARN_Missing_Base_Ctor,				// 1527
 
 	JCL_Unknown_Error_Code
 };
