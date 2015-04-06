@@ -242,8 +242,8 @@ JILEXTERN JILError				JCLImportClass			(JILState* pState, const JILChar* pClassN
 //------------------------------------------------------------------------------
 // JCLImportAllNatives
 //------------------------------------------------------------------------------
-/// Automatically imports all native classes that are currently registered to
-/// the runtime. This is essentially the same as compiling the statement:</p>
+/// <p>Automatically imports all native classes that are currently registered
+/// to the runtime. This is essentially the same as compiling the statement:</p>
 /// <pre>import all;</pre>
 /// <p>This function is intended for use with the HTML documentation generator
 /// and the JCLGenerateDocs() API function. Calling this may cause a high CPU
