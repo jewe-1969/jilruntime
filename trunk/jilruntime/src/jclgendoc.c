@@ -1105,7 +1105,7 @@ static void WriteNativeDeclaration(JCLState* _this, JCLClass* pClass, FILE* pFil
 		JCLAppend(pToken, JCLGetString(pClass->mipName));
 		if( pBase )
 		{
-			JCLAppend(pToken, " : ");
+			JCLAppend(pToken, " implements ");
 			JCLAppend(pToken, pBase);
 		}
 		JCLAppend(pToken, "\n{\n");
