@@ -93,7 +93,8 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 		T* (*New) (Array_##T*);\
 		void (*Trunc) (Array_##T*, JILLong);\
 		JILLong (*Count) (const Array_##T*);\
-		JILLong _i[3];\
+		void (*Grain) (Array_##T*, JILLong);\
+		JILLong _i[4];\
 		JILUnknown* _p[2];\
 	};\
 	struct JCLArray* operator_new_JCLArray(JILUnknown*, JILLong, operator_new);\
@@ -119,7 +120,8 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 		T* (*New) (UArray_##T*);\
 		void (*Trunc) (UArray_##T*, JILLong);\
 		JILLong (*Count) (const UArray_##T*);\
-		JILLong _i[3];\
+		void (*Grain) (UArray_##T*, JILLong);\
+		JILLong _i[4];\
 		JILUnknown* _p[2];\
 	};\
 	struct JCLArray* operator_new_JCLArray(JILUnknown*, JILLong, operator_new);\
@@ -140,7 +142,7 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 		void (*Set) (Array_##T*, JILLong, T);\
 		T (*Get) (const Array_##T*, JILLong);\
 		void (*Trunc) (Array_##T*, JILLong);\
-		JILLong count; JILLong max; T* array;\
+		JILLong count; JILLong max; JILLong grain; T* array;\
 	END_CLASS(Array_##T)\
 	void add_Array_##T (Array_##T*, T);\
 	void set_Array_##T (Array_##T*, JILLong, T);\
@@ -160,18 +162,21 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 		_this->Get = get_Array_##T;\
 		_this->Trunc = trunc_Array_##T;\
 		_this->max = _this->count = 0;\
+		_this->grain = ARRAY_PREALLOC_SIZE;\
 		_this->array = 0;\
 	}\
 	void destroy_Array_##T (Array_##T* _this)\
 	{\
 		free (_this->array);\
 		_this->max = _this->count = 0;\
+		_this->grain = ARRAY_PREALLOC_SIZE;\
 		_this->array = 0;\
 	}\
 	void copy_Array_##T (Array_##T* _this, const Array_##T* src)\
 	{\
 		JILLong i;\
 		destroy_Array_##T (_this);\
+		_this->grain = src->grain;\
 		for( i = 0; i < src->count; i++ )\
 			set_Array_##T (_this, i, src->Get (src, i));\
 	}\
@@ -184,7 +189,7 @@ typedef JILUnknown* (*operator_new)(JILUnknown*);
 		if( i >= _this->max )\
 		{\
 			T* oldptr = _this->array;\
-			_this->max = i + ARRAY_PREALLOC_SIZE;\
+			_this->max = i + _this->grain;\
 			_this->array = malloc (_this->max * sizeof(T));\
 			if( oldptr )\
 			{\

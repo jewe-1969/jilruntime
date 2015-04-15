@@ -274,6 +274,7 @@ void create_JCLFunc( JCLFunc* _this )
 	_this->miNaked = JILFalse;
 	_this->miOptLevel = 0;
 	_this->mipParentStack = NULL;
+	_this->mipCode->grain = 1024;
 
 	for( i = 0; i < kNumRegisters; i++ )
 		_this->miRegUsage[i] = 0;

@@ -277,6 +277,7 @@ static JILError open_JCLFile(JCLFile* _this, const JILChar* pName, const JILChar
 	_this->miPass = 0;
 	_this->miLine = 1;
 	_this->miColumn = 0;
+	_this->mipTokens->Grain(_this->mipTokens, 1024);
 	// copy arguments
 	JCLSetString(_this->mipName, pName);
 	JCLSetString(_this->mipText, pText);
@@ -705,11 +706,11 @@ static JILError Ignore(JCLFile* _this)
 
 JILLong GetTokenID(const JILChar* string, const JCLToken* pTokenList)
 {
-	JILLong i;
-	for( i = 0; pTokenList[i].name != NULL; i++ )
+	const JCLToken* pi;
+	for (pi = pTokenList; pi->name != NULL; pi++)
 	{
-		if( strcmp(string, pTokenList[i].name) == 0 )
-			return pTokenList[i].id;
+		if (strcmp(string, pi->name) == 0)
+			return pi->id;
 	}
 	return tk_unknown;
 }

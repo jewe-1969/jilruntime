@@ -42,10 +42,12 @@ struct JCLArray {
 	JILUnknown* (*New)	(JCLArray*);
 	void (*Trunc)		(JCLArray*, JILLong);
 	JILLong (*Count)	(const JCLArray*);
+	void (*Grain)		(JCLArray*, JILLong);
 
 	JILLong count;
 	JILLong max;
 	JILLong size;				// element size; if > 0 this array is managed, if 0 it is unmanaged
+	JILLong grain;				// number of elements to allocate per bucket
 	JILUnknown** array;
 	operator_new new_element;
 };
@@ -64,5 +66,6 @@ JILUnknown*	get_JCLArray			(const JCLArray*, JILLong);
 JILUnknown*	new_JCLArray			(JCLArray*);
 void		trunc_JCLArray			(JCLArray*, JILLong);
 JILLong		count_JCLArray			(const JCLArray*);
+void		grain_JCLArray			(JCLArray*, JILLong);
 
 #endif // #ifndef JCLARRAY_H
