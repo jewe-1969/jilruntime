@@ -109,7 +109,9 @@ void create_JCLArray(JCLArray* _this)
 	_this->Get = get_JCLArray;
 	_this->Trunc = trunc_JCLArray;
 	_this->Count = count_JCLArray;
+	_this->Grain = grain_JCLArray;
 	_this->max = _this->count = 0;
+	_this->grain = ARRAY_PREALLOC_SIZE;
 	_this->array = NULL;
 }
 
@@ -132,6 +134,7 @@ void destroy_JCLArray(JCLArray* _this)
 	if( _this->array )
 		free(_this->array);
 	_this->max = _this->count = 0;
+	_this->grain = ARRAY_PREALLOC_SIZE;
 	_this->array = NULL;
 }
 
@@ -143,6 +146,7 @@ void copy_JCLArray(JCLArray* _this, const JCLArray* src)
 {
 	JILLong i;
 	destroy_JCLArray(_this);
+	_this->grain = src->grain;
 	for( i = 0; i < src->count; i++ )
 		set_JCLArray(_this, i, copy_element(_this, get_JCLArray(src, i)));
 }
@@ -165,7 +169,7 @@ void set_JCLArray(JCLArray* _this, JILLong i, JILUnknown* data)
 	if( i >= _this->max )
 	{
 		JILUnknown** oldptr = _this->array;
-		_this->max = i + ARRAY_PREALLOC_SIZE;
+		_this->max = i + _this->grain;
 		_this->array = malloc (_this->max * sizeof(JILUnknown*));
 		if( oldptr )
 		{
@@ -233,4 +237,14 @@ void trunc_JCLArray(JCLArray* _this, JILLong index)
 JILLong count_JCLArray(const JCLArray* _this)
 {
 	return _this->count;
+}
+
+//------------------------------------------------------------------------------
+// grain_JCLArray
+//------------------------------------------------------------------------------
+
+void grain_JCLArray(JCLArray* _this, JILLong grainSize)
+{
+	if (grainSize > 0)
+		_this->grain = grainSize;
 }
