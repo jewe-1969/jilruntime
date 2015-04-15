@@ -41,17 +41,20 @@ static const JILLong JRes_Magic = 0x4A526573;
 
 JILError JILCreateLong(JILState* pState, JILLong value, JILLong* hLong)
 {
-	JILLong i;
+	JILLong i = pState->vmpDataSegment->usedSize;
 	JILDataHandle* pHandle;
 
-	// check if value already exists
-	for( i = 0; i < pState->vmpDataSegment->usedSize; i++ )
+	if (pState->vmStringPooling)
 	{
-		pHandle = pState->vmpDataSegment->pData + i;
-		if( pHandle->type == type_int && JILGetDataHandleLong(pHandle) == value )
+		// check if value already exists
+		for (i = 0; i < pState->vmpDataSegment->usedSize; i++)
 		{
-			*hLong = i;
-			break;
+			pHandle = pState->vmpDataSegment->pData + i;
+			if (pHandle->type == type_int && JILGetDataHandleLong(pHandle) == value)
+			{
+				*hLong = i;
+				break;
+			}
 		}
 	}
 	if( i == pState->vmpDataSegment->usedSize )
@@ -69,17 +72,20 @@ JILError JILCreateLong(JILState* pState, JILLong value, JILLong* hLong)
 
 JILError JILCreateFloat(JILState* pState, JILFloat value, JILLong* hFloat)
 {
-	JILLong i;
+	JILLong i = pState->vmpDataSegment->usedSize;
 	JILDataHandle* pHandle;
 
-	// check if value already exists
-	for( i = 0; i < pState->vmpDataSegment->usedSize; i++ )
+	if (pState->vmStringPooling)
 	{
-		pHandle = pState->vmpDataSegment->pData + i;
-		if( pHandle->type == type_float && JILGetDataHandleFloat(pHandle) == value )
+		// check if value already exists
+		for (i = 0; i < pState->vmpDataSegment->usedSize; i++)
 		{
-			*hFloat = i;
-			break;
+			pHandle = pState->vmpDataSegment->pData + i;
+			if (pHandle->type == type_float && JILGetDataHandleFloat(pHandle) == value)
+			{
+				*hFloat = i;
+				break;
+			}
 		}
 	}
 	if( i == pState->vmpDataSegment->usedSize )
@@ -97,21 +103,24 @@ JILError JILCreateFloat(JILState* pState, JILFloat value, JILLong* hFloat)
 
 JILError JILCreateString(JILState* pState, const JILChar* pStr, JILLong* hString)
 {
-	JILLong i;
+	JILLong i = pState->vmpDataSegment->usedSize;
 	JILLong offset;
 	JILDataHandle* pHandle;
 
-	// check if value already exists
-	for( i = 0; i < pState->vmpDataSegment->usedSize; i++ )
+	if (pState->vmStringPooling)
 	{
-		pHandle = pState->vmpDataSegment->pData + i;
-		if( pHandle->type == type_string )
+		// check if value already exists
+		for (i = 0; i < pState->vmpDataSegment->usedSize; i++)
 		{
-			offset = JILGetDataHandleLong(pHandle);
-			if( strcmp(JILCStrGetString(pState, offset), pStr) == 0 )
+			pHandle = pState->vmpDataSegment->pData + i;
+			if (pHandle->type == type_string)
 			{
-				*hString = i;
-				break;
+				offset = JILGetDataHandleLong(pHandle);
+				if (strcmp(JILCStrGetString(pState, offset), pStr) == 0)
+				{
+					*hString = i;
+					break;
+				}
 			}
 		}
 	}

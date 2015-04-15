@@ -48,7 +48,7 @@ JILError JILInitTypeInfoSegment(JILState* pState, JILLong initialSize)
 JILLong JILNewTypeInfo(JILState* pState, const JILChar* pName, JILTypeInfo** ppOut)
 {
 	JILTypeInfo* pTypeInfo;
-	long result;
+	JILLong result;
 
 	// check if the type already exists
 	JILFindTypeInfo(pState, pName, ppOut);
@@ -63,9 +63,9 @@ JILLong JILNewTypeInfo(JILState* pState, const JILChar* pName, JILTypeInfo** ppO
 	if( pState->vmUsedTypeInfoSegSize >= pState->vmMaxTypeInfoSegSize )
 	{
 		// must resize buffer!
-		long grain = pState->vmSegmentAllocGrain;
-		long oldMax = pState->vmMaxTypeInfoSegSize;
-		long newMax = oldMax + grain;
+		JILLong grain = pState->vmSegmentAllocGrain;
+		JILLong oldMax = pState->vmMaxTypeInfoSegSize;
+		JILLong newMax = oldMax + grain;
 		JILTypeInfo* pOldHandles = pState->vmpTypeInfoSegment;
 
 		// allocate new buffer
