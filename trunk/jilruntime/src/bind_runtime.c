@@ -206,7 +206,7 @@ static JILError bind_runtime_CallStatic(NTLInstance* pInst, JILLong funcID)
 		}
 		case fn_instructionCounter: // function float instructionCounter ()
 		{
-			NTLReturnFloat(ps, ps->vmInstructionCounter);
+			NTLReturnFloat(ps, (JILFloat)ps->vmInstructionCounter);
 			break;
 		}
 		case fn_getTypeName: // function string getTypeName (int type)

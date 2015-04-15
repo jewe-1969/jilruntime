@@ -53,7 +53,14 @@ typedef struct Seg_JILFuncInfo		Seg_JILFuncInfo;
 // type definitions
 //------------------------------------------------------------------------------
 
+#if JIL_MACHINE_NO_64_BIT
+typedef unsigned int		JILUInt64;
+typedef float				JILFloat;
+#else
 typedef unsigned long long	JILUInt64;
+typedef double				JILFloat;
+#endif
+
 typedef unsigned int		JILUInt32;
 typedef unsigned short		JILUInt16;
 typedef unsigned char		JILByte;
@@ -62,7 +69,6 @@ typedef int					JILError;
 typedef int					JILLong;
 typedef char				JILChar;
 typedef int					JILBool;
-typedef double				JILFloat;
 typedef void				JILUnknown;
 
 //------------------------------------------------------------------------------
@@ -363,6 +369,7 @@ struct JILState
 	JILBool				vmInitialized;				///< Is JILTrue when the VM is fully initialized
 	JILBool				vmRunning;					///< Is JILTrue when the VM is currently executing bytecode
 	JILBool				vmBlocked;					///< Can be set to JILTrue to block all further execution of script code
+	JILBool				vmStringPooling;			///< Can be set to JILFalse to disable string pooling when compiling programs
 
 	JILLong				vmDataStackSize;			///< The (fixed) size of the data stack, given in JILInitialize()
 	JILLong				vmCallStackSize;			///< The (fixed) size of the call stack, given in JILInitialize()

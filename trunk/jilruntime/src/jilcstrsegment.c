@@ -85,13 +85,16 @@ JILLong JILAddCStrPoolData(JILState* pState, const JILChar* pStr, JILLong strSiz
 {
 	JILLong p, o;
 	JILChar* pCStr;
-	// search for string in CStr segment
-	for( p = 0; p < pState->vmUsedCStrSegSize; p += o )
+	if (pState->vmStringPooling)
 	{
-		o = (*(JILLong*)(pState->vmpCStrSegment + p));
-		pCStr = pState->vmpCStrSegment + p + sizeof(JILLong);
-		if( strcmp(pCStr, pStr) == 0 )
-			return p + sizeof(JILLong);
+		// search for string in CStr segment
+		for (p = 0; p < pState->vmUsedCStrSegSize; p += o)
+		{
+			o = (*(JILLong*)(pState->vmpCStrSegment + p));
+			pCStr = pState->vmpCStrSegment + p + sizeof(JILLong);
+			if (strcmp(pCStr, pStr) == 0)
+				return p + sizeof(JILLong);
+		}
 	}
 	// nothing found
 	return JILAddCStrData(pState, pStr, strSize);

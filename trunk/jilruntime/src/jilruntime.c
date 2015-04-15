@@ -124,6 +124,9 @@ JILState* JILInitialize(JILLong stackSize, const JILChar* options)
 	#else
 		pState->vmVersion.BuildFlags |= kReleaseBuild;
 	#endif
+	#if JIL_STRING_POOLING
+		pState->vmStringPooling = JILTrue;
+	#endif
 	// library version
 	v = JILRevisionToLong( JIL_LIBRARY_VERSION );
 	pState->vmVersion.LibraryVersion = v;
@@ -339,7 +342,7 @@ JILHandle* JILCallFunction(JILState* pState, JILHandle* pFunc, JILLong numArgs, 
 				sp[i] = NTLNewHandleForObject(pState, type_int, &t);
 				break;
 			case kArgFloat:
-				f = va_arg( marker, JILFloat );
+				f = va_arg( marker, double ); // GCC insists we use 'double' here if JILFloat is 'float'
 				sp[i] = NTLNewHandleForObject(pState, type_float, &f);
 				break;
 			case kArgString:

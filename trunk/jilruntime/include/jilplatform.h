@@ -180,6 +180,30 @@
 #endif
 
 //------------------------------------------------------------------------------
+// JIL_STRING_POOLING
+//------------------------------------------------------------------------------
+/// @def JIL_STRING_POOLING
+/// Allows to disable string pooling when compiling programs. This will result
+/// in larger executables, but may speed up compiling considerably on slower
+/// machines.
+
+#ifndef JIL_STRING_POOLING
+#define JIL_STRING_POOLING		1
+#endif
+
+//------------------------------------------------------------------------------
+// JIL_MACHINE_NO_64_BIT
+//------------------------------------------------------------------------------
+/// @def JIL_MACHINE_NO_64_BIT
+/// Enable this for machines that do not support 64 bit integer / floating-point
+/// math, or where this is would be too slow. The library will use 32 bit for
+/// JILUInt64 and JILFloat if this macro is defined (EXPERIMENTAL).
+
+#ifndef JIL_MACHINE_NO_64_BIT
+#define JIL_MACHINE_NO_64_BIT	0
+#endif
+
+//------------------------------------------------------------------------------
 // external declarations
 //------------------------------------------------------------------------------
 
@@ -211,6 +235,7 @@
 	#define JIL_PATHSEPARATOR		'\\'
 	#define JIL_PATHSEPARATORSTR	"\\"
 	#define	JIL_VSNPRINTF			_vsnprintf
+	#define JIL_STRREV				_strrev
 #else
 
 //------------------------------------------------------------------------------
@@ -221,6 +246,7 @@
 	#define JIL_PATHSEPARATOR		'/'
 	#define JIL_PATHSEPARATORSTR	"/"
 	#define	JIL_VSNPRINTF			vsnprintf
+	#define JIL_STRREV				strrev
 #else
 
 //------------------------------------------------------------------------------
@@ -231,6 +257,7 @@
 	#define JIL_PATHSEPARATOR		'/'
 	#define JIL_PATHSEPARATORSTR	"/"
 	#define	JIL_VSNPRINTF			vsnprintf
+	#define JIL_STRREV				strrev
 #else
 
 //------------------------------------------------------------------------------
@@ -240,6 +267,7 @@
 	#define JIL_PATHSEPARATOR		'/'
 	#define JIL_PATHSEPARATORSTR	"/"
 	#define	JIL_VSNPRINTF			vsnprintf
+	#define JIL_STRREV				strrev
 #endif // MACOSX
 
 #endif // LINUX

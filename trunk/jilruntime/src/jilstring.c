@@ -1558,7 +1558,7 @@ JILString* JILString_ReplaceRange(const JILString* _this, JILLong start, JILLong
 JILString* JILString_Reverse(const JILString* _this)
 {
 	JILString* result = JILString_Copy(_this);
-	_strrev(result->string);
+	JIL_STRREV(result->string);
 	return result;
 }
 
