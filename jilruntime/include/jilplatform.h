@@ -74,7 +74,7 @@
 /// Enable or disable access to the local file system.
 /// The import statement by default allows to directly load and compile
 /// additional script files from the local filesystem. If no ANSI file support
-/// is available for your platform, or to prevent file import ,set this to 0.
+/// is available for your platform, or to prevent file import, set this to 0.
 /// Note that there is also a JewelScript compiler option that can prevent local
 /// file import (while still allowing it to be re-enabled).
 /// This switch can also be used to disable JCLGenerateDocs() and JCLGenerateBindings().
