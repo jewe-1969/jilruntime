@@ -59,9 +59,9 @@
 //------------------------------------------------------------------------------
 /// @def JIL_USE_LITTLE_ENDIAN
 /// If you are compiling this project for a processor architecture that uses
-/// little endianess (IA-32, AMD-64) you must set this macro to 1.
-/// If target architecture uses big endian (PowerPC, SPARC, M68000), set it to 0.
-/// At present, this macro is more or less unused.
+/// little endianess (IA-32, AMD-64) you should set this macro to 1.
+/// If target architecture uses big endian (PowerPC, SPARC, M68000) you should
+/// set it to 0. At present, this macro is more or less unused.
 
 #ifndef JIL_USE_LITTLE_ENDIAN
 #define JIL_USE_LITTLE_ENDIAN	1
@@ -73,8 +73,8 @@
 /// @def JIL_USE_LOCAL_FILESYS
 /// Enable or disable access to the local file system.
 /// The import statement by default allows to directly load and compile
-/// additional script files from the local filesystem, if no ANSI file support
-/// is available for your platform, or to prevent file import set this to 0.
+/// additional script files from the local filesystem. If no ANSI file support
+/// is available for your platform, or to prevent file import ,set this to 0.
 /// Note that there is also a JewelScript compiler option that can prevent local
 /// file import (while still allowing it to be re-enabled).
 /// This switch can also be used to disable JCLGenerateDocs() and JCLGenerateBindings().
@@ -88,8 +88,8 @@
 //------------------------------------------------------------------------------
 /// @def JIL_USE_BINDING_CODEGEN
 /// Enable or disable the integrated C++ binding code generator. You should only
-/// set this macro to true for tools where you need the code generator
-/// functionality to reduce the size of the library and avoid that files can
+/// set this macro to 1 for tools where you need the code generator
+/// functionality, to reduce the size of the library, and avoid that files can
 /// be created on the local file system where this isn't desired.
 
 #ifndef JIL_USE_BINDING_CODEGEN
@@ -105,8 +105,8 @@
 //------------------------------------------------------------------------------
 /// @def JIL_USE_HTML_CODEGEN
 /// Enable or disable the integrated HTML documentation generator. You should only
-/// set this macro to true for tools where you need the code generator
-/// functionality to reduce the size of the library and avoid that files can
+/// set this macro to 1 for tools where you need the code generator
+/// functionality, to reduce the size of the library, and avoid that files can
 /// be created on the local file system where this isn't desired.
 
 #ifndef JIL_USE_HTML_CODEGEN
@@ -122,9 +122,9 @@
 //------------------------------------------------------------------------------
 /// @def JIL_NO_FPRINTF
 /// Enable or disable usage of the ANSI FILE handle and fprintf().
-/// Despite the name ALL functionality that deals with ANSI FILE handles will
+/// Despite the name, ALL functionality that deals with ANSI FILE handles will
 /// be disabled by this macro.
-/// Enabling this may be useful for security reasons, or if your platform
+/// Setting this to 1 may be useful for security reasons, or if your platform
 /// or C-runtime doesn't fully support file I/O.
 
 #ifndef JIL_NO_FPRINTF
@@ -136,11 +136,11 @@
 //------------------------------------------------------------------------------
 /// @def JIL_USE_INSTRUCTION_COUNTER
 /// Enable or disable the VM's instruction counter. The instruction counter is
-/// simple a 32-bit integer that gets increased for every VM instruction that
-/// is executed. It is intended for performance measurement / benchmarking only.
-/// Of course, the extra increment for each instruction adds a slight drop in
-/// execution speed to the VM, so if you don't need the instruction counter, you
-/// can disable it.
+/// a simple 64-bit integer that gets increased for every VM instruction that
+/// is executed. It is intended for performance measurement / benchmarking.
+/// Of course, the extra increment for every instruction adds an insignificant
+/// drop in execution speed to the VM, so if you don't need the instruction
+/// counter, you can disable it.
 
 #ifndef JIL_USE_INSTRUCTION_COUNTER
 #define JIL_USE_INSTRUCTION_COUNTER		1
@@ -153,8 +153,8 @@
 /// Enable or disable extended runtime checks while executing byte-code. If this
 /// macro is undefined, it will be enabled in DEBUG builds of the library, but
 /// disabled in RELEASE builds for maximum performance.
-/// Disabling this option greatly affects the VM's ability to detect runtime errors
-/// and may lead to unexpected behavior or crashes.
+/// Disabling this option greatly affects the VM's ability to detect runtime
+/// errors and may lead to crashes if the byte-code is faulty.
 /// Enabling this option greatly affects the VM's performance.
 
 #ifndef JIL_RUNTIME_CHECKS
@@ -184,8 +184,7 @@
 //------------------------------------------------------------------------------
 /// @def JIL_STRING_POOLING
 /// Allows to disable string pooling when compiling programs. This will result
-/// in larger executables, but may speed up compiling considerably on slower
-/// machines.
+/// in larger executables, but may speed up compiling on slower machines.
 
 #ifndef JIL_STRING_POOLING
 #define JIL_STRING_POOLING		1
