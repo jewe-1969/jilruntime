@@ -487,10 +487,6 @@ const JILInstrInfo g_InstructionInfo[JILNumOpcodes] =
 
 	// extensions 2005-11-25
 	op_jsr,         2, 1,   ot_number,  ot_none,    ot_none,    ot_none,    "jsr",
-	op_jsr_r,       2, 1,   ot_ear,     ot_none,    ot_none,    ot_none,    "jsr",
-	op_jsr_d,       3, 1,   ot_ead,     ot_none,    ot_none,    ot_none,    "jsr",
-	op_jsr_x,       3, 1,   ot_eax,     ot_none,    ot_none,    ot_none,    "jsr",
-	op_jsr_s,       2, 1,   ot_eas,     ot_none,    ot_none,    ot_none,    "jsr",
 
 	// extensions 2006-07-01
 	op_newctx,      5, 4,   ot_type,    ot_number,  ot_number,  ot_ear,     "newctx",

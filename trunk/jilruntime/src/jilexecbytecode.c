@@ -1160,18 +1160,9 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					JIL_RTCHKEA( JIL_LEA_S, 3 );
 				case op_jsr:
 					JIL_IBEGIN( 2 )
-					offs = JIL_GET_DATA(pState);
 					JIL_PUSH_CS( programCounter + instruction_size )
-					programCounter = offs;
+					programCounter = JIL_GET_DATA(pState);
 					JIL_IENDBR
-				case op_jsr_r:
-					JIL_JSREA( JIL_LEA_R, 2 )
-				case op_jsr_d:
-					JIL_JSREA( JIL_LEA_D, 3 )
-				case op_jsr_x:
-					JIL_JSREA( JIL_LEA_X, 3 )
-				case op_jsr_s:
-					JIL_JSREA( JIL_LEA_S, 2 )
 				case op_newctx:
 					JIL_IBEGIN( 5 )
 					pNewHandle = JILGetNewHandle(pState);
@@ -1340,8 +1331,7 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					JIL_IEND
 				case op_jmp:
 					JIL_IBEGIN( 2 )
-					offs = JIL_GET_DATA(pState);
-					programCounter = offs;
+					programCounter = JIL_GET_DATA(pState);
 					JIL_IENDBR
 				default:
 					JIL_IBEGIN( 1 )
