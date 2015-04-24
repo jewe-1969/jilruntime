@@ -88,7 +88,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.4.2.8"
+#define	VERSION		"0.4.2.9"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260

@@ -10,9 +10,8 @@
 //
 // Description:
 // ------------
-/// @file jilfixmem.h
-///	A memory manager class for fast allocating and freeing fix-sized blocks of
-/// memory.
+// A memory manager class for fast allocating and freeing fix-sized blocks of
+// memory.
 //------------------------------------------------------------------------------
 
 #ifndef JILFIXMEM_H

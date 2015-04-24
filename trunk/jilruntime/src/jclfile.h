@@ -22,13 +22,15 @@
 #include "jiltypes.h"
 #include "jcltools.h"
 
-FORWARD_CLASS(JCLOption);
+FORWARD_CLASS(JCLOption)
+FORWARD_CLASS(JCLFileToken)
+FORWARD_CLASS(JCLFile)
 
 //------------------------------------------------------------------------------
 // class JCLFileToken
 //------------------------------------------------------------------------------
+/// Describes a token in a JewelScript source file.
 
-FORWARD_CLASS( JCLFileToken )
 DECL_CLASS( JCLFileToken )
 
 	JILLong				miTokenID;		///< The ID number of the token
@@ -48,10 +50,9 @@ DECL_ARRAY( JCLFileToken )
 //------------------------------------------------------------------------------
 // class JCLFile
 //------------------------------------------------------------------------------
-// Represents a source code "file" or code-snippet in form of a zero-terminated
-// C-string
+/// Represents a JewelScript "file" or code-snippet in form of a zero-terminated
+/// C-string
 
-FORWARD_CLASS( JCLFile )
 DECL_CLASS( JCLFile )
 
 	JILError			(*Open)				(JCLFile*, const JILChar*, const JILChar*, const JILChar*, JCLOption*);

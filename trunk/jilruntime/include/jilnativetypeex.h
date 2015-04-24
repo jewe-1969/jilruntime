@@ -68,7 +68,7 @@
 //------------------------------------------------------------------------------
 // NTLHandleToTypeID
 //------------------------------------------------------------------------------
-/// Get the TypeID of the given handle. The function returns type_null if an
+/// Get the type-id of the given handle. The function returns type_null if an
 /// error occurs. This lets you determine the type of an object or value that you
 /// have obtained a handle for.
 
@@ -77,11 +77,11 @@ JILEXTERN JILLong		NTLHandleToTypeID		(JILState* pState, JILHandle* handle);
 //------------------------------------------------------------------------------
 // NTLHandleToBaseID
 //------------------------------------------------------------------------------
-/// Get the TypeID of the base class or interface this handle implements. If the
+/// Get the type-id of the base class or interface this handle implements. If the
 /// specified handle is not an instance of a class, or the class does not
-/// implement any interface, the result is type_null.
-/// This lets you determine whether the handle you obtained is an instance of a
-/// class that inherits from a specific class or interface.
+/// implement an interface, the result is type_null.
+/// This lets you determine whether the handle you obtained is an object that
+/// inherits from a specific class or interface.
 
 JILEXTERN JILLong		NTLHandleToBaseID		(JILState* pState, JILHandle* handle);
 
@@ -138,7 +138,8 @@ JILEXTERN JILHandle*		NTLConvertToString	(JILState* pState, JILHandle* handle);
 /// <p>If you call delegates from inside a function of your native type, you
 /// should use this function to check if the call produced an error, and if so,
 /// abort any operation and return the error code up to the caller of your
-/// native type function.</p>
+/// native function.</p>
+/// This will call the getError() method of the exception object.
 
 JILEXTERN JILError		NTLHandleToError		(JILState* pState, JILHandle* handle);
 
@@ -150,11 +151,9 @@ JILEXTERN JILError		NTLHandleToError		(JILState* pState, JILHandle* handle);
 /// <p>You can use this to obtain the message string of an object that implements
 /// the exception interface. The string object is returned as a JILHandle pointer.
 /// Use NTLHandleToString() to obtain a C string from the handle.</p>
-/// <p>This will actually call the getMessage() method of the exception object,
-/// regardless whether the exception object is implemented natively or in script
-/// code.</p>
-/// You must call NTLFreeHandle() on the result of this function when you no
-/// longer need it.
+/// <p>You must call NTLFreeHandle() on the result of this function when you no
+/// longer need it.</p>
+/// This will call the getMessage() method of the exception object.
 
 JILEXTERN JILHandle*	NTLHandleToErrorMessage	(JILState* pState, JILHandle* handle);
 
@@ -164,7 +163,7 @@ JILEXTERN JILHandle*	NTLHandleToErrorMessage	(JILState* pState, JILHandle* handl
 /// Returns a pointer to the object from a given handle. If the given handle is
 /// not compatible to the specified type, returns NULL.
 /// You need to cast the returned void pointer to it's real type.
-/// See NTLNewHandleForObject() documentation for information which TypeID is
+/// See NTLNewHandleForObject() documentation for information which type-id is
 /// associated with which pointer type.
 
 JILEXTERN JILUnknown*	NTLHandleToObject		(JILState* pState, JILLong type, JILHandle* handle);
@@ -172,18 +171,17 @@ JILEXTERN JILUnknown*	NTLHandleToObject		(JILState* pState, JILLong type, JILHan
 //------------------------------------------------------------------------------
 // NTLGetArgHandle
 //------------------------------------------------------------------------------
-/// Get the handle address of an object passed to the typelib as an argument.
+/// Get the handle of an object passed to your native function as an argument.
 /// A reference is added to the handle, so it cannot be destroyed by the virtual
-/// machine unless the typelib frees it. Call NTLFreeHandle() to free a handle
-/// if you don't need it anymore. Call this if you want to store 'pointers' to
-/// objects passed to your typelib.
+/// machine unless the native type frees it. Call NTLFreeHandle() to free the
+/// handle if you don't need it anymore.
 
 JILEXTERN JILHandle*	NTLGetArgHandle			(JILState* pState, JILLong argNum);
 
 //------------------------------------------------------------------------------
 // NTLGetNullHandle
 //------------------------------------------------------------------------------
-/// This will return the handle that represents 'null' in the JILRuntime
+/// This will return the handle that represents 'null' in the runtime
 /// environment. This is useful for initializing handle pointers in your class
 /// with 'null'. A reference is added to the null handle. If you replace your
 /// handle pointer later with a pointer to another handle, you must free the
@@ -194,26 +192,26 @@ JILEXTERN JILHandle*	NTLGetNullHandle		(JILState* pState);
 //------------------------------------------------------------------------------
 // NTLReturnHandle
 //------------------------------------------------------------------------------
-/// Call this if your member function or static function returns a value.
-/// Pass a pointer to the return value's handle. If you pass a NULL pointer, the
-/// function automatically returns the 'null handle'.
+/// Call this if your native function returns a value.
+/// Pass a pointer to the value's handle. If you pass NULL, the function
+/// automatically returns the 'null' handle.
 
 JILEXTERN void			NTLReturnHandle			(JILState* pState, JILHandle* handle);
 
 //------------------------------------------------------------------------------
 // NTLReferHandle
 //------------------------------------------------------------------------------
-/// Add a reference to a handle obtained from another object. This function needs
-/// to be called in <b>very rare cases</b>, normally the other API functions take care
-/// of proper addref'ing automatically. The only case, where you need to add a
-/// reference to a handle <b>explicitly</b>, is when you get passed an object or array
-/// to one of your functions and you move a <b>member</b> handle from that object or
-/// <b>element</b> handle from that array into your object in order to keep it.
-/// In other words, for all data that is directly passed to your NTL, the
-/// reference counting is handled automatically. However, if this data contains other
-/// handles, because it is an object or array, and you want to keep one of the
-/// contained handles in your object, you need to addref it. Of course, you also
-/// need to release this handle again, when your object is destroyed.
+/// Add a reference to a handle obtained from another object. This function
+/// needs to be called in <b>very rare cases</b>, normally the other API
+/// functions take care of proper reference adding automatically.
+/// <p>The only case where you need to add a reference to a handle
+/// <b>explicitly</b> is when you want to store a <b>member</b> handle from an
+/// object or array permanently in your object.</p>
+/// <p>In other words: For all data that is directly passed to your native type,
+/// the reference counting is handled automatically. For all data contained in
+/// objects or arrays, you must add a reference, if you want to store one of
+/// their members in your object.</p>
+/// Of course you also need to release this handle when you don't need it anymore.
 
 JILEXTERN void			NTLReferHandle			(JILState* pState, JILHandle* handle);
 
@@ -261,23 +259,23 @@ JILEXTERN JILError		NTLMarkHandle			(JILState* pState, JILHandle* pHandle);
 // NTLCopyHandle
 //------------------------------------------------------------------------------
 /// Create a copy of the source object and return a new handle for it.
-/// All objects will be copied, regardless of whether they are value-types or
+/// All objects will be copied, regardless whether they are value-types or
 /// reference-types. For reference-types, the object's copy-constructor method
 /// will be invoked, if the class has defined one.
-/// <p>Note that this is a recursive operation and can potentially fail, if for
+/// <p>This is a recursive operation and can potentially fail, if for
 /// example a native class does not implement a copy-constructor.
 /// In case of an error, this function returns NULL.</p>
-/// <p>This function should only be used if you want to deep-copy an object. For
-/// normal copies, you should use JILCopyValueType() instead.</p>
+/// <p>This function should only be used if you need copies of reference-types.
+/// To only copy value-types, use NTLCopyValueType() instead.</p>
 
 JILEXTERN JILHandle*	NTLCopyHandle			(JILState* pState, JILHandle* hSource);
 
 //------------------------------------------------------------------------------
 // JILCopyValueType
 //------------------------------------------------------------------------------
-/// Copies the source object and returns a new handle for it, if it is a value-type.
-/// If the source object is a reference-type, adds a reference to it and returns
-/// the source handle. This is not a recursive operation.
+/// If the given object is a value-type, creates a copy and returns a new handle
+/// for it. If it is a reference-type, adds a reference to it and returns the
+/// source handle. This is not a recursive operation.
 
 JILEXTERN JILHandle*	NTLCopyValueType		(JILState* pState, JILHandle* hSource);
 
@@ -286,70 +284,68 @@ JILEXTERN JILHandle*	NTLCopyValueType		(JILState* pState, JILHandle* hSource);
 //------------------------------------------------------------------------------
 /// Create a handle for an existing object. Make sure you never create more than
 /// one handle for each individual object. Pass in a pointer to the object and
-/// the type identifier of the object. For objects and native objects, you need
-/// to pass in the TypeID of the object's class.
-/// The return value will be the new handle, or 0 if the function fails.
-/// Call NTLFreeHandle() if you do not need the object and handle anymore.
+/// the type identifier of the object. For class instances, you need to to pass
+/// in the type-id of the object's class.
+/// The return value will be the new handle, or NULL if the function fails.
+/// Call NTLFreeHandle() when you don't need the handle anymore.
 /// <p>Use this if you are certain that the object you pass in can be a reference
-/// counted resource, and that your application is safe, if the object will be
-/// automatically destroyed by the runtime once the reference count reaches 0.
+/// counted resource, and that automatically destroying the object is safe.
 /// If you cannot risk that the object is automatically destroyed by the runtime
 /// or you cannot guarantee that only one handle is created for the object, use
 /// NTLNewWeakRefForObject() instead of this function.</p>
-/// <p>If you pass a NULL pointer for 'pObject' the function will return a
-/// null-handle, which respresents the 'null' value in JewelScript.</p>
-/// Valid TypeID and expected type of given pointer:<p>
+/// <p>If you pass a NULL pointer for 'pObject' the function will return the
+/// null-handle, which respresents 'null' in JewelScript.</p>
+/// Valid type-id and expected type of given pointer:<p>
 ///	type_int --> JILLong*<br>
 ///	type_float --> JILFloat*<br>
 ///	type_string --> JILString*<br>
 ///	type_array --> JILArray*<br>
-///	(TypeID of your native class) --> (your native class)*</p>
+///	(type-id of your native class) --> (your native class)*</p>
 /// @see NTLTypeNameToTypeID ()
 
-JILEXTERN JILHandle*	NTLNewHandleForObject	(JILState* pState, JILLong TypeID, JILUnknown* pObject);
+JILEXTERN JILHandle*	NTLNewHandleForObject	(JILState* pState, JILLong type, JILUnknown* pObject);
 
 //------------------------------------------------------------------------------
 // NTLNewWeakRefForObject
 //------------------------------------------------------------------------------
 /// Like NTLNewHandleForObject(), but creates a <b>weak reference</b> instead of
-/// a normal reference to the object. Use this in cases where you <b>do not</b>
-/// want the runtime to automatically destroy your object when there are no more
-/// references to it in the VM. Use this only for objects to which you keep a
-/// pointer somewhere in your application, because you will have to take care of
-/// freeing the object yourself when it is no longer needed.
-/// <p>Note that there is always the risk that weak references to your object
-/// still exist somewhere in the virtual machine when you destroy it, which can
-/// lead to a crash. If possible, only create one weak reference handle for each
+/// a normal reference. Use this in cases where you <b>do not</b> want the
+/// runtime to automatically destroy your object. Use this only for objects to
+/// which you keep a pointer somewhere in your application, because you will
+/// have to take care of freeing the object yourself when it is no longer needed.
+/// <p>There is always the risk that weak references to your object still exist
+/// somewhere in the virtual machine when you destroy it, which can lead to a
+/// crash. If possible, only create one weak reference handle for each
 /// individual object. In this case you can examine the handle's reference count
 /// as an indicator whether the object is still in use by the VM or not. Another
 /// possibility is to keep the object alive until you terminate the VM.</p>
-/// <p>Of course you can also define your own mechanisms to make using weak
-/// references to objects safer, like defining a specific script function
+/// <p>Of course you can also define your own mechanism to make using weak
+/// references safer, like defining a specific script function
 /// (i.e. "dispose" method) that you call right before you destroy your object,
 /// which is supposed to free any existing references to the object your script
 /// may hold.</p>
-/// <p>Even though your object will not be destroyed by the handle returned by this
-/// function, you do have to take care of proper reference counting of the
-/// handle, to ensure that the handle itself is being freed once it is no longer
+/// <p>Even though your object will not be destroyed by the virtual machine,
+/// you still have to take care of proper reference counting of the handle,
+/// to ensure that the handle itself is being freed once it is no longer
 /// in use. Not freeing the handle will create a handle leak, making the VM's
 /// handle segment grow larger and larger, which eventually will decrease
 /// performance and spoil system memory.</p>
 
-JILEXTERN JILHandle*	NTLNewWeakRefForObject	(JILState* pState, JILLong TypeID, JILUnknown* pObject);
+JILEXTERN JILHandle*	NTLNewWeakRefForObject	(JILState* pState, JILLong type, JILUnknown* pObject);
 
 //------------------------------------------------------------------------------
 // NTLNewObject
 //------------------------------------------------------------------------------
-/// This allocates a new object from a JIL class or native type and returns
-/// a new handle for it. You need to pass in the TypeID of the object's class.
-/// Make sure to call NTLFreeHandle() when you do not need the object anymore.
+/// This allocates a new object from a script class or native type and returns
+/// a new handle for it. You need to pass in the type-id of the object's class.
+/// Make sure to call NTLFreeHandle() when you don't need the object anymore.
 /// Note that this does not automatically call the object's constructor method.
-/// To ensure the JIL object or native object is properly initialized, you need
-/// to call JILCallFunction() for the returned object handle.
-/// If the given TypeID is invalid, the result is 0.
-/// @see NTLTypeNameToTypeID ()
+/// To ensure the object is properly initialized, you need to call
+/// JILCallFunction() for the returned object handle.
+/// If the given type-id is invalid, the result is 0.
+/// @see NTLTypeNameToTypeID
 
-JILEXTERN JILHandle*	NTLNewObject			(JILState* pState, JILLong TypeID);
+JILEXTERN JILHandle*	NTLNewObject			(JILState* pState, JILLong type);
 
 //------------------------------------------------------------------------------
 // NTLLoadResource
@@ -357,11 +353,14 @@ JILEXTERN JILHandle*	NTLNewObject			(JILState* pState, JILLong TypeID);
 /// A native type library can use this to load any resources needed into memory.
 /// The function will use the virtual machine's file input callback function to
 /// load the data, so this will also work when the application has overridden
-/// the librarys default loading behaviour.
-/// The function will load the whole file into memory and return a pointer to
-/// the data and the file size in 'ppData' and 'pSize'.
-/// The caller must free the returned memory block by calling NTLFreeResource()
-/// when he is done with it.
+/// the library's default loading behavior.
+/// <p>This function will still work in case the file input callback doesn't
+/// support seeking or retrieving the length of the file. So this function also
+/// supports loading data from streams.</p>
+/// <p>The function will load the whole file into memory and return a pointer to
+/// the data and the file size in 'ppData' and 'pSize'.</p>
+/// <p>The caller must free the returned memory block by calling NTLFreeResource()
+/// when they are done with it.</p>
 /// @see NTLFileOpen, NTLFileClose, NTLFileRead, NTLFileSeek, NTLFileLength
 
 JILEXTERN JILError		NTLLoadResource			(JILState* pState, const JILChar* pName, JILUnknown** ppData, JILLong* pSize);
@@ -369,10 +368,9 @@ JILEXTERN JILError		NTLLoadResource			(JILState* pState, const JILChar* pName, J
 //------------------------------------------------------------------------------
 // NTLFreeResource
 //------------------------------------------------------------------------------
-/// Free a memory block returned by NTLLoadResource().
-/// Call this if you have loaded any resources using NTLLoadResource().
-/// Pass in the 'ppData' pointer returned by NTLLoadResource()
-/// in order to free the memory block.
+/// Free the memory block returned by NTLLoadResource().
+/// Pass in the 'ppData' pointer returned by that function to free the memory
+/// allocated for the resource.
 
 JILEXTERN JILError		NTLFreeResource			(JILState* pState, JILUnknown* pData);
 
@@ -381,7 +379,7 @@ JILEXTERN JILError		NTLFreeResource			(JILState* pState, JILUnknown* pData);
 //------------------------------------------------------------------------------
 /// This will open any file using the VM's file input callback function, so this
 /// will also work when the application has overridden the library's default
-/// loading behaviour.
+/// loading behavior.
 /// If successful, the function will write a pointer to a JILFileHandle object to 'ppFileOut'.
 /// Pass the object to subsequent calls to NTLFileRead, NTLFileSeek, NTLFileLength and NTLFileClose.
 
@@ -405,23 +403,29 @@ JILEXTERN JILLong		NTLFileRead				(JILFileHandle* pFile, JILUnknown* pData, JILL
 /// This will move the file pointer to the specified byte position in the file.
 /// Since the file pointer is a signed 32-bit value, this will only work for
 /// files up to 2 GB in size.
+/// <p>The default file input callback supports this function. However, not all
+/// custom file input callbacks may do so. If unsupported, this function
+/// returns an error.</p>
 
 JILEXTERN JILError		NTLFileSeek				(JILFileHandle* pFile, JILLong position);
 
 //------------------------------------------------------------------------------
 // NTLFileLength
 //------------------------------------------------------------------------------
-/// Returns the total size, in bytes, of the file to 'pLengthOut'.
+/// Returns the total size, in bytes, of the file.
 /// Depending on the actual implementation of the VM's file input proc, calling
-/// this may move the file pointer to the end of the file.
+/// this may alter the read position of the file.
+/// <p>The default file input callback supports this function. However, not all
+/// custom file input callbacks may do so. If unsupported, this function
+/// returns 0.</p>
 
 JILEXTERN JILLong		NTLFileLength			(JILFileHandle* pFile);
 
 //------------------------------------------------------------------------------
 // NTLFileClose
 //------------------------------------------------------------------------------
-/// Closes the given file. After this call the specified JILFileHandle object
-/// will be destroyed and the point should no longer be used.
+/// Closes the given file. After this call, the specified JILFileHandle object
+/// will be destroyed and the pointer should no longer be used.
 
 JILEXTERN JILError		NTLFileClose			(JILFileHandle* pFile);
 
@@ -430,13 +434,13 @@ JILEXTERN JILError		NTLFileClose			(JILFileHandle* pFile);
 //------------------------------------------------------------------------------
 /// Adds a constant declaration of type 'typeID' and initialized by the integer
 /// 'value' to a dynamic type declaration string.
-/// <p>This and the following NTLDeclare...() functions can be used if you do
-/// not want to "hardcode" the declaration of your native type library.
-/// It allows you, for example to add global constant definitions to your class
-/// based on values defined at runtime.</p>
 /// <p>Call this function when your native type receives the NTL_GetDeclString
-/// message and pass it the pDataIn pointer received by your type proc.
-/// <p>Calling this function with these values:<p>
+/// message and pass the pDataIn pointer received by your native type.</p>
+/// <p>This and the following NTLDeclare...() functions can be used if you do
+/// not want to "hard code" the declaration of your native type library.
+/// It allows you, for example, to add global constant definitions to your class
+/// based on values defined at runtime.</p>
+/// <p>Calling this function with these values:</p>
 /// <pre>NTLDeclareConstantInt(pDataIn, type_int, "kFoo", 27);</pre>
 /// <p>Will add the following string to the type declaration:</p>
 /// <pre>const int kFoo = 27;</pre>

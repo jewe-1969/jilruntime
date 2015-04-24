@@ -777,6 +777,70 @@ JILHandle* NTLNewObject(JILState* pState, JILLong type)
 }
 
 //------------------------------------------------------------------------------
+// LoadFromStream
+//------------------------------------------------------------------------------
+
+static JILError LoadFromStream(JILState* pVM, JILFileHandle* pFile, JILUnknown** ppData)
+{
+	struct Block
+	{
+		char* data;
+		struct Block* next;
+		JILLong size;
+	};
+	static const JILLong kBlockSize = 4096;
+	JILLong totalSize, blockSize;
+	struct Block *firstBlock, *block, *prevBlock;
+	char* pData;
+	JILError err = JIL_No_Exception;
+
+	// read file contents in 4K blocks until it is fully loaded
+	totalSize = 0;
+	firstBlock = prevBlock = NULL;
+	for (;;)
+	{
+		block = pVM->vmMalloc(pVM, sizeof(struct Block));
+		block->data = pVM->vmMalloc(pVM, kBlockSize);
+		block->next = NULL;
+		block->size = 0;
+		if (prevBlock != NULL)
+			prevBlock->next = block;
+		if (firstBlock == NULL)
+			firstBlock = block;
+		// read a block
+		blockSize = NTLFileRead(pFile, block->data, kBlockSize);
+		if (blockSize < 0)
+		{
+			err = JIL_ERR_File_Generic;
+			goto exit;
+		}
+		block->size = blockSize;
+		totalSize += blockSize;
+		if (blockSize < kBlockSize)
+			break;
+		prevBlock = block;
+	}
+	// allocate buffer to accommodate all blocks
+	*ppData = pData = pVM->vmMalloc(pVM, totalSize);
+	// fill buffer
+	for (block = firstBlock; block != NULL; block = block->next)
+	{
+		memcpy(pData, block->data, block->size);
+		pData += block->size;
+	}
+
+exit:
+	// free all blocks
+	for (block = firstBlock; block != NULL; block = prevBlock)
+	{
+		prevBlock = block->next;
+		pVM->vmFree(pVM, block->data);
+		pVM->vmFree(pVM, block);
+	}
+	return err;
+}
+
+//------------------------------------------------------------------------------
 // NTLLoadResource
 //------------------------------------------------------------------------------
 
@@ -789,33 +853,39 @@ JILError NTLLoadResource(JILState* pVM, const JILChar* pName, JILUnknown** ppDat
 
 	if( pName == NULL || ppData == NULL || pSize == NULL )
 		return JIL_ERR_Generic_Error;
-
 	// open the file
 	err = NTLFileOpen(pVM, pName, &pFile);
 	if( err )
 		return err;
-
-	// get the file length
+	// try to get the file length
 	fileSize = NTLFileLength(pFile);
-	*pSize = fileSize;
-
-	// allocate a buffer
-	*ppData = pData = (JILChar*) pVM->vmMalloc(pVM, fileSize);
-	if( pData == NULL )
-		goto exit;
-
-	// read the entire file into the buffer
-	if( NTLFileRead(pFile, pData, fileSize) != fileSize )
+	if (fileSize > 0)
 	{
-		err = JIL_ERR_File_Generic;
-		goto exit;
+		// we can use the "quick load"
+		*pSize = fileSize;
+		// allocate a buffer
+		*ppData = pData = (JILChar*)pVM->vmMalloc(pVM, fileSize);
+		if (pData == NULL)
+			goto exit;
+		// read the entire file into the buffer
+		if (NTLFileRead(pFile, pData, fileSize) != fileSize)
+		{
+			err = JIL_ERR_File_Generic;
+			goto exit;
+		}
 	}
-
+	else
+	{
+		// file is a stream, read until it's fully loaded
+		err = LoadFromStream(pVM, pFile, &pData);
+		if (err)
+			goto exit;
+		*ppData = pData;
+	}
 	// close the file
 	err = NTLFileClose(pFile);
 	if( err )
 		goto exit;
-
 	// success
 	return JIL_No_Exception;
 

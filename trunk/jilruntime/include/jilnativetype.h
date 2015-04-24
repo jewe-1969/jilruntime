@@ -62,29 +62,29 @@ enum NTLMessage
 //------------------------------------------------------------------------------
 // NTLRevisionToLong
 //------------------------------------------------------------------------------
-/// Use this to convert the revision string into a long version number.
+/// Use this to convert the revision string into an integer version number.
 
 JILEXTERN JILLong		NTLRevisionToLong		(const JILChar* pRevision);
 
 //------------------------------------------------------------------------------
 // NTLIsValidTypeID
 //------------------------------------------------------------------------------
-// Returns true if the given type-id is valid, otherwise false.
+/// Returns true if the given type-id is valid, otherwise false.
 
 JILEXTERN JILBool		NTLIsValidTypeID		(JILState* pState, JILLong typeID);
 
 //------------------------------------------------------------------------------
 // NTLTypeNameToTypeID
 //------------------------------------------------------------------------------
-/// This returns the TypeID number for a given type name. The type must be known
+/// This returns the type-id number for a given type name. The type must be known
 /// to the JewelScript compiler, which means, at least a forward declaration for
 /// the type must have been made prior to calling this function.
 /// <p>To programmatically "forward declare" a class, you can use the
 /// JCLForwardClass() function. To programmatically import a class, you can use
 /// the JCLImportClass() function.</p>
-/// This function uses a hash table for very fast access to the type ID number
+/// This function uses a hash table for very fast access to the type-id number
 /// of a given type. Because this function is relatively fast, you can "lazily"
-/// call it directly, everywhere where specifying a TypeID number is required.
+/// call it every time a type-id number is required.
 /// The function returns 0 if the specified type is not found.
 
 JILEXTERN JILLong		NTLTypeNameToTypeID		(JILState* pState, const JILChar* pClassName);
@@ -93,7 +93,7 @@ JILEXTERN JILLong		NTLTypeNameToTypeID		(JILState* pState, const JILChar* pClass
 // NTLGetTypeName
 //------------------------------------------------------------------------------
 /// Returns a character string containing the name of the type associated to the
-/// specified TypeID.
+/// specified type-id.
 
 JILEXTERN const JILChar*	NTLGetTypeName		(JILState* pState, JILLong type);
 
@@ -110,10 +110,10 @@ JILEXTERN JILLong		NTLGetTypeFamily		(JILState* pState, JILLong type);
 //------------------------------------------------------------------------------
 // NTLGetArgTypeID
 //------------------------------------------------------------------------------
-/// Get the TypeID of a function argument on the VM's stack. The first argument
+/// Get the type-id of a function argument on the VM's stack. The first argument
 /// to a native function has index 0, the second index 1, and so on.
-/// The function returns 0 if an error occurs. This let's you determine the type
-/// of an object passed to one of your functions.
+/// The function returns 0 if an error occurs. This lets you determine the type
+/// of an object passed to your function.
 
 JILEXTERN JILLong		NTLGetArgTypeID			(JILState* pState, JILLong argNum);
 
@@ -145,51 +145,54 @@ JILEXTERN const JILChar*	NTLGetArgString		(JILState* pState, JILLong argNum);
 // NTLGetArgObject
 //------------------------------------------------------------------------------
 /// Returns a pointer to a JIL object or native object. If the given argument
-/// does not contain an object with the given TypeID or not an object at all,
+/// does not contain an object with the given type-id, or not an object at all,
 /// returns NULL.
 
-JILEXTERN JILUnknown*	NTLGetArgObject			(JILState* pState, JILLong argNum, JILLong TypeID);
+JILEXTERN JILUnknown*	NTLGetArgObject			(JILState* pState, JILLong argNum, JILLong type);
 
 //------------------------------------------------------------------------------
 // NTLReturnInt
 //------------------------------------------------------------------------------
-/// Call this if your member function or static function returns an int value.
-/// This function will create a new handle for it and move it into register r1.
+/// Call this if your native function returns an int value.
+/// This function will create a new handle for the value and return it to the
+/// virtual machine.
 
 JILEXTERN void			NTLReturnInt			(JILState* pState, JILLong value);
 
 //------------------------------------------------------------------------------
 // NTLReturnFloat
 //------------------------------------------------------------------------------
-/// Call this if your member function or static function returns a float value.
-/// This function will create a new handle for it and move it into register r1.
+/// Call this if your native function returns a float value.
+/// This function will create a new handle for the value and return it to the
+/// virtual machine.
 
 JILEXTERN void			NTLReturnFloat			(JILState* pState, JILFloat value);
 
 //------------------------------------------------------------------------------
 // NTLReturnString
 //------------------------------------------------------------------------------
-/// Call this if your member function or static function returns a string value.
-/// This function will create a new handle for it and move it into register r1.
-/// The string will be copied into the handle, so the pointer can be volatile.
+/// Call this if your native function returns a string value.
+/// This function will create a new handle for the value and return it to the
+/// virtual machine.
+/// The string will be copied, so the pointer can be volatile.
 
 JILEXTERN void			NTLReturnString			(JILState* pState, const JILChar* value);
 
 //------------------------------------------------------------------------------
 // NTLInstanceSetUser
 //------------------------------------------------------------------------------
-/// This allows you to attach any pointer to the instance of your native type
-/// library. If your native type library needs to allocate some private block of
-/// memory, you can allocate the memory when the native type gets sent the
-/// NTL_Initialize and attach it to the instance by calling this function.
-/// However, if you dynamically allocate memory using malloc() or operator new,
-/// do not forget to free this memory when receiving NTL_Terminate. The virtual
-/// machine will <b>not</b> automatically free this memory for you.
-/// The function returns the value that was previously stored in the instances
+/// This allows you to attach any pointer to the instance of your native type.
+/// If your native type needs to allocate some private block of memory, you can
+/// allocate the memory when the native type gets sent the NTL_Initialize and
+/// attach it to the instance by calling this function.
+/// If you dynamically allocate memory using malloc() or operator new, do not
+/// forget to free this memory when receiving NTL_Terminate. The virtual
+/// machine will <b>not</b> automatically free this memory.
+/// The function returns the value that was previously stored in the instance's
 /// user data memory.
-/// @see NTLInstance, NTLSetTypeUserData ()
+/// @see NTLInstance, NTLSetTypeUserData
 
-JILEXTERN JILUnknown*	NTLInstanceSetUser		(NTLInstance* pInst, JILUnknown* pData);
+JILEXTERN JILUnknown*	NTLInstanceSetUser		(NTLInstance* pInstance, JILUnknown* pData);
 
 //------------------------------------------------------------------------------
 // NTLInstanceGetUser
@@ -198,24 +201,24 @@ JILEXTERN JILUnknown*	NTLInstanceSetUser		(NTLInstance* pInst, JILUnknown* pData
 /// If no pointer was previously set, returns NULL.
 /// @see NTLInstance
 
-JILEXTERN JILUnknown*	NTLInstanceGetUser		(NTLInstance* pInst);
+JILEXTERN JILUnknown*	NTLInstanceGetUser		(NTLInstance* pInstance);
 
 //------------------------------------------------------------------------------
 // NTLInstanceTypeID
 //------------------------------------------------------------------------------
-/// Returns the calling NTL's type identifier number.
+/// Returns the type-id for the specified native type instance.
 /// @see NTLInstance
 
-JILEXTERN JILLong		NTLInstanceTypeID		(NTLInstance* pInst);
+JILEXTERN JILLong		NTLInstanceTypeID		(NTLInstance* pInstance);
 
 //------------------------------------------------------------------------------
 // NTLInstanceGetVM
 //------------------------------------------------------------------------------
-/// Returns a pointer to the Virtual Machine state that is owning this instance
-/// of the Native Type Library.
+/// Returns a pointer to the virtual machine state that is owning this native
+/// type instance.
 /// @see NTLInstance
 
-JILEXTERN JILState*		NTLInstanceGetVM		(NTLInstance* pInst);
+JILEXTERN JILState*		NTLInstanceGetVM		(NTLInstance* pInstance);
 
 //------------------------------------------------------------------------------
 // NTLSetTypeUserData
@@ -231,8 +234,8 @@ JILEXTERN JILState*		NTLInstanceGetVM		(NTLInstance* pInst);
 /// instance of a C++ class natively. The binding code can retrieve the user
 /// data pointer by calling NTLInstanceGetUser() and call a method from that
 /// pointer.</p>
-/// If the specified type ID is invalid, the function returns an error.
-/// @see NTLInstanceGetUser (), NTLInstanceSetUser ()
+/// If the specified type-id is invalid, the function returns an error.
+/// @see NTLInstanceGetUser, NTLInstanceSetUser
 
 JILEXTERN JILError		NTLSetTypeUserData		(JILState* pVM, JILLong typeID, JILUnknown* pUser);
 

@@ -11,7 +11,7 @@
 // Description:
 // ------------
 /// @file jilarray.h
-/// This is the built-in array class. The JewelScript array can dynamically grow
+/// The built-in array class. The JewelScript array can dynamically grow
 /// depending on the index used to access elements from it. In general, accessing
 /// an array element with an index that is out of range will cause the array to
 /// grow to the required number of elements. So one should be cautious to not use

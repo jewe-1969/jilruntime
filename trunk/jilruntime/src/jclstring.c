@@ -557,36 +557,25 @@ JILLong JCLFindString(const JCLString* _this, const JILChar* src, JILLong index)
 
 JILLong JCLReadTextFile(JCLString* _this, const JILChar* pName, JILState* pVM)
 {
-	JILFileHandle* pFile = NULL;
 	JILError err;
 	JILLong fileSize = 0;
+	JILUnknown* pData = NULL;
 
 	// open the file
-	err = NTLFileOpen(pVM, pName, &pFile);
+	err = NTLLoadResource(pVM, pName, &pData, &fileSize);
 	if( err )
-		goto exit;
-	// get the file length
-	fileSize = NTLFileLength(pFile);
-	// set file pointer back to start!
-	if( NTLFileSeek(pFile, 0) )
 		goto exit;
 	// reallocate string
 	Reallocate(_this, fileSize, JILFalse);
-	// load file into string buffer
-	if( NTLFileRead(pFile, _this->m_String, fileSize) != fileSize )
-		goto exit;
-	_this->m_String[fileSize] = 0;
-	// close file
-	err = NTLFileClose(pFile);
-	if( err )
-		goto exit;
+	// copy string data
+	memcpy(_this->m_String, pData, fileSize);
+	// free buffer
+	NTLFreeResource(pVM, pData);
 	// success!
 	return fileSize;
 
 exit:
 	Deallocate(_this);
-	NTLFileClose(pFile);
-	pFile = NULL;
 	return -1;
 }
 

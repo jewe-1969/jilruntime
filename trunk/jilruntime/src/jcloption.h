@@ -27,11 +27,13 @@ enum
 	kErrorFormatMS				///< Microsoft DeveloperStudio compatible error format
 };
 
+FORWARD_CLASS(JCLOption)
+
 //------------------------------------------------------------------------------
 // class JCLOption
 //------------------------------------------------------------------------------
+/// Represents an object holding compiler options.
 
-FORWARD_CLASS( JCLOption )
 DECL_CLASS( JCLOption )
 
 	JILError			(*ParseOption)		(JCLOption*, const JCLString*, JILOptionHandler, JILUnknown*);

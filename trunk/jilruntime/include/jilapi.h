@@ -49,7 +49,7 @@
 	This is the source code documentation and focuses solely on the programming
 	interface (API) of the script runtime.
 	<p>For language documentation, please refer to the JewelScript language reference,
-	available for download here: http://blog.jewe.org/?p=53 </p>
+	available for download here: http://blog.jewe.org/?page_id=107#documentation </p>
 	<p>Where to get started with the source code documentation:</p>
 
 	<h2>API functions</h2>
@@ -76,7 +76,7 @@
 //------------------------------------------------------------------------------
 // JILInitialize
 //------------------------------------------------------------------------------
-/// Initializes the runtime and returns a JILState structure. Note that the
+/// Initializes the runtime and returns a JILState structure. The
 /// virtual machine's stack is fixed in size, it does not automatically grow.
 /// For small applets, macros or other functions, a size of 1024 should be
 /// sufficient. For larger applets or whole programs without recursive
@@ -84,9 +84,9 @@
 /// If your code is using excessively recursive functions (Ackerman, Fibonacci)
 /// the size should be 16384 or larger.
 /// <p>You can build the library with 'extended runtime checks' by setting the
-/// macro JIL_RUNTIME_CHECKS to 1 in file jildebug.h, if you need the library
+/// macro JIL_RUNTIME_CHECKS to 1 in file jilplatform.h, if you need the library
 /// to check for stack over/underruns. In this case the VM will generate an
-/// exception. Note that enabling runtime checks will significantly decrease
+/// exception. Enabling runtime checks will significantly decrease
 /// performance.</p>
 /// <p>If you're not sure whether your stack size is sufficient, you can first
 /// test your JewelScript code with the debug build of the library, which will
@@ -98,8 +98,8 @@
 /// 'name=value' tags. You can pass NULL for this parameter if you don't need to
 /// set any specific options. For a complete list of available options, please
 /// refer to the JewelScript language reference ('option' keyword), which is
-/// available at http://blog.jewe.org/?p=53</p>
-/// <p>Note that scripts can use the <i>option</i> keyword to specify the stack
+/// available at http://blog.jewe.org/?page_id=107#documentation </p>
+/// <p>Scripts can use the <i>option</i> keyword to specify the stack
 /// size to use. So applications can keep the default stack size low, while
 /// scripts that excessively use the stack can specify a larger stack size.</p>
 /// @see JCLSetGlobalOptions
@@ -139,22 +139,24 @@ JILEXTERN JILError				JILRunInitCode			(JILState* pState);
 /// case of an error (function or method not found). To call the function, use
 /// the JILCallFunction() API function. Call NTLFreeHandle() if you don't need
 /// the function handle anymore.</p>
-/// <p><b>NOTE</b> that this will use the first method or function with a matching
-/// name, regardless of return type or argument list!</p>
-/// <p>To obtain handles for all the functions of a script-object at once,
-/// see JILGetFunctionTable().</p>
+/// <p><b>NOTE</b> that this will use the first method or function with a
+/// matching name, regardless of return type or argument list!</p>
+/// <p>This is a <b>time-consuming operation</b>, you should call this function
+/// once during initialization of your application and store the handle in a
+/// variable for as long as the function is needed.</p>
+/// <p>To obtain handles for all functions of a script-object at once, see
+/// JILGetFunctionTable().</p>
 
 JILEXTERN JILHandle*			JILGetFunction			(JILState* pState, JILHandle* pObj, const JILChar* pClass, const JILChar* pName);
 
 //------------------------------------------------------------------------------
 // JILCallFunction
 //------------------------------------------------------------------------------
-/// Execute a call to a function. The function can be an instance class member
-/// function (method) or global class member function, implemented in script or
-/// native code. To obtain the required JILHandle pointer of the function, use
-/// JILGetFunction(). You can also use this to call delegate handles passed by
-/// the script as an argument to one of your native type's functions.
-/// <p>To pass any arguments to the function, specify them as parameter list to
+/// Execute a function. The handle can be a delegate, an instance class member
+/// function (method) or a global class member function, implemented in script
+/// or native code. To obtain the required JILHandle of the function, use
+/// JILGetFunction().
+/// <p>To pass arguments to the function, specify them as parameter list to
 /// this function. The parameter list is expected to have the following format:
 /// Each parameter to be pushed onto the VM stack uses two arguments - the first
 /// argument is an integer describing the type of data, the second argument is
@@ -164,11 +166,11 @@ JILEXTERN JILHandle*			JILGetFunction			(JILState* pState, JILHandle* pObj, cons
 /// <p>The function will automatically create the needed JILHandle objects for all
 /// but the kArgHandle data types. The C string data will be copied, so its safe
 /// to pass a pointer to a volatile string variable.</p>
-/// <p>When the script-function has been executed without an error, this function
-/// will return with a JILHandle pointer to the script-function's result.
-/// If the script-function does not return a result, a handle of 'type_null'
-/// is returned. If an error exception has occurred during execution, a handle
-/// of an exception object is returned. Use NTLHandleToError() to check if the
+/// <p>When the script function has been executed without error, this function
+/// will return with a JILHandle pointer to the script function's result.
+/// If the script function does not return a result, a handle of 'type_null'
+/// is returned. If an exception has occurred during execution, a handle of
+/// an exception object is returned. Use NTLHandleToError() to check if the
 /// handle is an exception and get it's error code.</p>
 /// <p>To determine the handle's type, use NTLHandleToTypeID(). To convert the
 /// handle to an int, float, or const char*, use NTLHandleToInt(),
@@ -182,7 +184,7 @@ JILEXTERN JILHandle*			JILCallFunction			(JILState* pState, JILHandle* pFunction
 //------------------------------------------------------------------------------
 // JILLoadBinary
 //------------------------------------------------------------------------------
-/// Loads bytecode from a binary chunk. Note that this operation will reset the
+/// Loads bytecode from a binary chunk. This operation will reset the
 /// runtime, meaning all currently allocated objects will be freed and the
 /// runtime will be re-initialized. This also means the compiler object, which
 /// was initialized when calling JILInitialize() will be freed. Hence, after a
@@ -197,10 +199,10 @@ JILEXTERN JILError				JILLoadBinary			(JILState* pState, const JILUnknown* pData
 //------------------------------------------------------------------------------
 /// Saves bytecode to a binary chunk. If successful, the function writes the
 /// address of a byte buffer to ppData and the size of the buffer, in bytes,
-/// to pDataSize. Note that this buffer remains valid until either the runtime
-/// is terminated, re-initialized (ie. by calling JILLoadBinary() ), or
+/// to pDataSize. This buffer remains valid until either the runtime
+/// is terminated, re-initialized (by calling JILLoadBinary), or
 /// JILSaveBinary() is called again.
-/// <p>Also note that this function is not capable to save a "runtime snapshot" of
+/// <p>This function is not capable to save a "runtime snapshot" of
 /// the virtual machine. While this would be cool, it would require all native
 /// objects to support writing their current state into a byte-stream and
 /// initializing themselves from a stream.</p>
@@ -209,13 +211,13 @@ JILEXTERN JILError				JILLoadBinary			(JILState* pState, const JILUnknown* pData
 /// executed later (maybe even by a different program).
 /// This can be useful to very quickly load and execute code (without the
 /// additional performance hit of compiling script code), or to ensure that
-/// application users can not easily read or modify script code.</p>
+/// application users can not easily read and modify script code.</p>
 /// The binary file created by this function is <b>machine dependant</b>, but
-/// <b>not platform dependant</b>. This means for example, byte-code saved by
-/// an Intel&reg; Windows&reg; PC should be able to load and run on an Intel
+/// <b>not platform dependant</b>. This means byte-code saved by
+/// an Intel&reg; Windows&reg; PC should load and run on an Intel
 /// Linux or Intel MacOSX&reg; machine (*). On the other hand, it will <b>not</b>
 /// load and run on an IBM&reg; PowerPC based machine.</p>
-/// (* Provided all the used native types are available, and the compiler used
+/// (* Provided all used native types are available, and the compiler used
 /// to build the library uses 32-bit int and a struct alignment of 8 bytes.)
 
 JILEXTERN JILError				JILSaveBinary			(JILState* pState, JILUnknown** ppData, JILLong* pDataSize);
@@ -223,7 +225,7 @@ JILEXTERN JILError				JILSaveBinary			(JILState* pState, JILUnknown** ppData, JI
 //------------------------------------------------------------------------------
 // JILRegisterNativeType
 //------------------------------------------------------------------------------
-/// Register a native type library to the JIL runtime environment. After calling
+/// Register a native type library to the runtime environment. After calling
 /// this function, the native class can be imported and used by the compiler and
 /// runtime.
 
@@ -256,7 +258,7 @@ JILEXTERN const JILChar*		JILGetExceptionString	(JILState* pState, JILError e);
 //------------------------------------------------------------------------------
 // JILGetRuntimeVersion
 //------------------------------------------------------------------------------
-/// Get the version information of the JIL runtime.
+/// Get the version information of the runtime.
 /// @see JILVersionInfo
 
 JILEXTERN const JILVersionInfo*	JILGetRuntimeVersion	(JILState* pState);
@@ -276,19 +278,17 @@ JILEXTERN const JILChar*		JILGetVersionString		(JILLong version, JILChar* pBuffe
 /// Install a callback function for logging of library messages.
 /// <p>The compiler uses this callback to output compiler errors and warnings in
 /// addition to making them available via the JCLGetErrorText() function.</p>
-/// <p>The runtime uses this callback to output certain messages than can help
-/// developers detecting memory leaks due to reference-cycles, or inform them
-/// when the library has detected a critical problem.</p>
+/// <p>The runtime uses this callback to output diagnostic and error messages.</p>
 /// <p>If the option "log-garbage" has been enabled, the gargabe collector will
-/// use this callback to output details about the objects that have leaked.
-/// Additionally, the runtime will check for any leaked handles during it's
+/// use this callback to output details about objects that have leaked.
+/// Additionally, the runtime will check for any leaked objects during it's
 /// termination, and use the log output callback to output details about them.
 /// This can be useful if developers wish to optimize memory usage in their
 /// scripts.</p>
-/// <p>An application using the library can use this function to install it's
-/// own log message handler, for example to print the given message to console,
-/// to open a message box, or to write it into a log file. If the callback is not
-/// set, the library will not output any log messages.</p>
+/// <p>An application can use this function to install a log message handler,
+/// for example to print the given message to console, to open a message window,
+/// or to write it into a log file. If the callback is not set, the library will
+/// not output any messages.</p>
 
 JILEXTERN void					JILSetLogCallback		(JILState* pState, JILLogOutputProc proc);
 
@@ -296,7 +296,7 @@ JILEXTERN void					JILSetLogCallback		(JILState* pState, JILLogOutputProc proc);
 // JILMessageLog
 //------------------------------------------------------------------------------
 /// Output a formatted string with variable arguments to the runtime's message
-/// log callback. Uses standard ANSI format specifiers. @see JILSetLogCallback ()
+/// log callback. Uses standard ANSI format specifiers. @see JILSetLogCallback
 
 JILEXTERN void					JILMessageLog			(JILState* pState, const JILChar* pFormat, ...);
 
@@ -304,7 +304,7 @@ JILEXTERN void					JILMessageLog			(JILState* pState, const JILChar* pFormat, ..
 // JILAttachObject
 //------------------------------------------------------------------------------
 /// Attach any object to the virtual machine's state using this function. The
-/// function returns the previous value of the specified objectID. This is
+/// function returns the previous value of the specified object ID. This is
 /// especially useful for native code that needs access to your application
 /// object. Just attach the pointer to your application object as 'JIL_Application'
 /// to the VM state. If your native code is invoked, you can call JILGetObject()
@@ -317,10 +317,10 @@ JILEXTERN JILUnknown*			JILAttachObject			(JILState* pState, JILLong objectID, J
 // JILGetObject
 //------------------------------------------------------------------------------
 /// Retrieve a pointer to an object attached to the virtual machine state.
-/// If not set, this function returns NULL for the specified objectID. You can
+/// If not set, this function returns NULL for the specified object ID. You can
 /// use this, for example, to get access to your application object from within
 /// any type of callback function or native type.
-/// @see JILAttachObject ().
+/// @see JILAttachObject
 
 JILEXTERN JILUnknown*			JILGetObject			(JILState* pState, JILLong objectID);
 
@@ -331,6 +331,11 @@ JILEXTERN JILUnknown*			JILGetObject			(JILState* pState, JILLong objectID);
 /// <p>All runtime memory allocs and deallocs will be made through the runtime's
 /// own memory management, which is optimized for fast allocation and deallocation
 /// of small memory blocks.</p>
+/// <p>Fixed memory management works by trading off memory efficiency for
+/// increased performance. That means, objects allocated through this manager
+/// may "waste" memory, because a larger block may be allocated than necessary.
+/// Therefore it may be better to use normal C-runtime malloc() and free() on
+/// machines with low memory resources.</p>
 /// <p>Specify the maximum number of objects allowed for the given block sizes.
 /// When allocating a block, the library will choose the memory manager with the
 /// smallest block size capable of accommodating the block. If the requested
@@ -343,11 +348,11 @@ JILEXTERN JILUnknown*			JILGetObject			(JILState* pState, JILLong objectID);
 /// the number of blocks of that size (except available RAM of course).</p>
 /// <p>Suffice to say that blocks with sizes > 512 bytes will be allocated and
 /// freed using the normal C-runtime malloc() and free() functions.</p>
-/// <p>Note that calling this will override the JILState::vmMalloc and
+/// <p>Calling this will override the JILState::vmMalloc and
 /// JILState::vmFree member variables. If you have set these callbacks to
 /// your customized memory allocation / deallocation handlers, do not call this
 /// function!</p>
-/// @see JILUseFixedMemDynamic (), JILMalloc (), JILMfree ()
+/// @see JILUseFixedMemDynamic, JILMalloc, JILMfree
 
 JILEXTERN JILError				JILUseFixedMemory		(JILState* pState,
 														 JILLong max16,
@@ -361,38 +366,40 @@ JILEXTERN JILError				JILUseFixedMemory		(JILState* pState,
 // JILUseFixedMemDynamic
 //------------------------------------------------------------------------------
 /// This enables the fixed memory management and sets all memory managers to
-/// "dynamic growth" mode. @see JILUseFixedMemory ().
+/// "dynamic growth" mode. @see JILUseFixedMemory
 
 JILEXTERN JILError				JILUseFixedMemDynamic	(JILState* pState);
 
 //------------------------------------------------------------------------------
 // JILMalloc
 //------------------------------------------------------------------------------
-/// Uses the runtime's memory management for quick allocation of a memory block.
-/// If 'fixed memory management' is not enabled, this will simply map through
-/// to the C-runtime malloc() function. Otherwise this will use
-/// 'fixed memory management' to allocate the block. The function is mainly
-/// intended for native type implementations that require fast allocation and
-/// deallocation of small objects.
-/// <p><b>Blocks allocated with this function <b>must</b> be freed using
-///  JILMfree(), otherwise it will corrupt the memory management!</b></p>
-/// @see JILUseFixedMemory ().
+/// Allocates and returns a block of memory of the specified size.
+/// This API function directly calls the JILState::vmMalloc callback.
+/// If 'fixed memory management' has been enabled, then it will be used to
+/// allocate the block. If the application has customized allocation by setting
+/// JILState::vmMalloc to a custom callback function, then the custom allocator
+/// will be used. By default, this just maps through to the C-runtime malloc()
+/// function.
+/// <p><b>Blocks allocated with this function must be freed using JILMfree()!</b>
+/// Otherwise it will corrupt the memory management.</p>
+/// @see JILUseFixedMemory
 
 JILEXTERN JILUnknown*			JILMalloc				(JILState* pState, JILLong size);
 
 //------------------------------------------------------------------------------
 // JILMfree
 //------------------------------------------------------------------------------
-/// Uses the runtime's memory management to deallocate a previously allocated
-/// block of memory. If 'fixed memory management' is not enabled, this will
-/// simply map through to the C-runtime free() function. Otherwise this will use
-/// 'fixed memory management' to free the block.  The function is mainly
-/// intended for native type implementations that require fast allocation and
-/// deallocation of small objects.
+/// Frees a block of memory previously allocated by JILMalloc().
+/// This API function directly calls the JILState::vmFree callback.
+/// If 'fixed memory management' has been enabled, then it will be used to
+/// free the block. If the application has customized deallocation by setting
+/// JILState::vmFree to a custom callback function, then the custom deallocator
+/// will be used. By default, this just maps through to the C-runtime free()
+/// function.
 /// <p><b>Only pass blocks allocated by JILMalloc() to this function!</b>
 /// Passing a pointer allocated by any other means will corrupt the memory
 /// management and may even produce crashes.</p>
-/// @see JILUseFixedMemory ().
+/// @see JILUseFixedMemory
 
 JILEXTERN void					JILMfree				(JILState* pState, JILUnknown* ptr);
 
@@ -460,17 +467,17 @@ JILEXTERN void					JILSetFileInputProc		(JILState* pState, JILFileInputProc proc
 /// multiple functions with the same name.
 /// To call these functions, pass one of the handles in the returned array to
 /// JILCallFunction().
-/// All of the class' global functions and methods will be added to the array,
+/// All of the class's global functions and methods will be added to the array,
 /// including convertor methods and accessors. Cofunctions can not be called
 /// using JILCallFunction(), and therefore a null-handle is added to the array
 /// instead of a handle to the cofunction. The order of handles in the array is
-/// in sync with the declaration of the (script-)class. This means, the first
+/// in sync with the declaration of the class. This means, the first
 /// declared function is at index 0, the second at index 1, and so on.
 /// The object handle passed to this function can be an instance of either
 /// a script class, or a native class. If an error occurs, the result of this
 /// function is NULL.
-/// <p>This is a time-consuming operation, you should call this function once
-/// during initialization of your application and store the table in a member
+/// <p>This is a <b>time-consuming</b> operation, you should call this function
+/// once during initialization of your application and store the table in a
 /// variable for as long as the table is needed.</p>
 /// If you don't need the function table anymore, call JILFreeFunctionTable().
 
@@ -490,7 +497,7 @@ JILEXTERN void					JILFreeFunctionTable	(JILState* pState, JILFunctionTable* pTa
 //------------------------------------------------------------------------------
 /// Marks all the handles in the function table. Call this in response to a
 /// NTL_MarkHandles message, if your application is using the garbage collector.
-/// @see JILCollectGarbage().
+/// @see JILCollectGarbage
 
 JILEXTERN JILError				JILMarkFunctionTable	(JILState* pState, JILFunctionTable* pTable);
 
@@ -562,8 +569,8 @@ JILEXTERN JILFloat				JILGetTimeLastGC		(JILState* pState);
 //------------------------------------------------------------------------------
 // JILGetImplementors
 //------------------------------------------------------------------------------
-/// <p>Returns all classes that implement the specified interface type-id.</p>
-/// <p>The function will write the type-ids of all classes that implement the
+/// Returns all classes that implement the specified interface type-id.
+/// The function will write the type-ids of all classes that implement the
 /// given interface to 'pOutArray'. Specify the size of the array in 'outSize'.
 /// The function will return the number of type-ids actually written into the
 /// array. If the function returns 0, there are no classes implementing the
