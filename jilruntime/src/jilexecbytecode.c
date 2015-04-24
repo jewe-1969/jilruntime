@@ -1338,6 +1338,11 @@ JILLong JILExecuteInfinite( JILState* pState, JILContext* pContext )
 					JILRelease(pState, pNewHandle);
 					pNewHandle = NULL;
 					JIL_IEND
+				case op_jmp:
+					JIL_IBEGIN( 2 )
+					offs = JIL_GET_DATA(pState);
+					programCounter = offs;
+					JIL_IENDBR
 				default:
 					JIL_IBEGIN( 1 )
 					JIL_THROW( JIL_VM_Illegal_Instruction )
