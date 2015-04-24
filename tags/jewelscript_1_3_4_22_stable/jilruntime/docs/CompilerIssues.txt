@@ -1,0 +1,1205 @@
+===========================
+JEWELSCRIPT COMPILER ISSUES
+===========================
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+1. REFERENCE COUNTING       [SOLVED]
+
+    In the first implementation of "Sporen.jc" I used a member variable in class Spore which was a
+    reference to the World and was initialized in the Spore constructor.
+    This proved to be a big problem for the reference counting, as class Spore had a reference to the World
+    as well as class World having a reference to the Spore (in the Matrix). When two objects "point" to each
+    other by reference, the reference counting cancels itself out.
+    Explanation: A adds a reference to B, and B adds one to A. That means, A can only be destroyed if B is
+    destroyed. But B can only be destroyed if A is destroyed, which can only be destroyed if B....
+
+    [This issue has been solved by introducing the concept of "weak references" to the language.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+2. Expression calculation precision determined by L-Value type  [FIXED]
+
+    This expression will constantly return 0:
+
+    long energy = (stdlib::Rand() * 27) - 13 + 100;
+
+    This is because stdlib::Rand() returns a float value between 0 and 1,
+    but the L-Value type is long. The compiler will auto-convert the result
+    to a long, but it will do this immediately after returning from the
+    function. So the result is almost always zero.
+    The compiler should compute at least the expression in brackets with
+    float precision, if not the whole expression, but this will require
+    fundamental changes to expression parsing.
+    (Poll type of expression instead of dictate expected type for expression)
+
+    [Checked 2004/12/31: Latest changes to expression parsing seem to have
+    solved this issue, too.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+3. Using uninitialized class members    [SOLVED]
+
+    class A { long c; }
+    class B { A a; }
+
+    function main()
+    {
+      B b = new B;
+      b.a.c = 0;      // this should generate an error, since 'a' is undefined!
+    }
+
+    Currently I know no way how the compiler could "know" a member variable has been initialized.
+    This is because initialization depends on runtime things, i.e. if and which constructor or
+    method was called. So currently we cannot detect this error.
+
+    [This issue has been solved by forcing the developer to always define a constructor. operator new can no longer
+    instantiate a class that does not have a constructor. Additionally, the compiler ensures all member variables have
+    been initialized in the constructor.]
+
+
+------------------------------------------------------------------------------------------------------------------------
+4. Using uninitialized references       [SOLVED]
+
+    class A
+    {
+      long& aRef;          // reference
+
+      method A()            {}
+      method test(long a)   { aRef = a; }
+    }
+
+    This will generate code in function test() to modify the object referenced by 'aRef'. However, the constructor
+    does not initialize the reference, so this will not run. How to detect?
+
+    [This issue has been solved by forcing the developer to always define a constructor. operator new can no longer
+    instantiate a class that does not have a constructor. Additionally, the compiler ensures all member variables have
+    been initialized in the constructor.]
+
+
+------------------------------------------------------------------------------------------------------------------------
+5. Compile-time checks should include native typelibs   [IMPROVED]
+
+    The compiler should check while compiling, whether a NTL supports a specific feature.
+    Currently, if a typelib does not support object instantiation (only static functions),
+    you can still use operator new to create an instance. Then, when running the compiled
+    program, a runtime error will occur.
+
+    [This has been improved, the compiler is aware if the constructor or copy-constructor is undefined and will
+    show a compile-time error, if they are used.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+6. Improve error handling and output    [FIXED]
+
+    Foo::FooFunction();     // (when class Foo is not defined) = "Expression without an L-Value"
+
+    Forward declare a function that is never defined = "Function declared but never defined",
+    no function name is given, no file name, no line and column. The error is reported even if
+    the function never was used.
+
+    Forward declare a class that is never defined and never used is not an error (ok?).
+
+    [Error handling has been vastly improved for the release of JILRuntime v0.8]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+7. "Direct mode" with JCLCompileAndRun()    [FIXED]
+
+    Code, data handles and CStr data should be removed from the virtual machine after the
+    anonymous function has been executed.
+
+    [This issue has been fixed.]
+
+    [Update: Code, data handles and other data is no longer removed in v0.8, because this proved to create more
+    problems than it did any good. Most importantly, it lead to the fact that the runtime needed to shutdown and
+    reinitialize before and after each call to JCLCompileAndRun(), causing any runtime data to be lost. Since the
+    very idea of this function was to provide a "direct mode" functionality for a JewelScript interpreter, losing
+    runtime data was not acceptable.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+8. Variable "inited" state needs to be branch-dependant     [SOLVED]
+
+    This can be best explained by an example:
+
+    long result;
+    if( someVar == 1 )
+    {
+      result = 57;                  // in this branch "result" gets initialized
+    }
+    else if( someVar == 2 )
+    {
+      console::Print( result );     // in this branch "result" is NOT initialized
+    }
+
+    In the second branch, the compiler "thinks" the variable is initialized, because it had
+    seen an assignment to it before. However, this assignment was in a IF branch, so in
+    reality the code was never executed when the variable gets printed!
+
+    [This issue has been solved for the release of JILRuntime v0.8.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+9. Doing automatic type conversion for references?  [SOLVED]
+
+    Currently the compiler does automatic type conversion also for references, which is unlogical.
+    Automatic type conversion implicitly means creating a new object, so the reference will not
+    actually refer to the source specified, but to a unique object instead.
+    Should automatic type conversion only be performed for non-references?
+    Or should the compiler convert, but warn that the reference has no effect?
+
+    Not performing automatic conversion would mean that function calls that take const references
+    (which is quite usual because it's faster) would no longer benefit from the conversion.
+    On the other hand, using references is not really faster, if implicitly a new object has to
+    be created from the source operand.
+
+    [This issue has been solved by disallowing auto-convert to non-const references. If for example,
+    you declare a variable as "long&" and assign a float value "10.5" to it, the compiler will NOT
+    perform auto-conversion anymore, but instead will generate a compile-time error. Assigning the
+    float value to a "const long&" however, will work, because then the value you refer to can't
+    be changed anyway.]
+
+    [Update: As of version 0.7, auto-conversion to non-const references is allowed again, but will
+    issue a compile-time warning.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+10. Post increment / decrement not behaving as expected     [FIXED]
+
+    Example code:
+
+    SetCursor(m_CursorX++, m_CursorY);
+
+    When passed as an argument to a function, post increment will actually be performed first, then
+    the result is passed to the function. The operator should be performed at statement level,
+    when a complete expression of a statement has been performed.
+
+    [This issue has been addressed and works better now. However, it still does not work right in
+    certain cases. Seen when using "e = a[i++];"]
+
+    [The bug that caused this issue has been spotted and fixed.]
+
+
+------------------------------------------------------------------------------------------------------------------------
+11. Copy instruction and references as member variables     [SOLVED]
+
+    Copying a complex object that consists of other objects is quite simple using the copy instruction.
+    However, this instruction will deep copy the whole object and all sub-objects, regardless if they
+    were declared as references or non-references in the compiler language.
+    This means that if an object has a member reference that points to another object, a unique copy
+    is created from the referred object. This may not always be wanted.
+    For example, imagine a Control class that works together with a DrawContext class.
+    The DrawContext object is unique and is built by the system. All Control objects keep a reference
+    to this DrawContext object to be able to draw themselves.
+    Now, if we would copy such a Control using the copy instruction, the DrawContext would be copied
+    for the new Control, instead of referencing the original DrawContext, which may be required.
+    As it looks like, the VM must not deep copy objects regardless whether the members are references
+    or normal variables. However, the VM knows nothing about references and variables.
+    So either the compiler needs to generate the code for the copying (OH MY GOD!) or the handle
+    struct needs a "is reference" flag, so the CopyHandle function knows what to do. (URRGHS!).
+
+    [Annotation: In real life this is less of a problem than it seems. The above Control class example is
+    *flawed*, because a control would get passed a DrawContext created by the system to a draw() method.
+    Storing a reference to a system object in the Control class would be rather a design mistake.]
+
+    [This is solved in v1.0 by allowing classes to define a copy-constructor and invoking the copy-constructor
+    in all cases where the object is copied. Furthermore, the question of copying vs. referencing is now 
+    determined by the value's type.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+12. Error handling while parsing class declaration string in p_import()     [FIXED]
+
+    When parsing a native class declaration produces an error, the current file object will remain
+    active and the parent file object is destroyed instead. This will cause a crash when the
+    (parent) JCLCompile function tries to destroy the file object it created.
+    I temporarily removed the crash by removing the destruction of the parent file object instead
+    of the faulty file object. However, this causes the faulty file object to be never freed.
+
+    [This issue is related to #6 "Improve error handling"]
+
+    [This issue has been fixed in v0.7 as a side-effect of generally changing how the compiler deals with
+    imported files. This change had to be made in order to make the 2-pass compile scheme work in conjunction
+    with the 'using' statement.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+13. Wrong "using variable without initialization" errors    [FIXED]
+
+    Example code:
+
+    method Spore::Spore(const Spore& dad)
+    {
+      kEnergyDec = dad.kEnergyDec;
+    }
+
+    [This issue has been adressed: The init-check will no longer be performed for member variables
+    of an object, because the compiler can not safely predict at compile time, whether a member
+    variable has been inited at that specific point, or not.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+14. Auto conversion does not work for operator new  [FIXED]
+
+    Example code:
+
+    string str = "hello ";
+    str += new String("world");
+
+    The native type "String" has a convertor to the built-in string type. However, when using the
+    new keyword, it tries to move the result directly into the destination. Since the move function
+    is not called, no auto type conversion can happen.
+
+    [This issue has been fixed.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+15. Constants in expressions are not pre-calculated
+
+    Writing something like:
+
+    long a = 32 + 64 * 128;
+
+    Could (and should) of course be compiled as:
+
+    long a = 8224;
+
+    But currently the compiler will generate code that will compute the expression at runtime.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+16. Checking access rules for temp registers    [IMPROVED]
+
+    Currently, access rules are not at all applied to temp registers, to make moving data
+    from and to temp registers possible.
+    However, we cannot completely omit access checking. If an object or array is modified
+    using a temp register, then of course access checking must be performed.
+
+    [This has been improved. Recheck if access to array / object members is checked correctly
+    in all cases.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+17. Post inc / dec in array access: Strange results     [FIXED]
+
+    Somehow it seems to work, but then again it does NOT work.
+    Example code:
+    console::Print(explosion[aniIndex++]);
+
+    [This issue is related to #10: Post inc/dec not behaving as expected. Issue has been fixed.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+18. Multiple assignments stopped working    [FIXED]
+
+    This already worked, but broke when rewriting the p_identifier function and creating p_identifier_x().
+
+    Example code:
+    Color c = new Color;
+    c.r = c.g = 0;
+
+    [This issue has been adressed and seems to work now.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+19. Temp register "wasted" in p_identifier_x    [FIXED]
+
+    For very simple expressions, where also the L-Value is NULL, the function allocates
+    a temp register, but never uses it since no L-Value wants the result.
+    The problem is that the function MUST provide a temp register, as soon as the expression
+    is more complex, i.e. contains a function call, operator ".", or array access.
+    An optimization must be found.
+
+    Example code (allocates r17, since it 'thinks' r16 is in use...):
+
+    method Foo()
+    {
+      a = 0;
+    }
+
+    Example code (pushes r16 onto stack, since it 'thinks' it is in use...):
+
+    function test()
+    {
+      stdlib::Print( "Hello" );
+    }
+
+    [This issue has been addressed and seems to work now.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+20. Risk of undefined function results      [FIXED]
+
+    The recognition whether a function is left without returning a result needs to
+    be improved. Currently this code will return undefined results:
+
+    function long CheckX(long x)
+    {
+      if( x < 0 )
+         return 1;
+      else if( x > 100 )
+         return -1;
+    }
+
+    The above code will only return a value if x is smaller than zero, or x is
+    greater than 100. In all other cases the result is undefined and the compiler
+    does not recognize it!
+
+    [This issue is related to issue #8 "inited" state needs to be branch-dependant]
+
+    [This issue has been fixed for the release of JILRuntime v0.8]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+21. Assigning null to references    [SOLVED]
+
+    To be able to pass 'null' as function results or function arguments (for references) does completely make no sense
+    in the current implementation. The only left hand "type" accepting null for assignment is the var type. For all other
+    types you'll get an "Incompatible types" error.
+    However, even if you do something like this:
+
+    var& moin = null;
+    moin = "hello";
+
+    This will do nothing but generate a "JIL_VM_Incompatible_Type" exception. Because the null assignment will initialize
+    the var variable and after that all following assignments will be compiled into a 'set' instruction. However, a variable
+    initialized with null cannot be 'set' with a string (or anything else.)
+
+    Possible solution:
+    1. Modify the virtual machine
+      The 'set' instruction could perform a move instead of a set operation automatically, if the destination operand is
+      currently 'null'. Yes, this is like changing the CPU because the "C" compiler is not well designed...
+      Pro/Con: The above problem would be solved for references, but not for non-references, as 'set' then would have to
+               'copy' instead of 'move'!
+    2. Change the behaviour of the 'var' variable type.
+      Assigning data to 'var' variables could ALWAYS copy the source, (or move it in case of a reference).
+      That way a null handle in a variable would be simply replaced by another handle upon each assignment to that variable.
+      Pros: No 'set' operation would ever be performed on a var variable - therefore above problem would be solved.
+      Cons: It would be impossible to pass a var reference into a function and have the function MODIFY the data in
+            the variable.
+            Also, the behaviour of var variables would be completely different to other data types, which might be too
+            confusing.
+
+    [Since a confusing, but working 'var' type is better than a consistent, but not working one,
+    I decided to go for solution 2. A 'var' variable now always gets assigned a copy, respectively
+    a reference, of the source.]
+
+    [UPDATE: As of version 0.7.1.49, the 'var' type is treated the same as all other types again, meaning references to
+    objects of type 'var' can be passed into a function and be modified by that function. The problem of assigning 'null'
+    to references has been addressed by introducing the reference assignment operator (prepending '&' to an assignment to a
+    reference variable). This operator allows to re-initialize a reference variable by moving a new reference to a
+    different object into it. The reference assignment operator can of course be used for reference variables of
+    all types.]
+
+    [UPDATE: As of version 1.0, the reference reassignment operator is obsolet and has been removed, because of the
+    redesign of the reference handling. (All class types implicitly references.)]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+22. Init-state of local variables needs to be handled branch dependent  [SOLVED]
+
+    long x;
+    switch( n )
+    {
+        case 0: x = centerX; break;
+        case 1: x = leftX; break;
+        case 2: x = rightX; break;
+    }
+
+    The problem here is NOT that 'x' is undefined when n is not 0, 1 or 2.
+    It is that the compiler does not compile the above switch statement correctly. It will compile the first "x =" in
+    case 0 as an initialization of the variable x, while all later "x =" (case 1 and 2) will be compiled as assignments
+    to 'x'. (set instructions). However, since case 0 will not always be run-through in reality, 'x' will be undefined
+    in all cases except case 0, which will crash the virtual machine.
+
+    [This issue is a variant of issue #8 "inited state needs to be branch-dependant"]
+
+    [This issue is solved in v0.8.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+23. Handle allocation problem when compiling, linking, compiling, linking   [FIXED]
+
+    The JCLLink() function allocates handles for all literal constants of a function.
+    When Compiling / Linking multiple times in a row, new handles will be generated for all
+    literal constants each time JCLLink() is called. Finally, the generated code will run,
+    however there will be lots of unnecessarily allocated data handles and literal data stored
+    in the virtual machine.
+
+    [This has been addressed by storing the allocated handle in the JCLLiteral object in JCLLink(). If
+    the literal object already has an allocated handle, then it will not be allocated again.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+24. Init-state and loops    [SOLVED]
+
+    It is a small, but important difference whether you initialize variables, that will be used in a loop, before the
+    loop, or if you do it in the loop.
+    Example:
+    function test()
+    {
+        long x;
+        while( 1 )
+        {
+            x = SomeFunction();
+        }
+    }
+    - or -
+    function test()
+    {
+        long x = 0;
+        while( 1 )
+        {
+            x = SomeFunction();
+        }
+    }
+
+    Because the compiler compiles the code unaware of the loop, it sees the term "x = SomeFunction()" as an initialization
+    of variable 'x', *not* an assignment. (Remember, the initialization and assignment are two different things for the VM,
+    they are performed by different instructions!)
+    As a result, in the first example, variable 'x' will be initialized again with each iteration of the loop, in the end
+    having the same effect as:
+    function test()
+    {
+        while( 1 )
+        {
+            long x = SomeFunction();
+        }
+    }
+
+    While in the second example, variable 'x' will be initialized before the loop, and assigned a new value inside the loop.
+    This doesn't make too much difference for longs or floats (unless you have a reference pointing to them), but for
+    arrays and objects this can be a difference.
+    It also is of importance if there are references to the variable. Because an initialization allocates a new data object,
+    while an assignment just changes the existing data object, references to such a variable will not behave as expected.
+    (They will keep 'pointing' to the initialization value, because they never get assigned a new value.)
+
+    [This issue is related to issue #8 "inited state needs to be branch-dependant"]
+
+    [This issue is solved in v0.8.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+25. Resolving function calls should favor simplest prototype    [FIXED]
+
+    When the compiler tries to resolve a call to a function, it looks up the first function prototype that matches the
+    given function call. However, if multiple functions exist with the same name and same number of arguments,
+    but different argument types, the compiler should choose the simplest prototype; i.e. the prototype which does not
+    require auto-conversion of the given argument. Currently, the compiler uses the first found prototype, even if
+    auto-conversion has to be performed and there is another prototype that doesn't require conversion.
+    Example:
+    
+    function hello(long a) {}
+    function hello(float a) {}
+    
+    function main()
+    {
+        hello( 20.0 );
+    }
+    
+    The compiler *should* choose the second hello function. However, currently it chooses the first one and
+    auto-converts the float argument to long.
+
+    [This issue has been fixed for the release of JILRuntime v0.8, function call resolution has been rewritten and
+    vastly improved, and now works like it should.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+26. Compiler should be able to issue warnings   [IMPLEMENTED]
+
+    In certain cases, it would be helpful if the compiler would issue warnings.
+    Currently only errors are issued.
+    
+    Cases, where a warning might make sense:
+    - Unused local variables
+    - Passing an object to a function that accepts 'var' (No auto-conversion can be performed)
+    - If a variable was declared outside of a loop, but is initialized within the loop (see #24)
+
+    [Support for emitting compile-time warnings has been added in v0.7 and improved in v0.8]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+27. Scope of variable declared in for() statement   [SOLVED]
+
+    When writing the following for() loop:
+    
+    for( long i = 0; i < 10; i++ ) {}
+
+    The variable 'i' is declared outside of the code block of the loop.
+    While this has the advantage that we can still access 'i' when breaking the loop, it also has the big disadvantage,
+    that we cannot reuse the variable 'i'. For example:
+    
+    for( long i = 0; i < 10; i++ ) {}
+    for( long i = 0; i < 10; i++ ) {}
+
+    When coding multiple loops, we cannot declare 'long i' in the loops following the first loop. We must either
+    use different variable names (wasting registers), or declare 'long i' outside of the for() statement:
+
+    long i;    
+    for( i = 0; i < 10; i++ ) {}
+    for( i = 0; i < 10; i++ ) {}
+
+    This is a bit annoying and probably should be handled like C++ does, by implicitly putting the declaration statement
+    of the for() statement into it's own stack context, so that the variable will be popped from stack when the
+    loop is exited. This has the disadvantage, however, that you cannot access 'i' after breaking the loop - it'll
+    be gone.
+
+    [This issue has been solved in v0.7 by changing the default behaviour of the for-statement to putting the iterator
+    variable in a new stack context. Thus, the iterator will be gone when the loop is left. The old behaviour can still
+    be used by specifying the compiler option "legacy-for-scope".]
+
+    [The compiler option "legacy-for-scope" has been removed as of version 1.0]
+    
+
+
+------------------------------------------------------------------------------------------------------------------------
+28. Strange (wrong) error output for syntax errors in function calls    [FIXED]
+
+    Example code:
+    stdlib::Printf( "%d: %s\n", {i; args[i]} );
+
+    There is a semicolon instead of a comma in the array initializer passed to function Printf().
+    However, we get an error telling us "unexpected token 'args'", while the column specified in
+    the error message will "point" at the end of the "Printf" identifier, example:
+
+    Error #3001: Unexpected token 'args' in filename.jc (l:1,c:19)
+
+    This is because the compiler will try multiple times to compile a function call, first searching for an exact match,
+    then if that did not succeed, it will try to find a function that is SIMILAR (e.g. has a return value that is not
+    used in the actual call compiled).
+    What the function SHOULD do, is to retry compiling ONLY if the last attempt returned an "undefined function call"
+    error, for syntax errors it should stop compiling immediately and return the error.
+
+    [The function parsing code has been improved to output more exact error information, however error handling in
+    general lacks consistency and clarity in some cases. See also: #12, #6]
+
+    [Update: A new error handling concept has been implemented for the release of JILRuntime v0.8, resulting in much
+    more accurate error information.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+29. Auto-Convert not performed for operators ==, !=   [FIXED]
+
+    Probably all comparision operators do not perform automatic type conversion!
+    Example code:
+
+    float i = 100;
+    if( i < 100 )
+        i = 100;
+
+    This produces a "Incompatible type and no convertor found" error.
+
+    [This issue has been fixed. Auto-Convert is now performed if possible. The left-hand operand of the expression
+    defines the type of the compare operation, the right-hand operand of the expression will be converted to the
+    left-hand operand's type.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+30. Compiler defaults to type 'array' on accesses to array members  [FIXED]
+
+    Example code:
+    stdlib::Print( m_array[i].length );
+
+    This will compile with no problems, which is convenient when you use multi-dimensional arrays. (Otherwise it would
+    not be possible to get the number of elements of an array in an array. At least not without getting the element into
+    a variable of type "array&", first.)
+    However, that this is possible is actually a bug, actually the type of an expression after compiling "m_array[i]"
+    (and before the compiling the "dot") needs to be set to "var".
+    
+    [This issue has been fixed with the introduction of type-safe arrays in v0.9]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+31. Wrong "Expression is constant" errors   [FIXED]
+
+    This code will fail with a false "Expression is constant" error:
+
+    string& name = "hello" + someString;
+
+    While this code will pass:
+
+    string& name = someString + "hello";
+
+    Reason: The operator "+" uses the right-hand operand's type-information for the result of the operation.
+    In this case, the type-information of the string literal "hello" is used for the result of operator "+".
+    Thus, the type of the result is "const string".
+
+    In general all operators, both logical and mathematical, create a new value as a result from their operation.
+    For the string operator "+" this is obvious - the two strings will be copied into a new string, which
+    will be returned as a result. But this is also true in cases where it is not so obvious, for example the
+    math operator "+", which creates a new float value as a result. Or even the logical operator "==", which
+    creates a new long value as a result, no matter what types the operands have.
+
+    This is important in conjunction with references - if an expression is assigned to a reference variable, and
+    the expression contains an operator, then the reference will neither "point" to the left operand, nor the
+    right operand. It will point to a new, unique value / object instead.
+
+    This all means basically, that the constness of any of the operands in an expression does not have to be inherited
+    by the result of that expression. So the result of an operator should, per definition, always be non-const,
+    so that it can be assigned to non-const reference variables.
+
+    [This issue has been fixed. All operator results are now never const.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+32. "up cast" works only with type "var"    [IMPLEMENTED]
+
+    Example code:
+
+    var& layer = GetLayer();
+    layer.RectLayer::SetMode( 0 );    // works - cast from var& to RectLayer&
+
+    Layer& layer = GetLayer();
+    layer.RectLayer::SetMode( 0 );    // doesn't work though RectLayer inherits Layer!
+
+    [Both up and down cast of objects to related class types has been implemented in JILRuntime 0.9.2.6]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+33. Assignment operators +=, &=, etc do not work with accessor methods      [FIXED]
+
+    Example code:
+    object.mode |= kWantDraw;         // doesn't work if 'mode' is an accessor
+    
+    [This issue has been fixed for JILRuntime 0.9.2.6]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+34. Problems with global variables in native types  [SOLVED]
+
+    Currently a native type simply stores it's type-id (and any type-id's from other classes) as global variables.
+    However, this will not work if more than one VM state is used in the same Application! The type-id of a specific
+    native type can be '3' in one VM, but '7' in another!
+
+    [This issue has been solved as of version 0.7. All calls to the native type's main proc now receive an NTLInstance
+    pointer instead of the former JILState pointer. This NTLInstance pointer is unique for each instance of a native
+    type library and can be used to store additional "user data".]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+35. Fatal compiler error when compiling two return statements   [FIXED]
+
+    If the compiler compiles two return statements IN THE SAME STACK CONTEXT, the second one will try to unwind the
+    stack for the second time, in effect messing up the simulated stack pointer.
+    The p_return() function will produce a FatalError() call.
+    Example Code:
+    
+    function long main()
+    {
+        stdlib::Print("Hello\n");
+        return 0;
+        return 0;   // second return in the same stack context
+    }
+    
+    [This issue has been fixed for v0.8 - duplicate returns are now detected and a compiler warning is emitted.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+35b. Statements following unconditional return statement not handled correctly  [FIXED]
+
+    If there is an unconditional return in the middle of a function, the compiler should warn (or error) if there is
+    further code following the return, because this code is not reachable. Example:
+
+    function long main()
+    {
+        stdlib::Print("Hello\n");
+        return 0;
+        stdlib::Print("Unreachable code\n");
+    }
+    
+    -- OR (same reason but even worse) --
+
+    function long main()
+    {
+        return 0;;
+    }
+    
+    Note the second semicolon after the return statement. This is seen as a new (empty) statement by the compiler
+    and will cause the compiler to "think" there is code at the end of the function and that the function does not
+    return a value.
+
+    Explanation:
+    Any new statement following a return statement clears the compiler's return flag, causing it to "forget" that
+    the function already has returned. Thus, the (wrong) error is detected that the function does not return a value,
+    although a return type has been declared.
+
+    Solution:
+    The return flag must be put onto the stack when entering a conditional block of code and restored when leaving that
+    conditional block. If the return flag is set, any further statements should produce an "unreachable code" error or
+    warning. The return flag should never be cleared.
+
+    This would solve issues 35, 35b and issue 20.
+    
+    [This issue has been fixed for v0.8]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+36. for() statement not compliant to C/C++
+
+    In C++ the for-statement is denoted as follows:
+
+    for( <init-statement> ; <cond-expression> ; <loop-expression> )
+
+    While you can only specify an expression in C for the first argument to a for() loop, C++ will allow you to specify
+    a "statement", which is, however, limited to a variable declaration and initialization.
+
+    In JewelScript, currently, there is no restriction* for the init-statement in a for-statement, so you could probably
+    create very strange, nested statement constructs! There is no guarantee currently however, that such constructions
+    will succeed compiling and / or running.
+
+    (* = The only restriction currently implemented is that you cannot specify a compound statement)
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+37. Assignment to reference returned by function call not working   [FIXED]
+
+    Assignment operators currently only work on variables, be it stack, member, or array variables.
+    However, it should also be possible to assign new values to references, if they are returned by
+    a function call.
+    
+    Example:
+    
+    class Foo {
+        method Foo() { m_Val = 0; }
+      
+        method long& GetVal() { return m_Val; }
+
+        long m_Val;
+    }
+
+    function main()
+    {
+        Foo foo = new Foo();
+        
+        foo.GetVal() = 75;  // Issues "Identifier is not a valid L-Value"
+    }
+    
+    [This issue has been fixed in JILRuntime 0.9.2.6]
+
+    [Unfortunately this is not possible anymore as of version 1.0, since the C++ style reference handling has been
+    removed. Now assigning values to references returned by functions has no effect. (There is no SET anymore.)]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+38. Typed references and 'null'     [SOLVED]
+
+    There is an inconsistency between how the language handles re-assignments to typed references (a reference variable
+    of a fixed type, for example 'long&' or 'CFoo&') and typeless references ('var&'). [see #21]
+    
+    With typed references, the reference of an object or value can only be taken when the reference variable is
+    initialized, after that, all assignments to the reference variable will be treated as assignments to the object or
+    value referred to by the reference variable.
+
+    [This issue has been solved in v0.7. See issue #21 for more information.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+39. "up cast" not working for built-in classes "string" and "array"     [FIXED]
+
+    The expression <object> . <typename> :: <method> should allow developers to call a method from a variable that is
+    typeless. However, this only seems to work with user defined classes. For the built-in string and array classes,
+    the compiler "chokes" on the keywords "string" and "array".
+
+    It would be best to remove these keywords from the keyword list and change the compiler to properly look up their
+    types from the registered types list by their name.
+
+    Example:
+    
+    var& value = new string("Hello World.");
+    long length = value.string::length;         // Issues "Unexpected token '::'"
+
+    [This issue has been fixed for JILRuntime v0.8.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+40. "new array" behaving different from other possible "new" operations     [SOLVED]
+
+    The expression:
+    
+    myVar = new array[10];
+    
+    Seems to compile into a move instead of a set instruction for the case where 'myVar' is already initialized.
+    Further investigation shows that the ALLOCA instruction directly allocates the new array into the destination
+    operand, implicitly performing a move operation to the destination. To be consistent with all the other possible
+    'new' operations, the compiler should allocate the new array in a temporary register and then MOVE, SET or COPY
+    it to the destination. However, this would be in most cases less efficient.
+
+    [This is no longer an issue as of version 1.0, since there is no SET anymore.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+41. Bitwise logical operators "&" and "|" not performing auto-convert   [FIXED]
+
+    If an expression contains float values, the compiler produces an "incompatible type and no convertor found" error.
+    Ideally, the bitwise logical operators would behave like all other operators and perform auto-conversion.
+    
+    Example:
+    long a = 3.141 & 0xff;
+    long a = 3.141 | 0xff;
+
+    Note that the assignment operators "&=" and "|=" DO behave correctly.
+
+    [This issue has been fixed and verified for all operators in JILRuntime 0.9.2.6]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+42. JCLCompileAndRun(), JCLCompileAndRunEx() cause loss of all runtime data     [FIXED]
+
+    The functions set a restore point to save the virtual machine's current state and after compiling and running the
+    anonymous code fragment return to the saved state, to discard it from the virtual machine.
+
+    However, there is a technical issue with JILCreateRestorePoint() and JILGotoRestorePoint():
+
+    These functions can only save the program's STATIC state, meaning it only saves the static byte-code, data handles,
+    c-string constants and function segment. The functions CANNOT save the FULL state of the VM if it already has been
+    executing byte-code and created runtime data.
+
+    Therefore, in order to prevent inconsistencies, the JILCreateRestorePoint() and JILGotoRestorePoint() must terminate
+    the virtual machine - meaning all runtime data is cleared / freed.
+
+    This has a bad effect on applications that offer a "direct-mode" functionality, where the user can enter code or
+    expressions on a command-line, while other scripts already have been run and should continue to run. In such a
+    scenario using JCLCompileAndRun() will cause a loss of all data created during runtime by other scripts. The virtual
+    machine will execute the "direct-mode" code as if no other function / script had been executed before, and after
+    running the "direct-mode" code the virtual machine will again "look" as if no code had been executed.
+
+    [This issue has been fixed for JILRuntime v0.8, code and data handles are no longer removed before JCLCompileAndRun()
+    returns and init-code is executed incrementally to allow multiple compile-run-compile cycles.
+    See also issue #7.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+43. Insufficient check for duplicate identifiers    [FIXED]
+
+    Currently the language will not perform sufficient checks whether an identifier is already used.
+    For example, you can define a local variable with the same name as a global variable, which "hides" the
+    global variable without getting any warning.
+    You also can use variable identifier names that are already used as class names, which is especially funny:
+    
+    class foo
+    {
+        method foo() {}
+    }
+    
+    function main()
+    {
+        foo foo = new foo();    // THIS SHOULD NOT WORK!!! :)
+    }
+
+    [You could also have multiple global or member variables with the same name in v0.7... ;)
+    However this has been vastly improved and now works like it should in v0.8.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+44. operator ++ / -- after function call or accessor method does not work   [CLOSED]
+
+
+    myFoo.GetValue()++; // where GetValue is declared as: method int& GetValue()
+    myFoo.value++;  // where value is declared as: accessor int& value()
+
+    [This issue has been closed as of version 1.0, because the C++ style reference handling has been removed and
+    assigments to references returned by functions are no longer possible. (There is no SET anymore.)]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+45. Fatal Error when using return value of set accessor methods
+
+    Similar to C/C++, JewelScript always returns the L-Value as a result when it executes an assignment. This works well
+    with any 'regular' variables / values / objects:
+
+    int a = 5;
+    int b = (a = 3);    // will assign 3 to a and then a to b, resulting in b = a = 3
+
+    However, when using objects and set accessor methods, the compiler does not know how to handle the case where an
+    expression wants to take the return value of a set accessor, since set accessor methods don't return a value.
+
+    class A {
+        method A() { m_a = 0; }
+        accessor aa(int val) { m_a = val; }
+        int m_a;
+    }
+
+    A object;
+    object.aa = 5;      // calls set accessor aa with argument '5', this works
+    int b = (object.aa = 3);    // causes FATAL ERROR since result of 'object.aa' is undefined
+
+    Explanation:
+    
+    The language currently does not sufficiently define the prototype of set accessor methods. As the example shows, set
+    accessors do need to declare / define a result value, in case the assignment expression is used as a right hand value.
+    This is because set accessors are called when using an assignment operator, and the language defines that an assignment
+    operator always returns a result. Therefore, the above set accessor should look like this:
+
+    accessor int aa(int val) { m_a = val; return val; }
+    
+    Solution:
+    
+    The required prototype for set accessors needs to be changed so that a result has to be defined for the set accessor
+    method. The result type should match the argument type of the method. Unfortunately this will make script code using
+    the old form incompatible.
+
+    As a compromise, the language could tolerate the old form, as long as the assignment is never used as a right hand
+    value, so a return value of the set accessor is never used.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+46. Co-functions not fully protected by class namespace
+
+    When you define a co-function inside a class that has the same name AND the same signature as a global co-function,
+    or a co-function defined in another class, you will receive an "ambiguous function call" error that cannot be resolved.
+
+    This is because all co-functions with the same signature are compiled into the same co-function class, to allow
+    co-functions of the same signature to share the same type-ID. This is done to allow, for example, to assign
+    co-function "FooA" to a variable of type co-function "FooB", if they share the same signature.
+
+    To solve this, the function name would have to be "mangled" by prefixing the class name where the co-function was
+    orignally defined.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+47. Argument names in delegates get "lost" if defining multiple delegates of the same signature [SOLVED]
+
+    When assigning ANONYMOUS functions or methods to a delegate variable, the compiler may not always know the correct names
+    of the delegate's arguments. This is because all delegates that have the same signature are just aliases to the same
+    delegate type:
+    
+    delegate int Comparator(int a, int b);
+    delegate int Subtractor(int s, int d);
+    
+    Subtractor fn = function { return d - s; };
+
+    The above anonymous function will not compile, because the compiler will not know the argument names 'd' and 's'. Instead,
+    the compiler will assume the argument names 'a' and 'b', because 'Subtractor' and 'Comparator' are both just aliases
+    for the type 'delegate int (int a, int b)'.
+
+    However, the compiler MUST use aliases, because when a function is specified as an expression, the compiler will search
+    for the matching delegate type by the function's signature, so there MUST NOT be more than a single type that matches
+    any given function signature.
+
+    [SOLVED: This is not an issue anymore since v1.0.3.13, because you can optionally specify argument names.]
+        Subtractor fn = function(s, d) { return d - s; };
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+48. Set-Accessors can be called when the object reference is const [FIXED]
+
+    When declaring a reference to an object const, you can still assign values to it, if the "variable" is an accessor:
+    
+    class Foo
+    {
+        int m_Value;
+        accessor Value(int);
+    }
+    
+    const Foo myFoo = new Foo();
+    myFoo.Value = 27;       // will work
+    myFoo.m_Value = 27;     // will fail
+    
+    Set-Accessors cannot be const methods, as their purpose is to modify the object, so the compiler can simply assume
+    that calling a Set-Accessor on a constant L-Value is an illegal operation, even if true "const methods" aren't really
+    supported in JewelScript (yet).
+
+    [This has been fixed in 1.1.3.35]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+49. Operator ++ / -- don't work on Accessors
+
+    It was fixed for the group of +=, -=, *=, ... operators, but not for increment / decrement operators. The compiler
+    should generate code that performs something like this: Setter( Getter() +/- 1 );
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+50. Small number of compiler objects not freed when using HTML documentation generator [FIXED]
+
+    When using the HTML documentation generator, after terminating the runtime the log output will show that the
+    compiler has allocated 1-5 objects more than freed. (Probably JCLString objects.)
+
+    [This has been fixed in 1.1.3.35]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+51. Register replacement optimization messes up stack count in switch with fall-trough
+
+    This is very specific, therefore it took me years to find this out: When using multiple case tags that lead to the
+    same case block, the register optimization algorithm can mess up the stack count of any variables defined before
+    the switch. Take this delegate for the DownloadManager class as an example:
+
+    method FileEvent(int event, Download dl, var args)
+    {
+        switch( event )
+        {
+            case Download::Failed:
+            case Download::TimeOut:
+                Write(cError, "    FAILED: %s", ShortenUrl(MaxUrl, dl.TargetUrl));
+                break;
+        }
+    }
+    
+    When compiled with full optimization, the variable 'dl' will access the wrong item on the stack, therefore the call
+    to 'TargetUrl' will have unpredictable results.
+
+    Until this is solved, the problem can be circumvented by using individual case blocks (no fall-through) or by
+    disabling optimization.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+52. Compiler allows unmatching types for accessor functions [FIXED]
+
+    At present, you can make a class property that returns a different type than what it accepts. This should be fixed.
+
+    class Test
+    {
+        method Test() {}
+        accessor int Property()
+        {
+            return 0;
+        }
+        accessor Property(string s) // THIS SHOULD NOT WORK!!!
+        {
+        }
+    }
+
+    [This has been fixed in 1.1.3.35]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+53. Type-cast operator allows to cast away constancy of source object [FIXED]
+
+    function var MyArrayProcessor(const var element, var args)
+    {
+        MyClass obj = (MyClass)element;
+
+        return obj;
+    }
+
+    Casting away constancy should never be possible. But I found it to happen with this example code. The compiler will
+    not implicitly copy the constant source object. This is rather severe.
+    Ironically, when we remove the type-cast, the object is copied properly.
+
+    [This issue has been fixed in 1.1.3.35. The 'const' handling should be re-checked for any negative side-effects.]
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+54. Accessor methods in operator new 'initializer block' not working
+
+	Foo foo = new Foo() { value = 20; };
+	
+	The above statement will not work if 'Foo::value' is a set accessor. A workaround until this is fixed is to use the
+	accessor like a regular method:
+
+	Foo foo = new Foo() { value(20); };
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+55. Delegate expression parsing fails on complex expressions
+
+	The way assignments to delegate variables are treated is different from all other types. This is because
+	the compiler must be able to determine the function signature of the delegate by looking at the L-value's type.
+	
+	When parsing other types, the compiler will first probe the expression type-less, then look at the type of the
+	result, and perform automatic type conversion if the expression's type differs from the L-value's type.
+
+	This is not possible for delegates. If the L-value is a delegate, then the expression must be able to generate code
+	that creates a delegate for the correct function signature. So the compiler cannot assume a type-less result first
+	and perform automatic type conversion afterwards.
+	
+	This leads to the compiler failing if an assignment to a delegate is a complex expression, like a ternary
+	operator, for example:
+	
+	Comparator c = (i == 1) ? (a, b) => a - b : (a, b) => a + b;
+	
+	The above example will not compile, because each expression of the ternary operator is probed type-less and
+	therefore the compiler doesn't know what to make of the lambda expression.
+	
+	A solution would be to change the behaviour of all expression parsing functions. If the L-value is a delegate type,
+	then the expression parsing should not probe type-less, but with the discrete delegate type. This change would
+	require extensive code changes and bloat up the already bloated expression parsing some more. So for now, since this
+	only concerns complex expressions involving delegates, I have decided to leave this open.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+56. Closure captures too many parent stack items
+
+  Currently, the NEWDGC instruction copies everything that is on the parent function's stack into the closure. This is
+  in most cases inconsequential, but in any case inefficient. Even if a function has no local variables, creating a
+  closure in that function can copy a large number of items from the stack to the closure, if there are many temporary
+  values currently on the parent function's stack.
+  
+  One problem this can cause is the creation of reference cycles. If the closure is created in a method of a class and
+  'r0' (this) happens to have been saved on the stack (which is quite common), then a reference to 'this' will be
+  stored in the closure, creating a reference cycle if the class keeps a reference to the closure.
+  
+  To make closures more efficient and avoid unwanted references, the closure should only capture actual local variables
+  created by the USER, not temporary values saved on the stack by the compiler.
+  
+  To do this, the NEWDGC instruction must be changed: Instead of the current stack counter, the instruction will get
+  the actual number of local variables as an operand. The instruction will then allocate an array of handles of the
+  given size, but will not automatically fill it with values from the stack.
+  
+  A new instruction must be created: MOVEDGC. This instruction has three operands: MOVEDGC (sp+1), 0, r3
+  
+  MOVEDGC will move a reference from the stack to the closure. The first operand specifies the source variable, the
+  second operand the storage location (index) in the closure, and the third operand is a register holding a closure.
+
+  To make this work, the compiler needs to create an alternative list of parent variables when compiling the
+  closure's body. Stack offsets of parent variables must match the order / index of items in the closure.

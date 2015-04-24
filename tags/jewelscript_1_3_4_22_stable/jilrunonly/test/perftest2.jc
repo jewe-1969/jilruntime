@@ -1,0 +1,47 @@
+/*
+ *  perftest2.jc
+ *
+ *  A simple performance test. Count repeatedly from 0 to 1.000.000 and take average time.
+ */
+
+// Import Typelibs
+
+import stdlib;
+import time;
+
+using stdlib, time;
+
+// number of iterations the script will do
+const int kNumIterations = 100;
+
+/*
+ *  function main
+ */
+
+function string main(const string[] args)
+{
+    int i;
+    int j;
+    int duration;
+    int iters = 1;
+    float durationF;
+    string message;
+    time ti;
+
+    print("A simple performance test. Count repeatedly from 0 to 1.000.000 and take average time.\n");
+
+    for( j = 0; j < kNumIterations; j++ )
+    {
+        ti.tickDiff();
+
+        for( i = 0; i < 1000000; i++ )
+            /*Empty statement*/;
+
+        duration = ti.tickDiff();
+        durationF += duration;
+        printf("Iteration #%d: Time = %d ms (Average time = %g ms)\n", {iters, duration, durationF / iters} );
+        iters++;
+    }
+
+    return "Done.";
+}

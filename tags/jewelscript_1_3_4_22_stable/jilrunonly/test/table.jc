@@ -1,0 +1,59 @@
+/*
+ *  table.jc -- test built-in table object
+ */
+
+import stdlib;
+using stdlib;
+
+/*
+ *  function main
+ *
+ *  This is the main entry-point function of the script
+ */
+
+function string main(const string[] args)
+{
+    // create a hash table from an array literal
+    table tab = {
+        "key1",  123.4,
+        "key2",  236.77,
+        "hello", 3.141,
+        "elloh", 6.282,
+        "olleh", 27.0
+    };
+
+    // print table
+    printTable(tab);
+
+    // add ten new values and use their index as key
+    array arr = { "a", "b", "c", "d", "e", 10, "f", 5.5, 9, 10 };
+    for( int i = 0; i < 10; i++ )
+        tab.set( i, arr[i] );
+
+    // print table
+    printTable(tab);
+
+    // copy table and remove keys "0" - "9"
+    table newTab = new table(tab);
+    for( int i = 0; i < 10; i++ )
+        tab.set( i, null );
+
+    // print tables
+    printTable(tab);
+    printTable(newTab);
+
+    return null;
+}
+
+function printTable(table t)
+{
+    print( "table = {\n" );
+    // convert table to list
+    list l = t.toList();
+    // iterate through list and print keys and values
+    for( iterator i = l; i.valid; i.next() )
+    {
+        print({"  ", i.key, " = ", i.value, "\n"});
+    }
+    print( "}\n" );
+}
