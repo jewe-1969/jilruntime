@@ -483,10 +483,6 @@ enum
 
 	// extensions 2005-11-25
 	op_jsr,
-	op_jsr_r,
-	op_jsr_d,
-	op_jsr_x,
-	op_jsr_s,
 
 	// extensions 2006-07-01
 	op_newctx,

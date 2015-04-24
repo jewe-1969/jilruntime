@@ -693,20 +693,6 @@
 	JIL_IEND
 
 //------------------------------------------------------------------------------
-// JIL_JSREA
-//------------------------------------------------------------------------------
-// "template" macro for all JSR [ea] instructions
-
-#define JIL_JSREA(DO,IN) \
-	JIL_IBEGIN( IN )\
-	DO(pContext, operand1)\
-	handle1 = *operand1;\
-	JIL_INSERT_DEBUG_CODE( JIL_THROW_IF(handle1->type != type_int, JIL_VM_Call_To_NonFunction) )\
-	JIL_PUSH_CS( programCounter + instruction_size )\
-	programCounter = JILGetIntHandle(handle1)->l;\
-	JIL_IENDBR
-
-//------------------------------------------------------------------------------
 // JIL_RTCHKEA
 //------------------------------------------------------------------------------
 // "template" macro for all RTCHK [ea] instructions
