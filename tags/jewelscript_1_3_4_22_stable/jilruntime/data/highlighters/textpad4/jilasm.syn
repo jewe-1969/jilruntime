@@ -1,0 +1,179 @@
+; Syntax file for JILRuntime virtual machine assembler, v0.9
+; Copyright (C) 2004-2007, jewe.org
+
+C=1
+
+[Syntax]
+Namespace1 = 6
+IgnoreCase = yes
+InitKeyWordChars = A-Za-Z_
+KeyWordChars = A-Za-z0-9_
+PreprocStart =
+SyntaxStart =
+SyntaxEnd =
+CommentStart =
+CommentEnd =
+CommentStartAlt =
+CommentEndAlt =
+SingleComment = ;
+SingleCommentCol =
+StringStart = "
+StringEnd = "
+StringAlt =
+StringEsc =
+CharStart = '
+CharEnd = '
+CharEsc =
+BracketChars=()
+
+[Keywords 1]
+add
+addf
+addl
+alloc
+alloca
+alloci
+allocn
+and
+arrcp
+arrmv
+asl
+asr
+bra
+brk
+calldg
+calli
+callm
+calln
+calls
+copy
+copyh
+cseq
+cseqf
+cseql
+csge
+csgef
+csgel
+csgt
+csgtf
+csgtl
+csle
+cslef
+cslel
+cslt
+csltf
+csltl
+csne
+csnef
+csnel
+cvf
+cvl
+dec
+decf
+decl
+div
+divf
+divl
+inc
+incf
+incl
+jsr
+ldz
+lsl
+lsr
+mod
+modf
+modl
+move
+moveh
+mul
+mulf
+mull
+neg
+negf
+negl
+newctx
+newdg
+newdgm
+nop
+not
+or
+pop
+popm
+popr
+push
+pushm
+pushr
+resume
+ret
+rtchk
+set
+size
+snul
+snnul
+stradd
+streq
+strne
+sub
+subf
+subl
+tsteq
+tstne
+type
+uand
+unot
+uor
+wref
+xor
+yield
+
+[Keywords 2]
+.array
+.desc
+.endfunction
+.equ
+.float
+.function
+.import
+.long
+.macro
+.nativedesc
+.object
+.org
+.str
+
+[Keywords 3]
+r0
+r1
+r2
+r3
+r4
+r5
+r6
+r7
+r8
+r9
+r10
+r11
+r12
+r13
+r14
+r15
+r16
+r17
+r18
+r19
+r20
+r21
+r22
+r23
+r24
+r25
+r26
+r27
+r28
+r29
+r30
+r31
+sp
+null

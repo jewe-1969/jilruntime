@@ -1,0 +1,133 @@
+/*
+ *  abench.jc
+ *
+ *  Performs simple benchmarks.
+ */
+
+option "stack-size=16000";  // needed for ackerman
+
+import runtime;
+import stdlib;
+import time;
+
+using runtime, stdlib, time;
+
+/* alloc */
+
+function int alloc(int M, int N)
+{
+    int iterations, key, x;
+    Object[] map = new array(M);
+    for (iterations = 0; iterations < N; iterations++)
+    {
+        for (key = 0; key < M; key++)
+        {
+            map[key] = new Object("alloc: Performance test for allocation / deallocation.");
+            x++;
+        }
+    }
+    return x;
+}
+
+/* Object */
+
+class Object
+{
+    method Object(const string str)
+    {
+        m_String = str; // 'str' is copied, because it is 'const'
+    }
+    string m_String;
+}
+
+/*** ack ***/
+
+int ack_r = 0;
+function int ack(int M, int N)
+{
+    ack_r++;
+    if (!M)
+        return ++N;
+    if (!N)
+        return ack(--M, 1);
+    return ack(M-1, ack(M, --N));
+}
+
+/*** fib ***/
+
+int fib_r = 0;
+function int fib(int n)
+{
+    fib_r++;
+    if (n < 2)
+        return n;
+    return fib(n-1) + fib(n-2);
+}
+
+/*** loop ***/
+
+function int loop(int n)
+{
+    int x=0;
+    for (int a=0;a<n;a++)
+    {
+        for (int b=0;b<n;b++)
+        {
+            for (int c=0;c<n;c++)
+            {
+                for (int d=0;d<n;d++)
+                {
+                    for (int e=0;e<n;e++)
+                    {
+                        for (int f=0;f<n;f++)
+                        {
+                            x++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return x;
+}
+
+/*** main ***/
+
+function string main(const string[] args)
+{
+    time t, u;
+
+    u.tickDiff();
+    float ictr1 = instructionCounter();
+
+    print("\n*** ALLOC ***\n");
+    print("Allocates, initializes and destroys 10 million script objects.\n");
+    t.tickDiff();
+    printf("alloc(100000,100) = %d iterations\n", alloc(100000,100));
+    printf("Time: %g s\n", t.tickDiff() / 1000.0);
+
+    print("\n*** LOOP ***\n");
+    print("Performs six nested loops, each counting to 18.\n");
+    t.tickDiff();
+    printf("loop(18) = %d iterations\n", loop(18));
+    printf("Time: %g s\n", t.tickDiff() / 1000.0);
+
+    print("\n*** FIB ***\n");
+    print("Recursively calculates the Fibonacci sequence.\n");
+    t.tickDiff();
+    printf("fib(32) = %d, %d recursions\n", {fib(32), fib_r});
+    printf("Time: %g s\n", t.tickDiff() / 1000.0);
+
+    print("\n*** ACK ***\n");
+    print("Recursively calculates the Ackerman sequence.\n");
+    t.tickDiff();
+    printf("ack(3,8) = %d, %d recursions\n", {ack(3,8), ack_r});
+    printf("Time: %g s\n", t.tickDiff() / 1000.0);
+
+    float ictr2 = instructionCounter();
+    float dur = u.tickDiff();
+    float vmips = (ictr2 - ictr1) * (1000.0 / dur) / 1000000.0;
+    printf("\nVM speed on this machine is approximately %.2f MIPS\n", vmips);
+
+    return null;
+}

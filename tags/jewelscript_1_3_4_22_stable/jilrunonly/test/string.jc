@@ -1,0 +1,46 @@
+/*
+ *  string.jc
+ *
+ *  Testing the new string methods
+ */
+
+// import and use our standard lib
+import stdlib;
+using stdlib;
+
+function Test( const string s, const string a )
+{
+    print( s + " = \"" + a + "\"\n" );
+}
+
+function string main(const string[] args)
+{
+    string test = "Hello World! This string is a test! Now the built-in string "
+        "finally has methods! Hooray! JewelScript is the best language in the World!";
+
+    Test( "test", test );
+    Test( "test.length", test.length );
+    Test( "test.lastChar", test.lastChar );
+    Test( "test.compare(\"Hello World!\")", test.compare(test, "Hello World!") ); // you can also write string::compare()
+    Test( "test.charAt(6)", test.charAt(6) );
+    Test( "test.indexOf(87, 0)", test.indexOf(87, 0) );
+    Test( "test.lastIndexOf(87, test.length)", test.lastIndexOf(87, test.length) );
+    Test( "test.indexOf(\"World\", 0)", test.indexOf("World", 0) );
+    Test( "test.spanIncluding(\"hHeElLoO\", 0)", test.spanIncluding("hHeElLoO", 0) );
+    Test( "test.spanExcluding(\" \", 0)", test.spanExcluding(" ", 0) );
+    Test( "test.insert(\"beautiful \", 6)", test.insert("beautiful ", 6) );
+    Test( "test.insert(87, 6)", test.insert(87, 6) );
+    Test( "test.remove(6, 6)", test.remove(6, 6) );
+    Test( "test.replace(\"World\", \"Script\")", test.replace("World", "Script") );
+    Test( "test.subString(6, 6)", test.subString(6, 6) );
+    Test( "test.toUpper()", test.toUpper() );
+    Test( "test.toLower()", test.toLower() );
+    Test( "test.fill(87, 6)", test.fill(87, 6) );   // you can also write string::fill()
+    Test( "test.ascii(87)", test.ascii(87) );       // you can also write string::ascii()
+    Test( "test.format(\"%5.5d\", 27)", test.format("%5.5d", 27) );     // you can also write string::format()
+
+    test = "   We test Trim   ";
+    Test( "test.trim()", test.trim() );
+
+    return "";
+}

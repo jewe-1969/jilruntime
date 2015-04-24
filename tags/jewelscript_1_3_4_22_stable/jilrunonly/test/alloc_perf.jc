@@ -1,0 +1,60 @@
+/*
+ *  alloc_perf.jc
+ *
+ *  Performance test for heavy allocation and deallocation of objects
+ */
+
+import runtime;
+import stdlib;
+import time;
+
+using runtime, stdlib, time;
+
+const int kMaxIterations = 100;
+const int kMapSize = 100000;
+
+/*
+ *  function main
+ *
+ *  This is the main entry-point function of the script
+ */
+
+function string main(const string[] args)
+{
+    time ticks;
+    int iterations;
+    int key;
+    Object[] map = new array(kMapSize);
+
+    print("Performance test for heavy allocation and deallocation of objects\n");
+    printf("Testing %d times allocation of %d script objects, please wait...\n", {kMaxIterations, kMapSize});
+    ticks.tickDiff();
+    float ictr1 = instructionCounter();
+    for (iterations = 0; iterations < kMaxIterations; iterations++)
+    {
+        for (key = 0; key < kMapSize; key++)
+        {
+            map[key] = new Object( "alloc_perf.jc: Performance test for allocation / deallocation." );
+        }
+    }
+    float ictr2 = instructionCounter();
+    float dur = ticks.tickDiff();
+    float vmips = (ictr2 - ictr1) * (1000.0 / dur) / 1000000.0;
+    printf("Time = %.2f seconds\n", dur / 1000.0);
+    printf("VM speed on this machine is approximately %.2f MVMIPS\n", vmips);
+
+    return null;
+}
+
+/*
+ *  class Object
+ */
+
+class Object
+{
+    method Object(const string str)
+    {
+        m_String = str; // ctor will copy 'str' since it is 'const'
+    }
+    string m_String;
+}

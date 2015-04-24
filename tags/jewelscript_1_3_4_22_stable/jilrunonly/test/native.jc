@@ -1,0 +1,37 @@
+/*
+ *  native.jc
+ *
+ *  Demonstrates how to use the integrated C++ binding code generator.
+ *  To generate C++ binding files for this class, start the JILRunOnly command line tool
+ *  with the following parameters:
+ *
+ *      jilrunonly -bind ./bind native.jc
+ *
+ *  This will produce "bind_Point.cpp" in the "bind" sub-directory.
+ *
+ *  ATTENTION: The binding code generator is disabled in release builds of the library.
+ *  If the above command doesn't produce any output, try the debug build of the program.
+ *  You may also force binding code generation in release builds, by defining the
+ *  preprocessor macro JIL_USE_BINDING_CODEGEN when building the library.
+ */
+
+/*
+ *  We have not yet written class Rect, but we can use it as an argument in class Point.
+ */
+native class Rect;
+
+/*
+ *  The class we want to create a native binding for.
+ */
+
+native class Point
+{
+    ["A simple class describing a point in two-dimensional space. Used for <u>demonstration</u> purposes only. In these documentation tags you may use <b>valid XHTML</b>."]
+    method Point();                     ["Constructs a new Point instance at (0, 0)"]
+    method Point(int x, int y);         ["Constructs a new Point instance from the given X and Y coordinates."]
+    method int IsInside(const Rect r);  ["Returns true if this Point is inside the area of the given Rect."]
+    method Add(const Point p);          ["Adds the coordinates of the specified Point to this point's coordinates. This can be used to sum up local coordinates to compute absolute screen coordinates."]
+    method Sub(const Point p);          ["Subtracts the coordinates of the specified Point from this point's coordinates. This can be used to calculate local coordinates from absolute screen coordinates. It can also just be used to demonstrate source code documentation."]
+    accessor int X();                   ["Returns the point's current X coordinate."]
+    accessor int Y();                   ["Returns the point's current Y coordinate."]
+}

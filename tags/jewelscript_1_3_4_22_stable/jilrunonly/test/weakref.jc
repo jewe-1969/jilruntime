@@ -1,0 +1,56 @@
+/*
+ *  weakref.jc
+ *
+ *  Demonstrates using weak references in JewelScript.
+ */
+
+import stdlib;
+using stdlib;
+
+option "log-garbage=brief";
+
+class Buddy
+{
+    method Buddy()
+    {
+        this.buddy = null;
+    }
+    Buddy buddy;
+}
+
+function string main(const string[] args)
+{
+    /*  These objects are bad buddies, because they create a reference cycle,
+     *  which is in essence, a memory leak. JewelScript uses reference counting to
+     *  automatically free dynamically allocated objects.
+     *  However, in every reference counted system, there is the possibility of
+     *  creating reference cycles. Such a cycle is created when an object directly
+     *  or indirectly references itself.
+     *  You should see this object listed when the garbage collector detects leaked
+     *  objects during shutdown of the runtime. */
+
+    // create two bad buddies
+    Buddy badBuddyA;
+    Buddy badBuddyB;
+
+    // have them reference each other (this creates a reference cycle)
+    badBuddyA.buddy = badBuddyB;
+    badBuddyB.buddy = badBuddyA;
+
+    /*  These objects are good buddies, because they know they would create a reference
+     *  cycle and therefore use weak references to link to their buddy. Weak references
+     *  help avoid reference cycles. However, when used wrong, they can also create
+     *  memory leaks or produce crashes. Therefore they should be used with caution
+     *  and a good understanding of the reference counting mechanism of the runtime.
+     *  These objects should not be listed as leaked by the garbage collector. */
+
+    // create two good buddies
+    Buddy goodBuddyA;
+    Buddy goodBuddyB;
+
+    // have them reference each other with a weak-reference in the cycle
+    goodBuddyA.buddy = goodBuddyB;
+    goodBuddyB.buddy = (weak) goodBuddyA;
+
+    return "";
+}

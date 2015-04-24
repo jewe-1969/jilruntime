@@ -1,0 +1,220 @@
+/*
+ *  builtin.jc
+ *
+ *  The built-in data types int and float are "simple data types", which means
+ *  they are not treated as classes by the language, much like it is in C/C++.
+ *  Since version 0.6 of the JewelScript compiler, the types string and array
+ *  are built-in classes and feature a set of useful methods.
+ *  This file will give a general insight on using simple data types.
+ */
+
+import stdlib;
+using stdlib;   // get rid of stdlib namespace
+
+/*
+ *  int
+ */
+
+function type_int()
+{
+    // A int is a 32-bit integer data type on 32-bit processors
+    int a;
+
+    // you can specify an int in binary, octal, decimal, or hexadecimal
+    a = 0b1111111111;   // binary
+    a = 0o1777;         // octal
+    a = 1023;           // decimal
+    a = 001023;         // decimal too ;)
+    a = 0x3ff;          // hex
+
+    // you can also specify a int as a character constant with up to 4 digits
+    a = 'abcd';
+
+    // an int auto-converts to a float
+    float f = a;
+}
+
+/*
+ *  float
+ */
+
+function type_float()
+{
+    // By default, a float in JewelScript is a 64-bit floating point data type.
+    // However, you can compile the library for 32-bit floats, if desired.
+    // Just change the typedef "JILFloat" from "double" to "float".
+    float a;
+
+    // in C/C++ you need to specify float literals with a trailing "." or ".0" to
+    // avoid conversion warnings from integer to float.
+    // Here, you can omit the trailing "." and the literal is still recognized as
+    // a float number, if the receiving L-Value is of type float.
+    a = 0;
+    a = 0.;
+    a = 0.0;
+
+    // currently, a float auto-converts to a int, even though you lose precision
+    // and the value might be truncated from 64 to 32 bits. A compiler warning is
+    // issued if the value gets truncated, which depends on whether you compile
+    // the library for 32- or 64-bit float.
+    int l = a;
+}
+
+/*
+ *  string
+ */
+
+function type_string()
+{
+    // The built-in string is a dynamically allocated string object, and is not
+    // limited in size (up to 2 GB theoretically).
+    // There are a number of out-of-the-box string manipulation functions that
+    // are built-in to the string class.
+    string a;
+
+    // To initialize a string, you can use a string-literal in double-quotes. The
+    // compiler interpretes all ANSI escape sequences in string and character literals.
+    // Additionally, the parser will combine multiple string or character literals,
+    // if there is only whitespace between them.
+    a = "M\x61rvin says:"
+        "\t"
+        "\"Hello world!\""
+        "\n";
+
+    // In certain cases it might be unwanted that ANSI escape sequences are interpreted.
+    // For these cases JewelScript supports "verbatim" string literals. This is
+    // especially useful for regular expressions or (windows-) path names.
+    a = /"This is a verbatim string literal. We can use the \ normally here. "/
+        /"We can also use the "double quotes" normally. "/
+        "And we can combine them with \"normal\" string literals, \n"
+        /"and switch between them to our heart's content! ;)"/ "\n";
+
+    // To append a string to a string, using the "+" or "+=" operators is legal.
+    string b = "Variable 'a' contains: " + a;
+    a += "How are you?\n";
+
+    // To get the length of a string in characters, you can use the "length" accessor
+    int c = a.length;
+
+    // if a class or native class has a convertor function to a string, or a
+    // constructor for a string, auto-conversion can be performed between a
+    // string and that class. This is of course true for all of the data types.
+
+    print( a );
+    print( b );
+}
+
+/*
+ *  array
+ */
+
+function type_array()
+{
+    // Similar to the string, the built-in array object is a dynamically allocated
+    // object, not limited in size (except for available memory).
+    // Arrays can be constructed multi-dimensional and can dynamically grow,
+    // depending on the index used to access elements from it.
+    // To construct a multi-dimensional array, you can use operator new:
+    //     array a = new array(10, 10);
+    // You would access array elements from 'a' by either using the old-school
+    // C-Style operator [], or the new improved JewelScript version:
+    //     print( a[n][m] );
+    //     print( a[n,m] );
+    // The above statement would create a 2-dimensional array, with 10 elements per
+    // dimension.
+    // Note that by default, when not specifying an element type, array elements
+    // are "var", meaning the array is typeless and you can put anything into it.
+    // Since version 0.9 of the language however, it is possible to also create
+    // type-safe arrays:
+    //     int array a = new array(10);
+    // This statement would for example create and initialize an array of ints.
+    // Note that automatic initialization works only for arrays of int, float and
+    // string. Arrays of objects are initialized with references to 'null'.
+    // For example, an array of Foo instances would be declared like this:
+    //     Foo array a = new array(10);
+    // Note that because arrays can dynamically grow, it is not mandatory to construct
+    // them with operator new. If you declare, but not initialize an array variable,
+    // the language will automatically construct an empty array for you:
+    //     int array a;
+
+    // To initialize an array, you can use the curly braces:
+    // Note that this is a runtime operation, so you are not limited to specifying
+    // literals! You can also place function calls and variables into the initializer.
+    array a = { "Hello", 3.141, "World", 71 };
+
+    // To add a new element, using the "+" or "+=" operators is allowed.
+    array b = a + "element";
+    a += "element";
+    
+    // if you add two arrays, their elements are concatenated into one:
+    array d = a + b;
+
+    // To get the number of elements in an array, you can use the "length" accessor
+    int c = a.length;
+
+    // To convert an array into a formatted string, you can use the format method
+    string s = a.format("Array contains: %s, %g, %s, %d\n");
+    print( s );
+
+    // Or you can use the type-cast operator to convert an array into a string
+    s = (string) d;
+    print( s + "\n" );
+
+    // An array is also useful to make functions with variable number of arguments
+    print({ "Printing: ", c, s, 3.3, "Another string", 4, 5, "\n" });
+}
+
+/*
+ *  simple_types
+ *
+ *  Simple data types and operator "new"
+ */
+
+function simple_types()
+{
+    // declaring / initializing multiple variables at once
+    int z1 = 10, z2 = z1 + 5, z3 = z2 + 10;
+
+    // multiple constants
+    const int kConst1 = 10, kConst2 = 30;
+
+    // you cannot mix const / non-const
+//  int z4 = 5, const kConst3 = 10;
+
+    // these 3 equate to: int a = 0;
+    int m = new int();
+    int n = new int(0);
+    int o;                 // new in v0.8
+
+    // these 3 equate to: float a = 0;
+    float g = new float();
+    float h = new float(0);
+    float i;                // new in v0.8
+
+    // these 3 equate to: string a = "";
+    string t = new string();
+    string u = new string("");
+    string v;               // new in v0.8
+
+    // these 3 equate to: array a = {};
+    array b = new array();
+    array c = new array(0);
+    array d;                // new in v0.8
+}
+
+/*
+ *  main
+ *
+ *  call'em all
+ */
+
+function string main(const string[] args)
+{
+    type_int();
+    type_float();
+    type_string();
+    type_array();
+    simple_types();
+
+    return "";
+}

@@ -1,0 +1,73 @@
+/*
+ *  gendocs.jc
+ *
+ *  Demonstrates how to use the integrated HTML documentation generator.
+ *  To generate documentation, create a documented script file like this one, or
+ *  import all the classes you want to have documented.
+ *  Then run the debug build of the JILRunOnly tool with following parameters:
+ *
+ *      jilrunonlyd -doc ./docs gendocs.jc
+ *
+ *  The html files will be written into the "docs" sub-directory.
+ *
+ *  ATTENTION: The documentation engine is disabled in release builds of the library.
+ *  If the above command doesn't produce any output, try the debug build of the program.
+ *  You may also force documentation generation in release builds, by defining the
+ *  preprocessor macro JIL_USE_HTML_CODEGEN when building the library.
+ */
+
+/*
+ *  A simple class with documentation
+ *
+ *  Documentation tags may only appear following a method, function, cofunction or delegate DECLARATION.
+ *  Of course they are mainly intended to document native types embedded in an application.
+ *  However, they are not limited to that - you can also use it to document your script classes, but
+ *  it will force you to implement your methods outside of the class as shown below.
+ */
+
+class Rect;
+class Point
+{
+    ["A simple class describing a point in two-dimensional space. Used for <u>demonstration</u> purposes only. In these documentation tags you may use <b>valid XHTML</b>."]
+    method Point();                     ["Constructs a new Point instance at (0, 0)"]
+    method Point(int x, int y);         ["Constructs a new Point instance from the given X and Y coordinates."]
+    method int IsInside(const Rect r);  ["Returns true if this Point is inside the area of the given Rect."]
+    method Add(const Point p);          ["Adds the coordinates of the specified Point to this point's coordinates. This can be used to sum up local coordinates to compute absolute screen coordinates."]
+    method Sub(const Point p);          ["Subtracts the coordinates of the specified Point from this point's coordinates. This can be used to calculate local coordinates from absolute screen coordinates. It can also just be used to demonstrate source code documentation."]
+    accessor int X();                   ["Returns the point's current X coordinate."]
+    accessor int Y();                   ["Returns the point's current Y coordinate."]
+
+    int X, Y;
+}
+
+method Point::Point()
+{
+    X = 0;
+    Y = 0;
+}
+
+method Point::Point(int x, int y)
+{
+    X = x;
+    Y = y;
+}
+
+method int Point::IsInside(const Rect r)
+{
+    return false;
+}
+
+method Point::Add(const Point p)
+{
+    X += p.X;
+    Y += p.Y;
+}
+
+method Point::Sub(const Point p)
+{
+    X -= p.X;
+    Y -= p.Y;
+}
+
+accessor int Point::X() { return X; }
+accessor int Point::Y() { return Y; }
