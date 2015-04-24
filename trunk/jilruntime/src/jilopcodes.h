@@ -536,6 +536,9 @@ enum
 	// extensions 2015-01-01
 	op_newdgc,
 
+	// extensions 2015-04-24
+	op_jmp,
+
 	JILNumOpcodes
 };
 

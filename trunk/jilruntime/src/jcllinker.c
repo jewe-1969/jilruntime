@@ -189,6 +189,7 @@ exit:
 // JCLPostLink
 //------------------------------------------------------------------------------
 // Substitute all 'calls' instructions by cheaper 'jsr' instructions.
+// Also substitutes function index by code address for 'jmp' instruction.
 
 JILError JCLPostLink(JCLState* _this)
 {
@@ -202,26 +203,34 @@ JILError JCLPostLink(JCLState* _this)
 	Array_JILLong* pCode;
 	JILFuncInfo* pFuncInfo;
 	JILState* ps = _this->mipMachine;
+	JILLong data[2];
 
 	addr = 0;
-	for( c = 0; c < NumClasses(_this); c++ )
+	for (c = 0; c < NumClasses(_this); c++)
 	{
-		for( f = 0; f < NumFuncs(_this, c); f++ )
+		for (f = 0; f < NumFuncs(_this, c); f++)
 		{
 			pFunc = GetFunc(_this, c, f);
 			pCode = pFunc->mipCode;
-			for( i = 0; i < pCode->count; i += l )
+			for (i = 0; i < pCode->count; i += l)
 			{
 				o = pCode->Get(pCode, i);
 				l = JILGetInstructionSize(o);
-				if( l == 0 )
+				if (l == 0)
 					break;
-				if( o == op_calls )
+				if (o == op_calls)
 				{
-					JILLong cod[2] = { op_jsr, 0 };
 					pFuncInfo = JILGetFunctionInfo(ps, pCode->Get(pCode, i + 1));
-					cod[1] = pFuncInfo->codeAddr;
-					JILSetMemory(ps, addr + i, cod, 2);
+					data[0] = op_jsr;
+					data[1] = pFuncInfo->codeAddr;
+					JILSetMemory(ps, addr + i, data, 2);
+				}
+				else if (o == op_jmp)
+				{
+					pFuncInfo = JILGetFunctionInfo(ps, pCode->Get(pCode, i + 1));
+					data[0] = op_jmp;
+					data[1] = pFuncInfo->codeAddr;
+					JILSetMemory(ps, addr + i, data, 2);
 				}
 			}
 			addr += pCode->count;
@@ -238,20 +247,20 @@ JILError JCLLinkFunction(JCLFunc* _this, JCLState* pCompiler)
 {
 	JILError err = JCL_No_Error;
 	// not already linked?
-	if( !_this->miLinked )
+	if (!_this->miLinked)
 	{
 		// generate "stub" if function has no body
 		Array_JILLong* pCode = _this->mipCode;
-		if( !pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 || _this->miLnkRelIdx >= 0) )
+		if (!pCode->count && (!_this->miStrict || _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 || _this->miLnkRelIdx >= 0))
 		{
-			if( _this->miLnkDelegate < 0 && _this->miLnkMethod < 0 && _this->miLnkRelIdx < 0 )
+			if (_this->miLnkDelegate < 0 && _this->miLnkMethod < 0 && _this->miLnkRelIdx < 0)
 			{
 				JCLString* declString = NEW(JCLString);
 				_this->ToString(_this, pCompiler, declString, kCompact);
 				EmitWarning(pCompiler, JCL_WARN_Function_Auto_Complete, 1, declString);
-				DELETE( declString );
+				DELETE(declString);
 			}
-			if( _this->miCofunc )
+			if (_this->miCofunc)
 			{
 				pCode->Set(pCode, 0, op_moveh_r);
 				pCode->Set(pCode, 1, 0);
@@ -260,68 +269,64 @@ JILError JCLLinkFunction(JCLFunc* _this, JCLState* pCompiler)
 				pCode->Set(pCode, 4, op_bra);
 				pCode->Set(pCode, 5, -1);
 			}
-			else if( _this->miLnkRelIdx >= 0 )
+			else if (_this->miLnkRelIdx >= 0)
 			{
 				return RelocateFunction(_this, GetFunc(pCompiler, _this->miLnkClass, _this->miLnkRelIdx), pCompiler);
 			}
-			else if( _this->miLnkDelegate >= 0 || _this->miLnkMethod >= 0 )
+			else if (_this->miLnkMethod >= 0)
 			{
-				int n = 0;
+				// directly jump into base class method
+				JCLFunc* baseFunc = GetFunc(pCompiler, _this->miLnkClass, _this->miLnkMethod);
+				pCode->Set(pCode, 0, op_jmp);
+				pCode->Set(pCode, 1, baseFunc->miHandle);
+			}
+			else if (_this->miLnkDelegate >= 0)
+			{
+				// call base class delegate
 				int i;
+				int n = 0;
 				int j = 0;
-				int r0Save = (_this->miLnkMethod < 0);
-				if( _this->miMethod && r0Save )
+				if (_this->miMethod)
 				{
 					pCode->Set(pCode, n++, op_push_r);
 					pCode->Set(pCode, n++, 0);
 					j++;
-				}
-				if( _this->mipArgs->Count(_this->mipArgs) )
-				{
-					if( _this->mipArgs->Count(_this->mipArgs) > 1 )
+					if (_this->mipArgs->Count(_this->mipArgs))
 					{
-						pCode->Set(pCode, n++, op_pushm);
-						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
-					}
-					else
-					{
-						pCode->Set(pCode, n++, op_push);
-					}
-					for( i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++ )
-					{
-						pCode->Set(pCode, n++, op_move_ss);
-						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs) + j + i);
-						pCode->Set(pCode, n++, i);
-					}
-				}
-				if( _this->miLnkMethod >= 0 )
-				{
-					// directly call base class method
-					JCLFunc* baseFunc = GetFunc(pCompiler, _this->miLnkClass, _this->miLnkMethod);
-					pCode->Set(pCode, n++, op_calls);
-					pCode->Set(pCode, n++, baseFunc->miHandle);
-				}
-				else
-				{
-					// call base class delegate
-					pCode->Set(pCode, n++, op_calldg_d);
-					pCode->Set(pCode, n++, 0);
-					pCode->Set(pCode, n++, _this->miLnkDelegate);
-				}
-				if( _this->mipArgs->Count(_this->mipArgs) )
-				{
-					if( _this->mipArgs->Count(_this->mipArgs) > 1 )
-					{
-						pCode->Set(pCode, n++, op_popm);
-						pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
-					}
-					else
-					{
-						pCode->Set(pCode, n++, op_pop);
+						if (_this->mipArgs->Count(_this->mipArgs) > 1)
+						{
+							pCode->Set(pCode, n++, op_pushm);
+							pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
+						}
+						else
+						{
+							pCode->Set(pCode, n++, op_push);
+						}
+						for (i = 0; i < _this->mipArgs->Count(_this->mipArgs); i++)
+						{
+							pCode->Set(pCode, n++, op_move_ss);
+							pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs) + j + i);
+							pCode->Set(pCode, n++, i);
+						}
 					}
 				}
-				if( _this->miMethod && r0Save )
+				pCode->Set(pCode, n++, op_calldg_d);
+				pCode->Set(pCode, n++, 0);
+				pCode->Set(pCode, n++, _this->miLnkDelegate);
+				if (_this->miMethod)
 				{
+					if (_this->mipArgs->Count(_this->mipArgs))
+					{
+						if (_this->mipArgs->Count(_this->mipArgs) > 1)
+						{
+							pCode->Set(pCode, n++, op_popm);
+							pCode->Set(pCode, n++, _this->mipArgs->Count(_this->mipArgs));
+						}
+						else
+						{
+							pCode->Set(pCode, n++, op_pop);
+						}
+					}
 					pCode->Set(pCode, n++, op_pop_r);
 					pCode->Set(pCode, n++, 0);
 				}
@@ -337,15 +342,15 @@ JILError JCLLinkFunction(JCLFunc* _this, JCLState* pCompiler)
 		}
 		// generate data handles for literals and patch code
 		err = createLiterals_JCLFunc(_this, pCompiler);
-		if( err )
+		if (err)
 			goto exit;
 		// insert register saving code
 		err = InsertRegisterSaving(_this, pCompiler);
-		if( err )
+		if (err)
 			goto exit;
 		// do optimization
 		err = optimizeCode_JCLFunc(_this, pCompiler);
-		if( err )
+		if (err)
 			goto exit;
 		// make sure we are not linked again
 		_this->miLinked = JILTrue;

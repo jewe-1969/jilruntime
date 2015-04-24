@@ -46,7 +46,7 @@ static const JILLong kOperandTypeSize[kNumOperandTypes] =
 	2,	// ot_regrng,	Operand is a register range, i.e. "r3-r7"
 };
 
-#define kMaxStringLength 128
+#define kMaxStringLength 256
 
 //------------------------------------------------------------------------------
 // static functions in this file
@@ -240,6 +240,7 @@ JILLong JILListInstruction(JILState* pState, JILLong address, JILChar* pOutput, 
 				JILGetCalln(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_jsr:
+			case op_jmp:
 				JILGetJsr(pState, pComment, kMaxStringLength, address);
 				break;
 			case op_newctx:
