@@ -11,9 +11,9 @@
 // Description:
 // ------------
 /// @file jilstring.c
-/// The built-in string class the virtual machine uses. This is not to be
-/// confused with the internal string class of the compiler. This is the native
-/// type 'string' available in JewelScript.
+/// The built-in string class. This is not to be confused with the internal
+/// string class of the compiler. This is the native type 'string' available
+/// in JewelScript.
 /// <p>The string is limited to a size of at most 2 GB of memory. It handles
 /// raw data and zero bytes in the string graciously, so it can also be used
 /// for UTF-8 strings. However, advanced string operations might corrupt UTF-8
@@ -810,8 +810,8 @@ JILLong JILString_Equal(const JILString* _this, const JILString* other)
 //------------------------------------------------------------------------------
 // JILString_Compare
 //------------------------------------------------------------------------------
-/// Returns < 0 if "str2" is smaller than "str1", 0 if they are equal, and
-/// > 0 if "str2" is greater than "str1".
+/// Returns &lt; 0 if "str2" is smaller than "str1", 0 if they are equal, and
+/// &gt; 0 if "str2" is greater than "str1".
 
 JILLong JILString_Compare(const JILString* str1, const JILString* str2)
 {

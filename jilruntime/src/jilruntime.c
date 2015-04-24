@@ -1020,7 +1020,8 @@ static JILError DefaultFileInputProc(JILState* pState, JILLong mode, JILChar* pB
 
 	switch( mode )
 	{
-		case JILFileInputOpen:		// open file name in 'pBuffer'
+		// Open file name in 'pBuffer'.
+		case JILFileInputOpen:
 		{
 			FILE* pFile = fopen(pBuffer, "rb");
 			if( pFile )
@@ -1030,19 +1031,22 @@ static JILError DefaultFileInputProc(JILState* pState, JILLong mode, JILChar* pB
 			}
 			break;
 		}
-		case JILFileInputRead:		// read 'size' bytes from file to 'pBuffer'
+		// Read 'size' bytes from file to 'pBuffer'.
+		case JILFileInputRead:
 		{
 			FILE* pFile = *ppFile;
 			result = fread(pBuffer, sizeof(JILChar), size, pFile);
 			break;
 		}
-		case JILFileInputSeek:		// seek to position in 'size'
+		// Seek to position in 'size'. If not applicable in your custom file proc, return JIL_ERR_File_Generic.
+		case JILFileInputSeek:		
 		{
 			FILE* pFile = *ppFile;
 			result = fseek(pFile, size, SEEK_SET);
 			break;
 		}
-		case JILFileInputLength:	// return file length
+		// Return file length. If not applicable in your custom file proc, return 0.
+		case JILFileInputLength:	
 		{
 			FILE* pFile = *ppFile;
 			result = fseek(pFile, 0, SEEK_END);
@@ -1050,14 +1054,16 @@ static JILError DefaultFileInputProc(JILState* pState, JILLong mode, JILChar* pB
 				result = ftell(pFile);
 			break;
 		}
-		case JILFileInputClose:		// close file
+		// Close the file.
+		case JILFileInputClose:		
 		{
 			FILE* pFile = *ppFile;
 			fclose( pFile );
 			result = JIL_No_Exception;
 			break;
 		}
-		case JILFileInputGetCwd:	// copy current working directory to 'pBuffer'. If not applicable in your custom file proc, return an empty string.
+		// Copy current working directory to 'pBuffer'. If not applicable in your custom file proc, return empty string.
+		case JILFileInputGetCwd:	
 		{
 			#if WIN32
 				char* buf = _getcwd(NULL, 0);

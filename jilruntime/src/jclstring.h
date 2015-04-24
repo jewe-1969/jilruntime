@@ -21,18 +21,19 @@
 #include "jiltypes.h"
 #include "jcltools.h"
 
+FORWARD_CLASS(JCLString)
+
 //------------------------------------------------------------------------------
 // class JCLString
 //------------------------------------------------------------------------------
-// A string class with integrated parsing support.
+/// A string class with integrated parsing support.
 
-FORWARD_CLASS( JCLString )
 DECL_CLASS( JCLString )
 
-	JILChar*	m_String;
-	JILLong		m_Locator;
-	JILLong		m_Length;
-	JILLong		m_AllocatedLength;
+	JILChar*	m_String;			///< Pointer to the character buffer.
+	JILLong		m_Locator;			///< Current locator position in the string.
+	JILLong		m_Length;			///< The length of the string in characters.
+	JILLong		m_AllocatedLength;	///< The current size of the string buffer.
 
 END_CLASS( JCLString )
 

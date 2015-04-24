@@ -190,12 +190,12 @@ enum
 
 enum
 {
-	JILFileInputOpen = 0,		///< Sent to JILFileInputProc to open a file, pBuffer points to file name
-	JILFileInputRead,			///< Sent to JILFileInputProc to read the given amount of bytes to pBuffer
-	JILFileInputSeek,			///< Sent to JILFileInputProc to seek to the given position in the file
-	JILFileInputLength,			///< Sent to JILFileInputProc to determine the length of the file in bytes
-	JILFileInputClose,			///< Sent to JILFileInputProc to close the file
-	JILFileInputGetCwd			///< Sent to JILFileInputProc to retrieve the current working directory
+	JILFileInputOpen = 0,		///< Sent to JILFileInputProc to open a file, pBuffer points to file name.
+	JILFileInputRead,			///< Sent to JILFileInputProc to read the given amount of bytes to pBuffer.
+	JILFileInputSeek,			///< Sent to JILFileInputProc to seek to the given position in the file. If not applicable in your custom file proc, return JIL_ERR_File_Generic.
+	JILFileInputLength,			///< Sent to JILFileInputProc to determine the length of the file in bytes. If not applicable in your custom file proc, return 0.
+	JILFileInputClose,			///< Sent to JILFileInputProc to close the file.
+	JILFileInputGetCwd			///< Sent to JILFileInputProc to retrieve the current working directory. If not applicable in your custom file proc, return empty string.
 };
 
 //------------------------------------------------------------------------------
@@ -432,8 +432,8 @@ struct JILState
 	JILExceptionProc	vmBreakException;			///< Pointer to a C/C++ exception handler, or NULL
 
 	// malloc / free
-	JILMallocProc		vmMalloc;					///< Pointer to memory allocator proc used during runtime
-	JILFreeProc			vmFree;						///< Pointer to memory deallocation proc using during runtime
+	JILMallocProc		vmMalloc;					///< Pointer to memory allocator used during runtime. If you want to set this to your custom allocator, you should do so directly after JILInitialize() to avoid inconsistencies.
+	JILFreeProc			vmFree;						///< Pointer to memory deallocator used during runtime. If you want to set this to your custom deallocator, you should do so directly after JILInitialize() to avoid inconsistencies.
 
 	// fixed memory support
 	JILFixMem*			vmFixMem16;					///< Pointer to fixed memory manager object for blocks up to 16 byte, or NULL

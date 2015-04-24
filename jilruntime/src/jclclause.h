@@ -19,10 +19,6 @@
 
 #include "jcltools.h"
 
-//------------------------------------------------------------------------------
-// class JCLClause
-//------------------------------------------------------------------------------
-
 typedef struct JCLClauseBlock JCLClauseBlock;
 struct JCLClauseBlock
 {
@@ -43,6 +39,12 @@ struct JCLClauseGoto
 };
 
 FORWARD_CLASS( JCLClause )
+
+//------------------------------------------------------------------------------
+// class JCLClause
+//------------------------------------------------------------------------------
+/// Holds data for the clause language construct.
+
 DECL_CLASS( JCLClause )
 
 	JILLong				miStackPos;		///< stack position to unroll to in case of a goto

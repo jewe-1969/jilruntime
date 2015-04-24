@@ -22,24 +22,27 @@
 #include "jiltypes.h"
 #include "jcltools.h"
 
+FORWARD_CLASS(JCLLiteral)
+FORWARD_CLASS(JCLFunc)
+FORWARD_CLASS(JCLFuncType)
+
 //------------------------------------------------------------------------------
 // class JCLLiteral
 //------------------------------------------------------------------------------
-// Helper class that stores a literal constant.
+/// Helper class that stores a literal constant.
 
-FORWARD_CLASS( JCLLiteral )
-DECL_CLASS( JCLLiteral )
+DECL_CLASS(JCLLiteral)
 
-	JILLong				miType;		// handle type (int, float, string, delegate)
-	JILLong				miHandle;	// JIL data handle index (or 0)
-	JILLong				miOffset;	// offset in byte code for patching
-	JILLong				miLong;		// integer value in case of integer literals
-	JILFloat			miFloat;	// float value in case of float literals
-	JCLString*			miString;	// string constant in case of string literals
-	JILLong				miLocator;	// character position of code block in source file (for anonymous delegates)
-	JILBool				miMethod;	// anonymous delegate is method or closure
-	struct JCLFile*		mipFile;	// source file (for anonymous delegates)
-	Array_JCLVar*		mipStack;	// stack context in case of closure
+	JILLong				miType;		///< handle type (int, float, string, delegate)
+	JILLong				miHandle;	///< JIL data handle index (or 0)
+	JILLong				miOffset;	///< offset in byte code for patching
+	JILLong				miLong;		///< integer value in case of integer literals
+	JILFloat			miFloat;	///< float value in case of float literals
+	JCLString*			miString;	///< string constant in case of string literals
+	JILLong				miLocator;	///< character position of code block in source file (for anonymous delegates)
+	JILBool				miMethod;	///< anonymous delegate is method or closure
+	struct JCLFile*		mipFile;	///< source file (for anonymous delegates)
+	Array_JCLVar*		mipStack;	///< stack context in case of closure
 
 END_CLASS( JCLLiteral )
 
@@ -48,9 +51,8 @@ DECL_ARRAY( JCLLiteral )
 //------------------------------------------------------------------------------
 // class JCLFunc
 //------------------------------------------------------------------------------
-// Describes a JCL function. JCL code can only be placed inside a function.
+/// Describes a JewelScript function.
 
-FORWARD_CLASS( JCLFunc )
 DECL_CLASS( JCLFunc )
 
 	JILError			(*LinkCode)			(JCLFunc*, JCLState*);
@@ -103,11 +105,10 @@ DECL_ARRAY( JCLFunc )
 //------------------------------------------------------------------------------
 // class JCLFuncType
 //------------------------------------------------------------------------------
-// Describes a JCL function type, also known as the "signature" of a
-// function or method. It contains only the result type and types of the
-// functions argument list.
+/// Describes a JCL function type, also known as the "signature" of a
+/// function or method. It contains only the result type and types of the
+/// functions argument list.
 
-FORWARD_CLASS( JCLFuncType )
 DECL_CLASS( JCLFuncType )
 
 	JCLString*			(*ToString)		(JCLFuncType*, JCLState*, JCLString*, JCLString*, JILLong, JILLong);

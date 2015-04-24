@@ -24,6 +24,8 @@
 #include "jiltypes.h"
 #include "jcltools.h"
 
+typedef struct JCLArray JCLArray;
+
 //------------------------------------------------------------------------------
 // struct JCLArray
 //------------------------------------------------------------------------------
@@ -31,7 +33,6 @@
 /// "jcltools.h". If this struct is changed, those structs must be changed
 /// accordingly to avoid crashes!
 
-typedef struct JCLArray JCLArray;
 struct JCLArray {
 	void (*Create)		(JCLArray*);
 	void (*Destroy)		(JCLArray*);
@@ -44,12 +45,12 @@ struct JCLArray {
 	JILLong (*Count)	(const JCLArray*);
 	void (*Grain)		(JCLArray*, JILLong);
 
-	JILLong count;
-	JILLong max;
-	JILLong size;				// element size; if > 0 this array is managed, if 0 it is unmanaged
-	JILLong grain;				// number of elements to allocate per bucket
-	JILUnknown** array;
-	operator_new new_element;
+	JILLong count;				///< Number of items in this array.
+	JILLong max;				///< Maximum number of items this array can currently hold. The array resizes if this value is exceeded.
+	JILLong size;				///< Element size; if &gt; 0 this array is managed, if 0 it is unmanaged.
+	JILLong grain;				///< Number of elements to allocate per bucket.
+	JILUnknown** array;			///< Array of pointers to elements.
+	operator_new new_element;	///< Allocator callback function.
 };
 
 //------------------------------------------------------------------------------

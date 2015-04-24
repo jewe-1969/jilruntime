@@ -39,21 +39,21 @@
 /// version numbers below is increased due to a change, this version should be
 /// increased as well, in order to reflect this change.
 
-#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.22"
+#define JIL_LIBRARY_VERSION			JIL_PRODUCT_VERSION "4.23"
 
 //------------------------------------------------------------------------------
 // JIL_COMPILER_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the JewelScript compiler.
 
-#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "4.8"
+#define JIL_COMPILER_VERSION		JIL_PRODUCT_VERSION "4.9"
 
 //------------------------------------------------------------------------------
 // JIL_MACHINE_VERSION
 //------------------------------------------------------------------------------
 /// This is the version number of the virtual machine.
 
-#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "4.5"
+#define JIL_MACHINE_VERSION			JIL_PRODUCT_VERSION "4.6"
 
 //------------------------------------------------------------------------------
 // JIL_TYPE_INTERFACE_VERSION
@@ -62,6 +62,6 @@
 /// upon receiving the NTL_GetInterfaceVersion message, convert this string into
 /// an integer value and return it. @see NTLRevisionToLong ()
 
-#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "4.2"
+#define JIL_TYPE_INTERFACE_VERSION	JIL_PRODUCT_VERSION "4.3"
 
 #endif // JILVERSION_H

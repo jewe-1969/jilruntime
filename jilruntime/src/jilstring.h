@@ -11,9 +11,9 @@
 // Description:
 // ------------
 /// @file jilstring.h
-/// The built-in string class the virtual machine uses. This is not to be
-/// confused with the internal string class of the compiler. This is the native
-/// type 'string' available in JewelScript.
+/// The built-in string class. This is not to be confused with the internal
+/// string class of the compiler. This is the native type 'string' available
+/// in JewelScript.
 /// <p>The string is limited to a size of at most 2 GB of memory. It handles
 /// raw data and zero bytes in the string graciously, so it can also be used
 /// for UTF-8 strings. However, advanced string operations might corrupt UTF-8
@@ -36,13 +36,13 @@
 #include "jiltypes.h"
 
 //------------------------------------------------------------------------------
-// Describes the result of string matching operation as returned by the string::matchString() and string::matchArray() methods.
+/// Describes the result of string matching operation as returned by the string::matchString() and string::matchArray() methods.
 
 typedef struct NStringMatch
 {
-	JILLong	matchStart;		// The character position where this match starts. For matchString() the position refers to 'this' string. For matchArray() the position refers to the element specified by 'arrayIndex'.
-	JILLong	matchLength;	// The length of the match in characters.
-	JILLong	arrayIndex;		// The array index of the matching element. For matchString() it specifies the array element that was found in 'this' string as a substring. For matchArray() it specifies the array element that contains 'this' string as a substring.
+	JILLong	matchStart;		///< The character position where this match starts. For matchString() the position refers to 'this' string. For matchArray() the position refers to the element specified by 'arrayIndex'.
+	JILLong	matchLength;	///< The length of the match in characters.
+	JILLong	arrayIndex;		///< The array index of the matching element. For matchString() it specifies the array element that was found in 'this' string as a substring. For matchArray() it specifies the array element that contains 'this' string as a substring.
 
 } NStringMatch;
 

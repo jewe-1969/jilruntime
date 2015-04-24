@@ -23,15 +23,17 @@
 
 #include "jclstring.h"
 
+FORWARD_CLASS(JCLPair)
+
 //------------------------------------------------------------------------------
 // class JCLPair
 //------------------------------------------------------------------------------
+/// A general purpose class that holds a key string and a data value.
 
-FORWARD_CLASS( JCLPair )
 DECL_CLASS( JCLPair )
 
-	JCLString*	mipKey;
-	JILUnknown*	mipData;
+	JCLString*	mipKey;		///< The key string of this pair.
+	JILUnknown*	mipData;	///< The data value of this pair.
 
 END_CLASS( JCLPair )
 
