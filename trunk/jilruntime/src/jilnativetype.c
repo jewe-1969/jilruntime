@@ -799,6 +799,8 @@ static JILError LoadFromStream(JILState* pVM, JILFileHandle* pFile, JILUnknown**
 	char* pData = NULL;
 
 	// read file contents in 4K blocks until it is fully loaded
+	*ppData = NULL;
+	*pSize = 0;
 	for (;;)
 	{
 		// allocate a new block
@@ -868,18 +870,23 @@ JILError NTLLoadResource(JILState* pVM, const JILChar* pName, JILUnknown** ppDat
 	*pSize = NTLFileLength(pFile);
 	if (*pSize > 0)
 	{
-		// we can use the "quick load" method
-		*ppData = (JILChar*)pVM->vmMalloc(pVM, *pSize);
-		if (*ppData == NULL)
-			goto exit;
-		// read the entire file into the buffer
-		if (NTLFileRead(pFile, *ppData, *pSize) != *pSize)
+		// try to seek back to start of file
+		if (NTLFileSeek(pFile, 0) == JIL_No_Exception)
 		{
-			err = JIL_ERR_File_Generic;
-			goto exit;
+			// we can use the "quick load" method
+			*ppData = (JILChar*)pVM->vmMalloc(pVM, *pSize);
+			if (*ppData == NULL)
+				goto exit;
+			// read the entire file into the buffer
+			if (NTLFileRead(pFile, *ppData, *pSize) != *pSize)
+			{
+				err = JIL_ERR_File_Generic;
+				goto exit;
+			}
 		}
 	}
-	else
+	// fall back on stream loading?
+	if (*ppData == NULL)
 	{
 		// file is a stream, read until it's fully loaded
 		err = LoadFromStream(pVM, pFile, ppData, pSize);
