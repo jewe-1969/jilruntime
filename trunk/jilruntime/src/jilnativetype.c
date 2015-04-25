@@ -780,34 +780,38 @@ JILHandle* NTLNewObject(JILState* pState, JILLong type)
 // LoadFromStream
 //------------------------------------------------------------------------------
 
-static JILError LoadFromStream(JILState* pVM, JILFileHandle* pFile, JILUnknown** ppData)
+static JILError LoadFromStream(JILState* pVM, JILFileHandle* pFile, JILUnknown** ppData, JILLong* pSize)
 {
-	struct Block
-	{
+	static const JILLong kBlockSize = 4096;
+
+	struct Block { // nope, this isn't messy, private local structs are one of the few cool features in C
 		char* data;
 		struct Block* next;
 		JILLong size;
 	};
-	static const JILLong kBlockSize = 4096;
-	JILLong totalSize, blockSize;
-	struct Block *firstBlock, *block, *prevBlock;
-	char* pData;
+
 	JILError err = JIL_No_Exception;
+	JILLong totalSize = 0;
+	JILLong  blockSize = 0;
+	struct Block* firstBlock = NULL;
+	struct Block* prevBlock = NULL;
+	struct Block* block = NULL;
+	char* pData = NULL;
 
 	// read file contents in 4K blocks until it is fully loaded
-	totalSize = 0;
-	firstBlock = prevBlock = NULL;
 	for (;;)
 	{
+		// allocate a new block
 		block = pVM->vmMalloc(pVM, sizeof(struct Block));
 		block->data = pVM->vmMalloc(pVM, kBlockSize);
 		block->next = NULL;
 		block->size = 0;
+		// link it with previous
 		if (prevBlock != NULL)
 			prevBlock->next = block;
 		if (firstBlock == NULL)
 			firstBlock = block;
-		// read a block
+		// read block data
 		blockSize = NTLFileRead(pFile, block->data, kBlockSize);
 		if (blockSize < 0)
 		{
@@ -816,11 +820,14 @@ static JILError LoadFromStream(JILState* pVM, JILFileHandle* pFile, JILUnknown**
 		}
 		block->size = blockSize;
 		totalSize += blockSize;
+		// did we read the remainder of the file?
 		if (blockSize < kBlockSize)
 			break;
+		// next block
 		prevBlock = block;
 	}
 	// allocate buffer to accommodate all blocks
+	*pSize = totalSize;
 	*ppData = pData = pVM->vmMalloc(pVM, totalSize);
 	// fill buffer
 	for (block = firstBlock; block != NULL; block = block->next)
@@ -848,27 +855,25 @@ JILError NTLLoadResource(JILState* pVM, const JILChar* pName, JILUnknown** ppDat
 {
 	JILError err;
 	JILFileHandle* pFile = NULL;
-	JILChar* pData = NULL;
-	JILLong fileSize = 0;
 
-	if( pName == NULL || ppData == NULL || pSize == NULL )
+	if (pName == NULL || ppData == NULL || pSize == NULL)
 		return JIL_ERR_Generic_Error;
+	*ppData = NULL;
+	*pSize = 0;
 	// open the file
 	err = NTLFileOpen(pVM, pName, &pFile);
-	if( err )
+	if (err)
 		return err;
 	// try to get the file length
-	fileSize = NTLFileLength(pFile);
-	if (fileSize > 0)
+	*pSize = NTLFileLength(pFile);
+	if (*pSize > 0)
 	{
-		// we can use the "quick load"
-		*pSize = fileSize;
-		// allocate a buffer
-		*ppData = pData = (JILChar*)pVM->vmMalloc(pVM, fileSize);
-		if (pData == NULL)
+		// we can use the "quick load" method
+		*ppData = (JILChar*)pVM->vmMalloc(pVM, *pSize);
+		if (*ppData == NULL)
 			goto exit;
 		// read the entire file into the buffer
-		if (NTLFileRead(pFile, pData, fileSize) != fileSize)
+		if (NTLFileRead(pFile, *ppData, *pSize) != *pSize)
 		{
 			err = JIL_ERR_File_Generic;
 			goto exit;
@@ -877,23 +882,20 @@ JILError NTLLoadResource(JILState* pVM, const JILChar* pName, JILUnknown** ppDat
 	else
 	{
 		// file is a stream, read until it's fully loaded
-		err = LoadFromStream(pVM, pFile, &pData);
+		err = LoadFromStream(pVM, pFile, ppData, pSize);
 		if (err)
 			goto exit;
-		*ppData = pData;
 	}
 	// close the file
 	err = NTLFileClose(pFile);
-	if( err )
+	if (err)
 		goto exit;
 	// success
 	return JIL_No_Exception;
 
 exit:
 	NTLFileClose(pFile);
-	pVM->vmFree(pVM, pData);
-	*ppData = NULL;
-	*pSize = 0;
+	pVM->vmFree(pVM, *ppData);
 	return err;
 }
 

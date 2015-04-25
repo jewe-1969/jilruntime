@@ -68,7 +68,6 @@ void copy_JCLString(JCLString* _this, const JCLString* pSource)
 	{
 		memcpy(_this->m_String, pSource->m_String, pSource->m_Length);
 	}
-	_this->m_String[_this->m_Length] = 0;
 	_this->m_Locator = pSource->m_Locator;
 }
 
@@ -96,7 +95,6 @@ void JCLSetString(JCLString* _this, const JILChar* string)
 		JILLong len = strlen(string);
 		Reallocate(_this, len, JILFalse);
 		memcpy(_this->m_String, string, len);
-		_this->m_String[_this->m_Length] = 0;
 	}
 	else
 	{
@@ -157,7 +155,6 @@ void JCLAppend(JCLString* _this, const JILChar* source)
 		JILLong sLen = strlen(source);
 		Reallocate( _this, _this->m_Length + sLen, JILTrue );
 		memcpy( _this->m_String + oldLen, source, sLen);
-		_this->m_String[_this->m_Length] = 0;
 	}
 }
 
@@ -171,7 +168,6 @@ void JCLAppendChar(JCLString* _this, JILLong chr)
 	JILLong oldLen = _this->m_Length;
 	Reallocate( _this, oldLen + 1, JILTrue );
 	_this->m_String[oldLen] = chr;
-	_this->m_String[_this->m_Length] = 0;
 }
 
 //------------------------------------------------------------------------------
@@ -211,7 +207,6 @@ void JCLInsert(JCLString* _this, const JCLString* source, JILLong index)
 		// copy right part
 		if( pOldStr )
 			memcpy( _this->m_String + index + pSrc->m_Length, pOldStr + index, oldLen - index );
-		_this->m_String[_this->m_Length] = 0;
 		// destruct old string
 		if( pOldStr )
 			free( pOldStr );
@@ -304,7 +299,6 @@ void JCLSubString(JCLString* _this, const JCLString* source, JILLong index, JILL
 			length = pSrc->m_Length - index;
 		Reallocate(_this, length, JILFalse);
 		memcpy(_this->m_String, pSrc->m_String + index, length);
-		_this->m_String[_this->m_Length] = 0;
 	}
 	// destruct clone
 	if( bThis )
@@ -322,7 +316,6 @@ void JCLFill(JCLString* _this, JILLong chr, JILLong size)
 	{
 		Reallocate(_this, size, JILFalse);
 		memset(_this->m_String, chr, size);
-		_this->m_String[size] = 0;
 	}
 }
 
@@ -436,7 +429,6 @@ void JCLRandomIdentifier(JCLString* _this, JILLong length)
 			}
 			_this->m_String[i] = c;
 		}
-		_this->m_String[length] = 0;
 	}
 }
 
@@ -457,7 +449,6 @@ JILLong JCLFormat(JCLString* _this, const JILChar* pFormat, ...)
 	len = JIL_VSNPRINTF(_this->m_String, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, arguments);
 	// shrink string to actual length
 	Reallocate(_this, len, JILTrue);
-	_this->m_String[len] = 0;
 	va_end( arguments );
 	return len;
 }
@@ -477,7 +468,6 @@ JILLong JCLFormatTime(JCLString* _this, const JILChar* pFormat, time_t time)
 	len = strftime(_this->m_String, JIL_FORMAT_MAX_BUFFER_SIZE, pFormat, gmtime(&time));
 	// shrink string to actual length
 	Reallocate(_this, len, JILTrue);
-	_this->m_String[len] = 0;
 	return len;
 }
 
@@ -933,6 +923,7 @@ static void Reallocate(JCLString* _this, JILLong newSize, JILLong keepData)
 			_this->m_AllocatedLength = newAllocatedLength;
 		}
 	}
+	_this->m_String[newSize] = 0;
 	_this->m_Length = newSize;
 	if( _this->m_Locator > newSize )
 		_this->m_Locator = newSize;
