@@ -192,8 +192,10 @@ JILChar* FixMem_Alloc(JILFixMem* _this)
 		JILUnlinkBucket(_this, pCurrentBucket);
 	}
 
-	// do the statistics
 	JIL_INSERT_DEBUG_CODE(
+		/* pad memory with 0xCC to show it's created */
+		memset(pBlock, 0xCC, _this->blockSize);
+		/* do the statistics */
 		_this->pStats->numAlloc++;
 		_this->pStats->bytesUsed += _this->blockSize;
 		if( _this->pStats->bytesUsed > _this->pStats->maxBytesUsed )

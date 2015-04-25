@@ -956,8 +956,10 @@ static JILUnknown* FixedMallocProc(JILState* pState, JILLong numBytes)
 {
 	JILUnknown* pResult;
 
-	if( numBytes <= 0 )
+	if( numBytes < 0 )
 		return NULL;
+	else if( numBytes == 0 )
+		return pState; // This is intentional! If anyone writes into a zero byte buffer, they are bound to notice!
 	else if( numBytes <= 16 )
 		pResult = FixMem_Alloc(pState->vmFixMem16);
 	else if( numBytes <= 32 )
@@ -989,7 +991,7 @@ static void FixedFreeProc(JILState* pState, JILUnknown* pBuffer)
 {
 	JILLong numBytes;
 
-	if( !pBuffer )
+	if( pBuffer == NULL || pBuffer == pState )
 		return;
 	numBytes = FixMem_GetBlockLength(pBuffer);
 	if( numBytes <= 16 )
