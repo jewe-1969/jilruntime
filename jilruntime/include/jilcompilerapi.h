@@ -151,8 +151,8 @@ JILEXTERN JILError				JCLSetGlobalOptions		(JILState* pState, const JILChar* pOp
 //------------------------------------------------------------------------------
 // JCLGenerateBindings
 //------------------------------------------------------------------------------
-/// <p>This function will create C++ binding code files for all currently
-/// known classes that have been declared using the "native" keyword.</p>
+/// This function will create C++ binding code files for all currently
+/// known classes that have been declared using the "native" keyword.
 /// <p>This can be disabled by macro JIL_USE_BINDING_CODEGEN in jilplatform.h</p>
 /// By default, the code generator will be stripped from release builds.
 
@@ -161,12 +161,11 @@ JILEXTERN JILError				JCLGenerateBindings		(JILState* pState, const JILChar* pPa
 //------------------------------------------------------------------------------
 // JCLGenerateDocs
 //------------------------------------------------------------------------------
-/// <p>This function will extract all annotations ("tags") from all currently
-/// compiled classes and functions and generate a HTML page from it. The intention
-/// behind this function is to allow developers (or users) to very easily get
-/// an overview of the all classes, methods and functions available to script
-/// programmers. It is not meant as an in-depth documentation generator, but may
-/// serve as the starting point of it.</p>
+/// This function will extract all annotations ("tags") from all currently
+/// compiled classes and functions and generate a HTML page from it.
+/// <p>The intention behind this function is to allow developers (or users) to
+/// very easily get an overview of the all classes, methods and functions
+/// available to script programmers.</p>
 /// <p>This can be disabled by macro JIL_USE_HTML_CODEGEN in jilplatform.h</p>
 /// By default, the HTML generator will be stripped from release builds.
 
