@@ -16,4 +16,4 @@ Extensive information, documentation, articles and code examples can be found at
 * [Introduction to JewelScript](http://blog.jewe.org/?page_id=107)
 
 ### Code Example
-![JewelScript Screenshot](http://blog.jewe.org/jewelscriptscreen.png)
+![JewelScript Screenshot](http://blog.jewe.org/github_ss_0001.png)
