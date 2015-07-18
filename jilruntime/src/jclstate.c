@@ -41,8 +41,8 @@ COMPILER TODO:
 	- there may be more parts of compiler and linker always creating static calls
 
 	BUGS:
-	- statement doesn't compile:        if (FileFilter().Site.IsComplete)
-	- ternary and null don't compile:   return (cond) ? a : null;
+	- statement doesn't compile:			if (FileFilter().Site.IsComplete)
+	- ternary and null doesn't compile:		return (cond) ? a : null;
 
 	Future ideas:
 	* It would be easy to support 'readonly' variables now
@@ -5379,6 +5379,9 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			// it also must be declared using the "method" keyword
 			if( !(fnKind & kModeMethod) || (fnKind & kModeAccessor) )
 				ERROR(JCL_ERR_Convertor_Is_Function, NULL, goto exit);
+			// it must not be private!
+			if( fnKind & kModePrivate )
+				ERROR(JCL_ERR_No_Access, pFunc->mipName, goto exit);
 			pFunc->miConvertor = JILTrue;
 		}
 		else
@@ -5386,6 +5389,8 @@ static JILError p_function(JCLState* _this, JILLong fnKind, JILBool isPure)
 			// neither constructor nor convertor, forbid 'explicit'
 			ERROR_IF(pFunc->miExplicit, JCL_ERR_Explicit_With_Method, NULL, goto exit);
 		}
+		// check for virtual and private
+		ERROR_IF((fnKind & kModePrivate) && (fnKind & kModeVirtual), JCL_ERR_Private_Virtual_Method, pFunc->mipName, goto exit);
 	}
 
 	// make this the current function
