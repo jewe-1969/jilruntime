@@ -88,7 +88,7 @@
 // version
 //------------------------------------------------------------------------------
 
-#define	VERSION		"0.4.2.9"
+#define	VERSION		"0.4.2.10"
 
 #ifndef MAX_PATH
 #define MAX_PATH	260
@@ -180,6 +180,7 @@ int main(int nArgs, char* ppArgList[])
 	JILHandle* hFunctionMain = NULL;
 	JILHandle* hException = NULL;
 	const JILChar* pStr;
+	const JILChar* pType;
 	int bListCode = 0;
 	int bWait = 0;
 	int bExit = 0;
@@ -327,15 +328,15 @@ int main(int nArgs, char* ppArgList[])
 
 		// compile defaults
 		err = JCLCompile(pMachine, "default", kForwardDeclareMain);
-		THROW( err, err, "" )
+		THROW( err, err, NULL )
 
 		// load and compile specified script file
 		err = JCLLoadAndCompile(pMachine, ppArgList[nFile]);
-		THROW( err, err, "" )
+		THROW( err, err, NULL )
 
 		// link...
 		err = JCLLink(pMachine);
-		THROW( err, err, "" )
+		THROW( err, err, NULL )
 
 		// generate bindings or html documentation?
 		if( nExportMode == export_bindings )
@@ -361,14 +362,14 @@ int main(int nArgs, char* ppArgList[])
 	else
 	{
 		err = LoadBinary(pMachine, ppArgList[0]);
-		THROW( err, -1, "The specified binary file could not be loaded!" )
+		THROW( err, err, "The specified binary file could not be loaded!" )
 	}
 
 	// save binary, if requested
 	if( bWriteBinary )
 	{
 		err = SaveBinary(pMachine, gBinaryName);
-		THROW( err, -1, "The specified binary file could not be written!" )
+		THROW( err, err, "The specified binary file could not be written!" )
 	}
 
 	// list code, if requested
@@ -406,18 +407,21 @@ int main(int nArgs, char* ppArgList[])
 	err = NTLHandleToError(pMachine, hResult);
 	if( err == JIL_No_Exception )
 	{
-		// no exception - print the result to console
+		// no exception - get result as c-string and print
 		pStr = NTLHandleToString(pMachine, hResult);
 		if( pStr )
 			JILMessageLog(pMachine, "%s\n", pStr);
 	}
 	else
 	{
-		// obtain the message string from the exception
+		// obtain the type name from the exception object
+		pType = NTLGetTypeName(pMachine, NTLHandleToTypeID(pMachine, hResult));
+		// obtain the message from the exception object
 		hException = NTLHandleToErrorMessage(pMachine, hResult);
+		// get the message as c-string
 		pStr = NTLHandleToString(pMachine, hException);
 		if( pStr )
-			JILMessageLog(pMachine, "%s\n    Error:   %d\n    Message: %s\n", NTLGetTypeName(pMachine, NTLHandleToTypeID(pMachine, hResult)), err, pStr);
+			JILMessageLog(pMachine, "%s\n    Error:   %d\n    Message: %s\n", pType, err, pStr);
 	}
 
 	/*
