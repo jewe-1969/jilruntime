@@ -39,6 +39,7 @@ COMPILER TODO:
 	- accessor method always creates static calls, should take virtual into account
 	- auto-conversion always creates static calls, should take virtual into account
 	- there may be more parts of compiler and linker always creating static calls
+	- currently no clean way to obtain exception handle if exception thrown in JILRunInitCode()
 
 	BUGS:
 	- statement doesn't compile:			if (FileFilter().Site.IsComplete)

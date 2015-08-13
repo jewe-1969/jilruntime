@@ -6,3 +6,4 @@ jilrunonly/vs2013/Win32/Debug/jilrunonly.log
 *.tlog
 *.pdb
 *.exe
+*.user
