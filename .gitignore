@@ -7,3 +7,5 @@ jilrunonly/vs2013/Win32/Debug/jilrunonly.log
 *.pdb
 *.exe
 *.user
+*.iobj
+*.ipdb
