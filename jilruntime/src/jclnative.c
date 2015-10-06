@@ -628,7 +628,7 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 				else
 					fprintf(outStream, "h_arg_%d", i);
 				if (i < (numArg - 1))
-					fprintf(outStream, ", ", i);
+					fprintf(outStream, ", ");
 			}
 			fprintf(outStream, "); // using placement new to instantiate into '_this'\n");
 		}
@@ -692,7 +692,7 @@ static JILError GenerateCallCode(JCLState* _this, JCLClass* pClass, JCLFunc* pFu
 			else
 				fprintf(outStream, "h_arg_%d", i);
 			if (i < (numArg - 1))
-				fprintf(outStream, ", ", i);
+				fprintf(outStream, ", ");
 		}
 		fprintf(outStream, ");");
 		if (pFunc->miConvertor)
