@@ -23,8 +23,8 @@
 /// Modes for Error JCLFormat option
 enum
 {
-	kErrorFormatDefault = 1,	///< JewelScript error format
-	kErrorFormatMS				///< Microsoft DeveloperStudio compatible error format
+	kErrorFormatDefault = 1,	//!< JewelScript error format
+	kErrorFormatMS				//!< Microsoft DeveloperStudio compatible error format
 };
 
 FORWARD_CLASS(JCLOption)
@@ -38,14 +38,14 @@ DECL_CLASS( JCLOption )
 
 	JILError			(*ParseOption)		(JCLOption*, const JCLString*, JILOptionHandler, JILUnknown*);
 
-	JILBool				miVerboseEnable;	///< output additional info
-	JILBool				miWarningLevel;		///< output warnings
-	JILLong				miOptimizeLevel;	///< optimization level
-	JILBool				miUseRTCHK;			///< use runtime type checking
-	JILBool				miAllowFileImport;	///< allow import of additional scripts from local filesys
-	JILBool				miDefaultFloat;		///< interpret all numeric literals as float
-	JILLong				miErrorFormat;		///< error and warning output format
-	JCLString*			mipFileExt;			///< script file extension to use for import
+	JILBool				miVerboseEnable;	//!< output additional info
+	JILBool				miWarningLevel;		//!< output warnings
+	JILLong				miOptimizeLevel;	//!< optimization level
+	JILBool				miUseRTCHK;			//!< use runtime type checking
+	JILBool				miAllowFileImport;	//!< allow import of additional scripts from local filesys
+	JILBool				miDefaultFloat;		//!< interpret all numeric literals as float
+	JILLong				miErrorFormat;		//!< error and warning output format
+	JCLString*			mipFileExt;			//!< script file extension to use for import
 
 END_CLASS( JCLOption )
 

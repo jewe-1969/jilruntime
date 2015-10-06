@@ -32,10 +32,10 @@
 
 struct JILArray
 {
-	JILLong		size;		///< Currently used size, in elements, of the array
-	JILLong		maxSize;	///< Currently allocated size, in elements; if size reaches this value, the array is resized
-	JILHandle**	ppHandles;	///< Pointer to the handles of the elements in this array
-	JILState*	pState;		///< The virtual machine object this array 'belongs' to
+	JILLong		size;		//!< Currently used size, in elements, of the array
+	JILLong		maxSize;	//!< Currently allocated size, in elements; if size reaches this value, the array is resized
+	JILHandle**	ppHandles;	//!< Pointer to the handles of the elements in this array
+	JILState*	pState;		//!< The virtual machine object this array 'belongs' to
 };
 
 //------------------------------------------------------------------------------

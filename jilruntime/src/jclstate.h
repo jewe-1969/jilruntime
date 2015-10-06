@@ -27,8 +27,8 @@
 /// Compile pass identifier
 enum
 {
-	kPassPrecompile	= 0,		///< pass 1, compile only declarations
-	kPassCompile	= 1			///< pass 2, compile code
+	kPassPrecompile	= 0,		//!< pass 1, compile only declarations
+	kPassCompile	= 1			//!< pass 2, compile code
 };
 
 //------------------------------------------------------------------------------
@@ -47,45 +47,45 @@ FORWARD_CLASS( JCLClause )
 
 DECL_CLASS( JCLState )
 
-	JILState*			mipMachine;					///< The JIL virtual machine instance to program
-	JCLFile*			mipFile;					///< Points to current file context
-	JCLString*			mipNamespace;				///< Currently parsed namespace
-	JILLong				miClass;					///< Currently parsed class index
-	JILLong				miArgClass;					///< For parsing function arguments: Class index of class being called, else 0
-	JILLong				miOutputClass;				///< Class to which bytecode is output (usually same as miClass)
-	JILLong				miFunc;						///< Currently parsed function index
-	JILLong				miOutputFunc;				///< Function to which bytecode is output (usually same as miFunc)
-	JILLong				miPass;						///< Current compilation pass
-	Array_JCLClass*		mipClasses;					///< Array of compiled classes (or interfaces and other types)
-	JCLVar**			mipStack;					///< Simulated data stack when compiling function body
-	JILLong				miStackPos;					///< Current simulated data stack pointer
-	JCLVar*				mipRegs[kNumRegisters];		///< Simulated register contents when compiling function body
-	Array_JCLVar*		mipSpecialVars;				///< Additional 'virtual' variables, like 'this' or 'base'
-	JILLong				miNumVarRegisters;			///< No. of regs currently used for local variables
-	JILLong				miBlockLevel;				///< Nested block level counter
-	JILLong				miBreakUnrollSP;			///< Saved stack pointer for unrolling the stack in case of a break or continue statement
-	JCLClause*			mipClause;					///< Current clause data or NULL
-	Array_JILLong*		mipBreakFixup;				///< List of code-offsets to patch in case of a break
-	Array_JILLong*		mipContFixup;				///< List of code-offsets to patch in case of a continue
-	Array_JCLFile*		mipImportStack;				///< Stack of imported files
-	JILLong				miLastError;				///< Last reported error or warning
-	JILLong				miFlushedError;				///< Last flushed error or warning
-	JILBool				miFatalState;				///< Compiler is in fatal error state
-	JILBool				miIntroFinished;			///< cg_finish_intro() has generated 'RET' instruction
-	Array_JCLString*	mipErrors;					///< Storage of emitted errors and warnings
-	Array_JCLString*	mipUseNamespace;			///< Array of alternate namespaces to search in
-	Array_JILLong*		mipUsing;					///< list for using statement
-	JILLong				miNumErrors;				///< Total number of errors
-	JILLong				miNumWarnings;				///< Total number of warnings
-	JILLong				miNumCompiles;				///< Total number of files compiled
-	JILFloat			miTimestamp;				///< Compile start time stamp
-	Array_JCLOption*	mipOptionStack;				///< Stack of options, first element in array is global options
-	JCLCollection*		mipImportPaths;				///< Collection of pathes to import directories
-	JILLong				miOptSavedInstr;			///< Optimization: Number of saved instructions
-	JILLong				miOptSizeBefore;			///< Optimization: Total code size before optimization (bytes)
-	JILLong				miOptSizeAfter;				///< Optimization: Total code size after optimization (bytes)
-	JCLFatalErrorHandler miFatalErrorHandler;		///< Fatal Error callback
-	JCLVar*				mipNull;					///< Dummy 'null' var used to reserve space on sim stack
+	JILState*			mipMachine;					//!< The JIL virtual machine instance to program
+	JCLFile*			mipFile;					//!< Points to current file context
+	JCLString*			mipNamespace;				//!< Currently parsed namespace
+	JILLong				miClass;					//!< Currently parsed class index
+	JILLong				miArgClass;					//!< For parsing function arguments: Class index of class being called, else 0
+	JILLong				miOutputClass;				//!< Class to which bytecode is output (usually same as miClass)
+	JILLong				miFunc;						//!< Currently parsed function index
+	JILLong				miOutputFunc;				//!< Function to which bytecode is output (usually same as miFunc)
+	JILLong				miPass;						//!< Current compilation pass
+	Array_JCLClass*		mipClasses;					//!< Array of compiled classes (or interfaces and other types)
+	JCLVar**			mipStack;					//!< Simulated data stack when compiling function body
+	JILLong				miStackPos;					//!< Current simulated data stack pointer
+	JCLVar*				mipRegs[kNumRegisters];		//!< Simulated register contents when compiling function body
+	Array_JCLVar*		mipSpecialVars;				//!< Additional 'virtual' variables, like 'this' or 'base'
+	JILLong				miNumVarRegisters;			//!< No. of regs currently used for local variables
+	JILLong				miBlockLevel;				//!< Nested block level counter
+	JILLong				miBreakUnrollSP;			//!< Saved stack pointer for unrolling the stack in case of a break or continue statement
+	JCLClause*			mipClause;					//!< Current clause data or NULL
+	Array_JILLong*		mipBreakFixup;				//!< List of code-offsets to patch in case of a break
+	Array_JILLong*		mipContFixup;				//!< List of code-offsets to patch in case of a continue
+	Array_JCLFile*		mipImportStack;				//!< Stack of imported files
+	JILLong				miLastError;				//!< Last reported error or warning
+	JILLong				miFlushedError;				//!< Last flushed error or warning
+	JILBool				miFatalState;				//!< Compiler is in fatal error state
+	JILBool				miIntroFinished;			//!< cg_finish_intro() has generated 'RET' instruction
+	Array_JCLString*	mipErrors;					//!< Storage of emitted errors and warnings
+	Array_JCLString*	mipUseNamespace;			//!< Array of alternate namespaces to search in
+	Array_JILLong*		mipUsing;					//!< list for using statement
+	JILLong				miNumErrors;				//!< Total number of errors
+	JILLong				miNumWarnings;				//!< Total number of warnings
+	JILLong				miNumCompiles;				//!< Total number of files compiled
+	JILFloat			miTimestamp;				//!< Compile start time stamp
+	Array_JCLOption*	mipOptionStack;				//!< Stack of options, first element in array is global options
+	JCLCollection*		mipImportPaths;				//!< Collection of pathes to import directories
+	JILLong				miOptSavedInstr;			//!< Optimization: Number of saved instructions
+	JILLong				miOptSizeBefore;			//!< Optimization: Total code size before optimization (bytes)
+	JILLong				miOptSizeAfter;				//!< Optimization: Total code size after optimization (bytes)
+	JCLFatalErrorHandler miFatalErrorHandler;		//!< Fatal Error callback
+	JCLVar*				mipNull;					//!< Dummy 'null' var used to reserve space on sim stack
 
 END_CLASS( JCLState )
 

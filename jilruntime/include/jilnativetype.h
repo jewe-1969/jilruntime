@@ -36,27 +36,27 @@
 enum NTLMessage
 {
 	// runtime messages
-	NTL_Register,				///< Sent when registering type to the runtime
-	NTL_OnImport,				///< Sent when this native type is imported and before the package list or class declaration is compiled
-	NTL_Initialize,				///< Sent when the VM is initialized and this type will be used
-	NTL_NewObject,				///< Allocate a new object. This will be followed by the appropriate constructor call (NTL_CallMember) to initialize the object.
-	NTL_MarkHandles,			///< Garbage collection: Call NTLMarkHandle() for all handles your native type owns
-	NTL_CallStatic,				///< Call static function
-	NTL_CallMember,				///< Call member function
-	NTL_DestroyObject,			///< Destroy an object
-	NTL_Terminate,				///< Sent when the VM is terminated
-	NTL_Unregister,				///< Sent when unregistering type from the runtime
+	NTL_Register,				//!< Sent when registering type to the runtime
+	NTL_OnImport,				//!< Sent when this native type is imported and before the package list or class declaration is compiled
+	NTL_Initialize,				//!< Sent when the VM is initialized and this type will be used
+	NTL_NewObject,				//!< Allocate a new object. This will be followed by the appropriate constructor call (NTL_CallMember) to initialize the object.
+	NTL_MarkHandles,			//!< Garbage collection: Call NTLMarkHandle() for all handles your native type owns
+	NTL_CallStatic,				//!< Call static function
+	NTL_CallMember,				//!< Call member function
+	NTL_DestroyObject,			//!< Destroy an object
+	NTL_Terminate,				//!< Sent when the VM is terminated
+	NTL_Unregister,				//!< Sent when unregistering type from the runtime
 
 	// class information queries
-	NTL_GetClassName,			///< Return this native type's class name
-	NTL_GetBaseName,			///< (Optional) Return base class or interface name
-	NTL_GetInterfaceVersion,	///< Return JILRevisionToLong(JIL_TYPE_INTERFACE_VERSION)
-	NTL_GetAuthorVersion,		///< Return <b>your</b> version number of the type lib
-	NTL_GetBuildTimeStamp,		///< Return a string containing your time stamp
-	NTL_GetAuthorName,			///< Name of the author
-	NTL_GetAuthorString,		///< Credits, copyright, etc, any length, any purpose allowed
-	NTL_GetDeclString,			///< Return class declaration string
-	NTL_GetPackageString		///< (Optional) Return comma seperated list of other classes to import before compiling the class declaration string
+	NTL_GetClassName,			//!< Return this native type's class name
+	NTL_GetBaseName,			//!< (Optional) Return base class or interface name
+	NTL_GetInterfaceVersion,	//!< Return JILRevisionToLong(JIL_TYPE_INTERFACE_VERSION)
+	NTL_GetAuthorVersion,		//!< Return <b>your</b> version number of the type lib
+	NTL_GetBuildTimeStamp,		//!< Return a string containing your time stamp
+	NTL_GetAuthorName,			//!< Name of the author
+	NTL_GetAuthorString,		//!< Credits, copyright, etc, any length, any purpose allowed
+	NTL_GetDeclString,			//!< Return class declaration string
+	NTL_GetPackageString		//!< (Optional) Return comma seperated list of other classes to import before compiling the class declaration string
 };
 
 //------------------------------------------------------------------------------

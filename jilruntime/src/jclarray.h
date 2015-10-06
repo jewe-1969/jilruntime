@@ -45,12 +45,12 @@ struct JCLArray {
 	JILLong (*Count)	(const JCLArray*);
 	void (*Grain)		(JCLArray*, JILLong);
 
-	JILLong count;				///< Number of items in this array.
-	JILLong max;				///< Maximum number of items this array can currently hold. The array resizes if this value is exceeded.
-	JILLong size;				///< Element size; if &gt; 0 this array is managed, if 0 it is unmanaged.
-	JILLong grain;				///< Number of elements to allocate per bucket.
-	JILUnknown** array;			///< Array of pointers to elements.
-	operator_new new_element;	///< Allocator callback function.
+	JILLong count;				//!< Number of items in this array.
+	JILLong max;				//!< Maximum number of items this array can currently hold. The array resizes if this value is exceeded.
+	JILLong size;				//!< Element size; if &gt; 0 this array is managed, if 0 it is unmanaged.
+	JILLong grain;				//!< Number of elements to allocate per bucket.
+	JILUnknown** array;			//!< Array of pointers to elements.
+	operator_new new_element;	//!< Allocator callback function.
 };
 
 //------------------------------------------------------------------------------

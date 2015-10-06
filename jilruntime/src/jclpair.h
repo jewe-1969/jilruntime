@@ -32,8 +32,8 @@ FORWARD_CLASS(JCLPair)
 
 DECL_CLASS( JCLPair )
 
-	JCLString*	mipKey;		///< The key string of this pair.
-	JILUnknown*	mipData;	///< The data value of this pair.
+	JCLString*	mipKey;		//!< The key string of this pair.
+	JILUnknown*	mipData;	//!< The data value of this pair.
 
 END_CLASS( JCLPair )
 

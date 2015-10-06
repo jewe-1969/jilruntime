@@ -33,16 +33,16 @@ FORWARD_CLASS(JCLFuncType)
 
 DECL_CLASS(JCLLiteral)
 
-	JILLong				miType;		///< handle type (int, float, string, delegate)
-	JILLong				miHandle;	///< JIL data handle index (or 0)
-	JILLong				miOffset;	///< offset in byte code for patching
-	JILLong				miLong;		///< integer value in case of integer literals
-	JILFloat			miFloat;	///< float value in case of float literals
-	JCLString*			miString;	///< string constant in case of string literals
-	JILLong				miLocator;	///< character position of code block in source file (for anonymous delegates)
-	JILBool				miMethod;	///< anonymous delegate is method or closure
-	struct JCLFile*		mipFile;	///< source file (for anonymous delegates)
-	Array_JCLVar*		mipStack;	///< stack context in case of closure
+	JILLong				miType;		//!< handle type (int, float, string, delegate)
+	JILLong				miHandle;	//!< JIL data handle index (or 0)
+	JILLong				miOffset;	//!< offset in byte code for patching
+	JILLong				miLong;		//!< integer value in case of integer literals
+	JILFloat			miFloat;	//!< float value in case of float literals
+	JCLString*			miString;	//!< string constant in case of string literals
+	JILLong				miLocator;	//!< character position of code block in source file (for anonymous delegates)
+	JILBool				miMethod;	//!< anonymous delegate is method or closure
+	struct JCLFile*		mipFile;	//!< source file (for anonymous delegates)
+	Array_JCLVar*		mipStack;	//!< stack context in case of closure
 
 END_CLASS( JCLLiteral )
 

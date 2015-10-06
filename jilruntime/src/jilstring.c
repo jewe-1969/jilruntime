@@ -677,7 +677,7 @@ static JILError StringDelete(NTLInstance* pInst, JILString* _this)
 // global constants
 //------------------------------------------------------------------------------
 
-static const JILLong kStringAllocGrain = 32; ///< When the string resizes, it will increase it's size this number of bytes at once; increasing this value will increased performance as well as memory spoilage
+static const JILLong kStringAllocGrain = 32; //!< When the string resizes, it will increase it's size this number of bytes at once; increasing this value will increased performance as well as memory spoilage
 
 //------------------------------------------------------------------------------
 // static functions

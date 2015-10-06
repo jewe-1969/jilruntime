@@ -42,10 +42,10 @@
 
 enum
 {
-	std_handle_null,		///< Index number of the one-and-only null handle (DO NOT CHANGE)
-	kLogGarbageNone = 0,	///< Don't list anything
-	kLogGarbageBrief = 1,	///< List leaked objects, but not their child objects, if they can be freed by feeing their parent
-	kLogGarbageAll = 2,		///< List all leaked objects
+	std_handle_null,		//!< Index number of the one-and-only null handle (DO NOT CHANGE)
+	kLogGarbageNone = 0,	//!< Don't list anything
+	kLogGarbageBrief = 1,	//!< List leaked objects, but not their child objects, if they can be freed by feeing their parent
+	kLogGarbageAll = 2,		//!< List all leaked objects
 };
 
 //------------------------------------------------------------------------------
@@ -55,16 +55,16 @@ enum
 
 typedef enum
 {
-	ot_none = 0,	///< No operand
-	ot_number,		///< Immediate integer number
-	ot_handle,		///< Immediate handle number
-	ot_type,		///< Immediate type identifier number
-	ot_label,		///< A branch label (used by assembler/disassembler)
-	ot_ear,			///< Operand is addressing mode "register direct", i.e. "r7"
-	ot_ead,			///< Operand is addressing mode "register indirect, displacement", i.e. "(r5+16)"
-	ot_eax,			///< Operand is addressing mode "register indirect, indexed", i.e. "(r7+r5)"
-	ot_eas,			///< Operand is addressing mode "stack, displacement", i.e. "(sp+12)"
-	ot_regrng,		///< Operand is a register range, i.e. "r3-r7"
+	ot_none = 0,	//!< No operand
+	ot_number,		//!< Immediate integer number
+	ot_handle,		//!< Immediate handle number
+	ot_type,		//!< Immediate type identifier number
+	ot_label,		//!< A branch label (used by assembler/disassembler)
+	ot_ear,			//!< Operand is addressing mode "register direct", i.e. "r7"
+	ot_ead,			//!< Operand is addressing mode "register indirect, displacement", i.e. "(r5+16)"
+	ot_eax,			//!< Operand is addressing mode "register indirect, indexed", i.e. "(r7+r5)"
+	ot_eas,			//!< Operand is addressing mode "stack, displacement", i.e. "(sp+12)"
+	ot_regrng,		//!< Operand is a register range, i.e. "r3-r7"
 
 	kNumOperandTypes
 
@@ -77,9 +77,9 @@ typedef enum
 
 typedef enum
 {
-	HF_NEWBUCKET	= 1 << 0,	///< handle address is address of a "bucket"
-	HF_PERSIST		= 1 << 1,	///< do NOT destroy encapsulated object
-	HF_MARKED		= 1 << 2	///< handle is marked in response to garbage collection MARK command
+	HF_NEWBUCKET	= 1 << 0,	//!< handle address is address of a "bucket"
+	HF_PERSIST		= 1 << 1,	//!< do NOT destroy encapsulated object
+	HF_MARKED		= 1 << 2	//!< handle is marked in response to garbage collection MARK command
 
 } JILHandleFlags;
 
@@ -90,15 +90,15 @@ typedef enum
 
 typedef enum
 {
-	fi_method		= 1 << 0,	///< If true is method, if false is global function
-	fi_ctor			= 1 << 1,	///< method is constructor
-	fi_convertor	= 1 << 2,	///< method is convertor
-	fi_accessor		= 1 << 3,	///< method is accessor
-	fi_cofunc		= 1 << 4,	///< method is cofunction
-	fi_anonymous	= 1 << 5,	///< anonymous local method or function
-	fi_explicit		= 1 << 6,	///< constructor / convertor is explicit
-	fi_strict		= 1 << 7,	///< method is strict
-	fi_virtual		= 1 << 8	///< method is virtual
+	fi_method		= 1 << 0,	//!< If true is method, if false is global function
+	fi_ctor			= 1 << 1,	//!< method is constructor
+	fi_convertor	= 1 << 2,	//!< method is convertor
+	fi_accessor		= 1 << 3,	//!< method is accessor
+	fi_cofunc		= 1 << 4,	//!< method is cofunction
+	fi_anonymous	= 1 << 5,	//!< anonymous local method or function
+	fi_explicit		= 1 << 6,	//!< constructor / convertor is explicit
+	fi_strict		= 1 << 7,	//!< method is strict
+	fi_virtual		= 1 << 8	//!< method is virtual
 
 } JILFuncInfoFlags;
 
@@ -153,11 +153,11 @@ typedef union
 
 struct JILHandle
 {
-	JILLong			type;				///< The type of the value this handle encapsulates, see struct JILTypeInfo
-	JILLong			flags;				///< Flags, see enum JILHandleFlags
-	JILLong			refCount;			///< Number of references to the value
-	JILLong			reserved;			///< Reserved to ensure 8-byte alignment for 64-bit float
-	JILHandleData	data[1];			///< The handle's value, handle type dependent, see opaque structs in jilhandle.h
+	JILLong			type;				//!< The type of the value this handle encapsulates, see struct JILTypeInfo
+	JILLong			flags;				//!< Flags, see enum JILHandleFlags
+	JILLong			refCount;			//!< Number of references to the value
+	JILLong			reserved;			//!< Reserved to ensure 8-byte alignment for 64-bit float
+	JILHandleData	data[1];			//!< The handle's value, handle type dependent, see opaque structs in jilhandle.h
 };
 
 //------------------------------------------------------------------------------
@@ -189,9 +189,9 @@ struct JILHandle
 
 struct NTLInstance
 {
-	JILLong			typeID;				///< The type ID of the NTL instance
-	JILUnknown*		userData;			///< General purpose user data for the NTL instance
-	JILState*		pState;				///< Pointer to VM owning this instance
+	JILLong			typeID;				//!< The type ID of the NTL instance
+	JILUnknown*		userData;			//!< General purpose user data for the NTL instance
+	JILState*		pState;				//!< Pointer to VM owning this instance
 };
 
 //------------------------------------------------------------------------------
@@ -202,10 +202,10 @@ struct NTLInstance
 
 struct JILMethodInfo
 {
-	JILLong			ctor;				///< Method index of the type's standard constructor or -1 if undefined (future, currently unused)
-	JILLong			cctor;				///< Method index of the type's copy-constructor or -1 if undefined
-	JILLong			dtor;				///< Method index of the type's destructor or -1 if undefined (future, currently unused)
-	JILLong			tostr;				///< Method index of the type's string-convertor, or -1 if undefined
+	JILLong			ctor;				//!< Method index of the type's standard constructor or -1 if undefined (future, currently unused)
+	JILLong			cctor;				//!< Method index of the type's copy-constructor or -1 if undefined
+	JILLong			dtor;				//!< Method index of the type's destructor or -1 if undefined (future, currently unused)
+	JILLong			tostr;				//!< Method index of the type's string-convertor, or -1 if undefined
 };
 
 //------------------------------------------------------------------------------
@@ -215,20 +215,20 @@ struct JILMethodInfo
 
 struct JILTypeInfo
 {
-	JILLong			type;				///< The type identifier number (which is the index of this struct in the TypeInfo segment)
-	JILLong			base;				///< The type identifier of the base-class, if family == tf_class
-	JILLong			family;				///< The type-family, see enum JILTypeFamily
-	JILBool			isNative;			///< The type has a native type proc
-	JILLong			offsetName;			///< Offset to the name of the type in the CStr segment, if family == tf_class
-	JILLong			offsetVtab;			///< Offset to v-table in CStr segment, if family == tf_class and isNative == false
-	JILLong			sizeVtab;			///< Size (# of functions) of the class, if family == tf_class
-	JILLong			instanceSize;		///< Size (# of handles) of an instance of a class written in VM code, if isNative == false and family == tf_class
-	JILLong			interfaceVersion;	///< JIL native type interface version the type uses, if isNative == true
-	JILLong			authorVersion;		///< Author's product version, if isNative == true
-	JILMethodInfo	methodInfo;			///< Info about special methods, if family == tf_class
-	JILTypeProc		typeProc;			///< Pointer to the main entry point function, if isNative == true (ALL types, not only classes, can have a typeProc now!). This pointer will be initialized from a JILTypeListItem when the runtime is initialized and a native type matching the name is registered to the VM.
-	NTLInstance		instance;			///< Instance data for this type
-	const JILChar*	typeNamePtr;		///< Will point to type name in CStr segment after initialization (for easier debugging)
+	JILLong			type;				//!< The type identifier number (which is the index of this struct in the TypeInfo segment)
+	JILLong			base;				//!< The type identifier of the base-class, if family == tf_class
+	JILLong			family;				//!< The type-family, see enum JILTypeFamily
+	JILBool			isNative;			//!< The type has a native type proc
+	JILLong			offsetName;			//!< Offset to the name of the type in the CStr segment, if family == tf_class
+	JILLong			offsetVtab;			//!< Offset to v-table in CStr segment, if family == tf_class and isNative == false
+	JILLong			sizeVtab;			//!< Size (# of functions) of the class, if family == tf_class
+	JILLong			instanceSize;		//!< Size (# of handles) of an instance of a class written in VM code, if isNative == false and family == tf_class
+	JILLong			interfaceVersion;	//!< JIL native type interface version the type uses, if isNative == true
+	JILLong			authorVersion;		//!< Author's product version, if isNative == true
+	JILMethodInfo	methodInfo;			//!< Info about special methods, if family == tf_class
+	JILTypeProc		typeProc;			//!< Pointer to the main entry point function, if isNative == true (ALL types, not only classes, can have a typeProc now!). This pointer will be initialized from a JILTypeListItem when the runtime is initialized and a native type matching the name is registered to the VM.
+	NTLInstance		instance;			//!< Instance data for this type
+	const JILChar*	typeNamePtr;		//!< Will point to type name in CStr segment after initialization (for easier debugging)
 };
 
 //------------------------------------------------------------------------------
@@ -239,8 +239,8 @@ struct JILTypeInfo
 
 struct JILTypeListItem
 {
-	JILChar*		pClassName;	///< Points to the native type libraries class name
-	JILTypeProc		typeProc;	///< Pointer to the main entry point function
+	JILChar*		pClassName;	//!< Points to the native type libraries class name
+	JILTypeProc		typeProc;	//!< Pointer to the main entry point function
 };
 
 //------------------------------------------------------------------------------
@@ -252,11 +252,11 @@ struct JILTypeListItem
 
 struct JILInstrInfo
 {
-	JILLong			opCode;			///< Virtual machine instruction number
-	JILLong			instrSize;		///< Instruction size (number of ints)
-	JILLong			numOperands;	///< Number of operands of this instruction
-	JILLong			opType[4];		///< Enumeration value describing the operand, see enum JILOperandType
-	const JILChar*	name;			///< Clear text name of the instruction (mnemonic)
+	JILLong			opCode;			//!< Virtual machine instruction number
+	JILLong			instrSize;		//!< Instruction size (number of ints)
+	JILLong			numOperands;	//!< Number of operands of this instruction
+	JILLong			opType[4];		//!< Enumeration value describing the operand, see enum JILOperandType
+	const JILChar*	name;			//!< Clear text name of the instruction (mnemonic)
 };
 
 //------------------------------------------------------------------------------
@@ -267,14 +267,14 @@ struct JILInstrInfo
 
 struct JILChunkHeader
 {
-	JILChar			cnkMagic[16];		///< Magic identifier
-	JILLong			cnkSize;			///< Chunk size
-	JILLong			cnkTypeSegSize;		///< Size of TypeInfo segment
-	JILLong			cnkDataSegSize;		///< Size of data segment
-	JILLong			cnkCodeSegSize;		///< Size of code segment
-	JILLong			cnkFuncSegSize;		///< Size of function segment
-	JILLong			cnkCStrSegSize;		///< Size of string constant segment
-	JILLong			cnkSymTabSize;		///< Size of symbol table
+	JILChar			cnkMagic[16];		//!< Magic identifier
+	JILLong			cnkSize;			//!< Chunk size
+	JILLong			cnkTypeSegSize;		//!< Size of TypeInfo segment
+	JILLong			cnkDataSegSize;		//!< Size of data segment
+	JILLong			cnkCodeSegSize;		//!< Size of code segment
+	JILLong			cnkFuncSegSize;		//!< Size of function segment
+	JILLong			cnkCStrSegSize;		//!< Size of string constant segment
+	JILLong			cnkSymTabSize;		//!< Size of symbol table
 };
 
 //------------------------------------------------------------------------------
@@ -285,12 +285,12 @@ struct JILChunkHeader
 
 struct JILRestorePoint
 {
-	JILLong			reMagic;			///< Magic identifier
-	JILLong			reUsedTypeSegSize;	///< Saved TypeInfo segment size
-	JILLong			reUsedDataSegSize;	///< Saved data segment size
-	JILLong			reUsedCodeSegSize;	///< Saved code segment size
-	JILLong			reUsedCStrSegSize;	///< Saved cstr segment size
-	JILLong			reUsedSymTabSize;	///< Saved symbol table size
+	JILLong			reMagic;			//!< Magic identifier
+	JILLong			reUsedTypeSegSize;	//!< Saved TypeInfo segment size
+	JILLong			reUsedDataSegSize;	//!< Saved data segment size
+	JILLong			reUsedCodeSegSize;	//!< Saved code segment size
+	JILLong			reUsedCStrSegSize;	//!< Saved cstr segment size
+	JILLong			reUsedSymTabSize;	//!< Saved symbol table size
 };
 
 //------------------------------------------------------------------------------
@@ -302,10 +302,10 @@ struct JILRestorePoint
 
 struct JILStackFrame
 {
-	JILContext*		ctx;				///< Saved previous context
-	JILLong			pc;					///< Saved program counter
-	JILLong			cstp;				///< Saved call stack pointer
-	JILLong			dstp;				///< Saved data stack pointer
+	JILContext*		ctx;				//!< Saved previous context
+	JILLong			pc;					//!< Saved program counter
+	JILLong			cstp;				//!< Saved call stack pointer
+	JILLong			dstp;				//!< Saved data stack pointer
 };
 
 //------------------------------------------------------------------------------
@@ -338,12 +338,12 @@ struct JCLErrorInfo
 
 struct JILSymTabEntry
 {
-	JILSymTabEntry*		pPrev;		///< Pointer to previous entry
-	JILSymTabEntry*		pNext;		///< Pointer to next entry
-	JILLong				sizeName;	///< Size, in bytes, of the symbol name (including termination)
-	JILChar*			pName;		///< Pointer to the symbol name (dynamically allocated)
-	JILLong				sizeData;	///< Size, in bytes, of the data block associated with the symbol name
-	JILUnknown*			pData;		///< Pointer to the data block (dynamically allocated)
+	JILSymTabEntry*		pPrev;		//!< Pointer to previous entry
+	JILSymTabEntry*		pNext;		//!< Pointer to next entry
+	JILLong				sizeName;	//!< Size, in bytes, of the symbol name (including termination)
+	JILChar*			pName;		//!< Pointer to the symbol name (dynamically allocated)
+	JILLong				sizeData;	//!< Size, in bytes, of the data block associated with the symbol name
+	JILUnknown*			pData;		//!< Pointer to the data block (dynamically allocated)
 };
 
 //------------------------------------------------------------------------------
@@ -354,13 +354,13 @@ struct JILSymTabEntry
 
 struct JILFuncInfo
 {
-	JILLong				type;		///< The type identifier number of the class the function belongs to
-	JILLong				flags;		///< The function type, this is a bitfield, @see enum JILFuncInfoFlags
-	JILLong				codeAddr;	///< The code address of the function
-	JILLong				codeSize;	///< The size of the function in instruction words, or 0 if native function
-	JILLong				args;		///< The number of arguments the function expects on the stack
-	JILLong				memberIdx;	///< The member index of the function or method
-	JILLong				offsetName;	///< Offset to the function name in the CStr segment
+	JILLong				type;		//!< The type identifier number of the class the function belongs to
+	JILLong				flags;		//!< The function type, this is a bitfield, @see enum JILFuncInfoFlags
+	JILLong				codeAddr;	//!< The code address of the function
+	JILLong				codeSize;	//!< The size of the function in instruction words, or 0 if native function
+	JILLong				args;		//!< The number of arguments the function expects on the stack
+	JILLong				memberIdx;	//!< The member index of the function or method
+	JILLong				offsetName;	//!< Offset to the function name in the CStr segment
 };
 
 //------------------------------------------------------------------------------
@@ -373,9 +373,9 @@ struct JILFuncInfo
 
 struct JILDataHandle
 {
-	JILLong				type;		///< The type of data this handle encapsulates, see struct JILTypeInfo
-	JILLong				index;		///< The index number this handle should have as a runtime handle
-	JILHandleData		data[1];	///< The handle data, type dependant
+	JILLong				type;		//!< The type of data this handle encapsulates, see struct JILTypeInfo
+	JILLong				index;		//!< The index number this handle should have as a runtime handle
+	JILHandleData		data[1];	//!< The handle data, type dependant
 };
 
 //------------------------------------------------------------------------------
@@ -396,12 +396,12 @@ struct JILDataHandle
 
 struct JILMemStats
 {
-	JILLong				numAlloc;		///< The total number of memory allocations
-	JILLong				numFree;		///< Total number of memory frees
-	JILLong				bytesUsed;		///< Currently allocated number of bytes
-	JILLong				maxBytesUsed;	///< Maximum number of allocated bytes at any time
-	JILLong				numBuckets;		///< Total number of buckets used
-	JILLong				bucketBytes;	///< Total number of bytes allocated for buckets
+	JILLong				numAlloc;		//!< The total number of memory allocations
+	JILLong				numFree;		//!< Total number of memory frees
+	JILLong				bytesUsed;		//!< Currently allocated number of bytes
+	JILLong				maxBytesUsed;	//!< Maximum number of allocated bytes at any time
+	JILLong				numBuckets;		//!< Total number of buckets used
+	JILLong				bucketBytes;	//!< Total number of bytes allocated for buckets
 };
 
 //------------------------------------------------------------------------------
@@ -412,8 +412,8 @@ struct JILMemStats
 
 struct JILClosure
 {
-	JILLong				stackSize;		///< size of the parent function's stack
-	JILHandle**			ppStack;		///< snapshot of the parent function's stack
+	JILLong				stackSize;		//!< size of the parent function's stack
+	JILHandle**			ppStack;		//!< snapshot of the parent function's stack
 };
 
 //------------------------------------------------------------------------------
@@ -426,9 +426,9 @@ struct JILClosure
 
 struct JILDelegate
 {
-	JILLong				index;			///< method index in case of an instance member function, otherwise global function index
-	JILHandle*			pObject;		///< 'this' reference in case of an instance member function, otherwise NULL
-	JILClosure*			pClosure;		///< if the delegate is a closure, contains the parent function's stack, else NULL
+	JILLong				index;			//!< method index in case of an instance member function, otherwise global function index
+	JILHandle*			pObject;		//!< 'this' reference in case of an instance member function, otherwise NULL
+	JILClosure*			pClosure;		//!< if the delegate is a closure, contains the parent function's stack, else NULL
 };
 
 //------------------------------------------------------------------------------
@@ -440,8 +440,8 @@ struct JILDelegate
 
 struct JILRuntimeException
 {
-	JILLong				error;			///< the error code number of the exception
-	JILString*			pMessage;		///< a string describing the exception
+	JILLong				error;			//!< the error code number of the exception
+	JILString*			pMessage;		//!< a string describing the exception
 };
 
 //------------------------------------------------------------------------------
@@ -451,9 +451,9 @@ struct JILRuntimeException
 
 struct JILGCEventRecord
 {
-	JILUnknown*			pUserPtr;		///< pointer to native "user" object
-	JILGCEventHandler	eventProc;		///< native callback function
-	JILGCEventRecord*	pNext;			///< pointer to next record
+	JILUnknown*			pUserPtr;		//!< pointer to native "user" object
+	JILGCEventHandler	eventProc;		//!< native callback function
+	JILGCEventRecord*	pNext;			//!< pointer to next record
 };
 
 //------------------------------------------------------------------------------
@@ -463,8 +463,8 @@ struct JILGCEventRecord
 
 struct JILFileHandle
 {
-	JILUnknown*			pStream;		///< pointer to FILE object
-	JILState*			pState;			///< pointer to vm state
+	JILUnknown*			pStream;		//!< pointer to FILE object
+	JILState*			pState;			//!< pointer to vm state
 };
 
 //------------------------------------------------------------------------------

@@ -40,64 +40,64 @@ enum
 
 enum JILRuntimeCodes
 {
-	JIL_No_Exception = 0,				///< 0: No error or exception has occurred.
+	JIL_No_Exception = 0,				//!< 0: No error or exception has occurred.
 
-	JIL_Begin_Exceptions = 1000,		///< Marks the begin of all exception codes.
+	JIL_Begin_Exceptions = 1000,		//!< Marks the begin of all exception codes.
 
-	JIL_VM_Illegal_Instruction = JIL_Begin_Exceptions,	///< 1000: The virtual machine encountered an illegal opcode. This should not happen and may indicate memory corruption.
-	JIL_VM_Stack_Overflow,				///< 1001: The virtual machine has detected a stack overflow. Increase the stack size when calling JILInitialize().
-	JIL_VM_Null_Reference,				///< 1002: An instruction has attempted to access a reference that is 'null'.
-	JIL_VM_Unsupported_Type,			///< 1003: An instruction has been used with a reference to the wrong data type. For example, an arithmetic instruction was used with an object instead of a float or integer.
-	JIL_VM_Type_Mismatch,				///< 1004: The types of two operands of an instruction don't match, or a type cast was used and the type of the object is incompatible to the type the code tried to cast to.
-	JIL_VM_Call_To_NonFunction,			///< 1005: A call instruction has been used with a value that doesn't represent an object.
-	JIL_VM_Invalid_Operand,				///< 1006: An operand to an instruction is invalid. This may indicate memory corruption.
-	JIL_VM_Division_By_Zero,			///< 1007: An integer or floating point division has been used with zero as divisor.
-	JIL_VM_Software_Exception,			///< 1008: The throw instruction has raised a software exception.
-	JIL_VM_Trace_Exception,				///< 1009: When trace is enabled, the TRACE exception is automatically raised before every instruction is about to be executed. This can be used by a debugger to single-step through the byte-code.
-	JIL_VM_Break_Exception,				///< 1010: The BREAK exception is raised by the brk instruction. This can be used by a debugger to implement break points.
-	JIL_VM_Unhandled_Exception,			///< 1011: An unhandled exception has occurred. This is currently not used.
-	JIL_VM_Allocation_Failed,			///< 1012: Memory allocation has failed.
-	JIL_VM_Invalid_Code_Address,		///< 1013: The code or runtime tried to jump to a code address that is out of range. This may indicate data corruption.
-	JIL_VM_Return_To_Native,			///< 1014: Similar to JIL_VM_Software_Exception invoked by the throw instruction, this will end byte-code execution immediately, but without throwing a user exception object. This is meant to be used as a return value by native types. It allows you to instantly end byte-code execution in a fatal error situation.
-	JIL_VM_Object_Copy_Exception,		///< 1015: Copying an object has failed. This may indicate an out of memory situation, or a native object has defined no copy constructor and therefore cannot be copied.
-	JIL_VM_Abort_Exception,				///< 1016: This will end byte-code execution immediately, but without throwing a user exception object. This is meant to be used as a return value by native types. It allows you to instantly end byte-code execution in a fatal error situation.
-	JIL_VM_Native_CPP_Exception,		///< 1017: An unhandled native C++ exception has occurred. This is meant to be used as a return value by native types.
+	JIL_VM_Illegal_Instruction = JIL_Begin_Exceptions,	//!< 1000: The virtual machine encountered an illegal opcode. This should not happen and may indicate memory corruption.
+	JIL_VM_Stack_Overflow,				//!< 1001: The virtual machine has detected a stack overflow. Increase the stack size when calling JILInitialize().
+	JIL_VM_Null_Reference,				//!< 1002: An instruction has attempted to access a reference that is 'null'.
+	JIL_VM_Unsupported_Type,			//!< 1003: An instruction has been used with a reference to the wrong data type. For example, an arithmetic instruction was used with an object instead of a float or integer.
+	JIL_VM_Type_Mismatch,				//!< 1004: The types of two operands of an instruction don't match, or a type cast was used and the type of the object is incompatible to the type the code tried to cast to.
+	JIL_VM_Call_To_NonFunction,			//!< 1005: A call instruction has been used with a value that doesn't represent an object.
+	JIL_VM_Invalid_Operand,				//!< 1006: An operand to an instruction is invalid. This may indicate memory corruption.
+	JIL_VM_Division_By_Zero,			//!< 1007: An integer or floating point division has been used with zero as divisor.
+	JIL_VM_Software_Exception,			//!< 1008: The throw instruction has raised a software exception.
+	JIL_VM_Trace_Exception,				//!< 1009: When trace is enabled, the TRACE exception is automatically raised before every instruction is about to be executed. This can be used by a debugger to single-step through the byte-code.
+	JIL_VM_Break_Exception,				//!< 1010: The BREAK exception is raised by the brk instruction. This can be used by a debugger to implement break points.
+	JIL_VM_Unhandled_Exception,			//!< 1011: An unhandled exception has occurred. This is currently not used.
+	JIL_VM_Allocation_Failed,			//!< 1012: Memory allocation has failed.
+	JIL_VM_Invalid_Code_Address,		//!< 1013: The code or runtime tried to jump to a code address that is out of range. This may indicate data corruption.
+	JIL_VM_Return_To_Native,			//!< 1014: Similar to JIL_VM_Software_Exception invoked by the throw instruction, this will end byte-code execution immediately, but without throwing a user exception object. This is meant to be used as a return value by native types. It allows you to instantly end byte-code execution in a fatal error situation.
+	JIL_VM_Object_Copy_Exception,		//!< 1015: Copying an object has failed. This may indicate an out of memory situation, or a native object has defined no copy constructor and therefore cannot be copied.
+	JIL_VM_Abort_Exception,				//!< 1016: This will end byte-code execution immediately, but without throwing a user exception object. This is meant to be used as a return value by native types. It allows you to instantly end byte-code execution in a fatal error situation.
+	JIL_VM_Native_CPP_Exception,		//!< 1017: An unhandled native C++ exception has occurred. This is meant to be used as a return value by native types.
 
-	JIL_Begin_Errors = 1100,			///< 1100: Marks the begin of all runtime error codes.
+	JIL_Begin_Errors = 1100,			//!< 1100: Marks the begin of all runtime error codes.
 
-	JIL_ERR_Generic_Error = JIL_Begin_Errors,	///< 1100: An unspecified error has occurred.
-	JIL_ERR_Illegal_Argument,			///< 1101: An argument passed to an API function is out of range or invalid.
-	JIL_ERR_Out_Of_Code,				///< 1102: A code address specified to an API function is out of range.
-	JIL_ERR_Illegal_Type_Name,			///< 1103: A type name specified to an API function is undefined.
-	JIL_ERR_Register_Type_Failed,		///< 1104: A native type failed to register with the runtime. This may be due to changes in the native type interface or an incorrectly implemented type proc.
-	JIL_ERR_Undefined_Type,				///< 1105: A type identifier number is out of range.
-	JIL_ERR_Unsupported_Native_Call,	///< 1106: The type proc of a native type was called with an invalid message, function- or method index.
-	JIL_ERR_Invalid_Vector,				///< 1107: The vector specified to JILSetExceptionVector() was invalid.
-	JIL_ERR_Invalid_Handle_Index,		///< 1108: A handle index passed to an API function is out of bounds.
-	JIL_ERR_Invalid_Handle_Type,		///< 1109: The type of a handle passed to an API function is invalid.
-	JIL_ERR_Invalid_Member_Index,		///< 1110: The method index passed to an API function is out of bounds.
-	JIL_ERR_Invalid_Function_Index,		///< 1111: The function index passed to an API function is out of bounds.
-	JIL_ERR_Invalid_Register,			///< 1112: The specified register is invalid.
-	JIL_ERR_Call_To_NonFunction,		///< 1113: The native code attempted to call a code address that is out of bounds. This may indicate data corruption.
-	JIL_ERR_Runtime_Locked,				///< 1114: The virtual machine has been initialized and has executed code. The API function you called is locked. Certain API functions can only be called before the first byte-code is executed. This error is also returned by JILCollectGarbage() when called while the virtual machine is currently executing byte-code. The garbage collector can only be run from outside of all script functions.
-	JIL_ERR_Save_Chunk_Failed,			///< 1115: Storing virtual machine byte-code in a chunk has failed. This should not happen and may indicate an out of memory situation.
-	JIL_ERR_Load_Chunk_Failed,			///< 1116: Loading virtual machine byte-code from a chunk has failed. Several issues may cause this: <ul><li>The version of the runtime may have changed since the byte-code was saved.</li><li>A native type used by the byte-code may no longer be available.</li><li>A native type used by the byte-code has a higher version number than the one registered to the runtime.</li><li>The endianess of the saved byte-code may be wrong.</li><li>The chunk may be corrupt.</li></ul>
-	JIL_ERR_No_Symbol_Table,			///< 1117: The byte-code has no symbol table, therefore the API function cannot access it. At present, the library does not use the symbol table. However, users of the library may use it to store extra information with the byte-code.
-	JIL_ERR_Symbol_Exists,				///< 1118: A symbol to be written to the symbol table already exists.
-	JIL_ERR_Symbol_Not_Found,			///< 1119: A symbol to be retrieved from the symbol table does not exist.
-	JIL_ERR_Incompatible_NTL,			///< 1120: A native type used by the byte-code has a higher version number than the one registered to the runtime. This error can only occur when loading byte-code from a chunk.
-	JIL_ERR_Detected_Memory_Leaks,		///< 1121: Memory leaks were detected while terminating the runtime.
-	JIL_ERR_Trace_Not_Supported,		///< 1122: The user tried to enable trace in release builds, but it is not supported. You may enable trace for release builds by defining JIL_TRACE_RELEASE to 1 in "jilplatform.h". I do not recommend doing this unless you absolutely have to debug / trace the release build of your application.
-	JIL_ERR_Runtime_Blocked,			///< 1123: The user has set the JILState::vmBlocked flag using JILSetBlocked() and thus calling script code is no longer possible. An exception handler may choose to block further byte-code execution to prevent the application from crashing when a critical error has been detected, or for security reasons.
-	JIL_ERR_Code_Not_Initialized,		///< 1124: The user has tried to execute a function or method without properly initializing the byte-code. You should call JILRunInitCode() after linking and before calling any other script function, method or delegate.
-	JIL_ERR_Initialize_Failed,			///< 1125: Initializing the virtual machine failed. This may indicate an out of memory situation. It may also be caused by a native type returning an error upon initialization.
-	JIL_ERR_No_Compiler,				///< 1126: The compiler object has been freed using JCLFreeCompiler() and therefore the compiler API functions are no longer available.
-	JIL_ERR_File_Open,					///< 1127: A generic file open error has occurred.
-	JIL_ERR_File_End,					///< 1128: A generic end-of-file error has occurred.
-	JIL_ERR_File_Generic,				///< 1129: A generic file read / write error has occurred.
-	JIL_ERR_Mark_Handle_Error,			///< 1130: A native type returned an error when the garbage collector sent the NTL_MarkHandles message to it. This usually indicates that a native type has been registered to the runtime that doesn't support the garbage collector. If you want to use garbage collection, all native types must properly handle this message.
+	JIL_ERR_Generic_Error = JIL_Begin_Errors,	//!< 1100: An unspecified error has occurred.
+	JIL_ERR_Illegal_Argument,			//!< 1101: An argument passed to an API function is out of range or invalid.
+	JIL_ERR_Out_Of_Code,				//!< 1102: A code address specified to an API function is out of range.
+	JIL_ERR_Illegal_Type_Name,			//!< 1103: A type name specified to an API function is undefined.
+	JIL_ERR_Register_Type_Failed,		//!< 1104: A native type failed to register with the runtime. This may be due to changes in the native type interface or an incorrectly implemented type proc.
+	JIL_ERR_Undefined_Type,				//!< 1105: A type identifier number is out of range.
+	JIL_ERR_Unsupported_Native_Call,	//!< 1106: The type proc of a native type was called with an invalid message, function- or method index.
+	JIL_ERR_Invalid_Vector,				//!< 1107: The vector specified to JILSetExceptionVector() was invalid.
+	JIL_ERR_Invalid_Handle_Index,		//!< 1108: A handle index passed to an API function is out of bounds.
+	JIL_ERR_Invalid_Handle_Type,		//!< 1109: The type of a handle passed to an API function is invalid.
+	JIL_ERR_Invalid_Member_Index,		//!< 1110: The method index passed to an API function is out of bounds.
+	JIL_ERR_Invalid_Function_Index,		//!< 1111: The function index passed to an API function is out of bounds.
+	JIL_ERR_Invalid_Register,			//!< 1112: The specified register is invalid.
+	JIL_ERR_Call_To_NonFunction,		//!< 1113: The native code attempted to call a code address that is out of bounds. This may indicate data corruption.
+	JIL_ERR_Runtime_Locked,				//!< 1114: The virtual machine has been initialized and has executed code. The API function you called is locked. Certain API functions can only be called before the first byte-code is executed. This error is also returned by JILCollectGarbage() when called while the virtual machine is currently executing byte-code. The garbage collector can only be run from outside of all script functions.
+	JIL_ERR_Save_Chunk_Failed,			//!< 1115: Storing virtual machine byte-code in a chunk has failed. This should not happen and may indicate an out of memory situation.
+	JIL_ERR_Load_Chunk_Failed,			//!< 1116: Loading virtual machine byte-code from a chunk has failed. Several issues may cause this: <ul><li>The version of the runtime may have changed since the byte-code was saved.</li><li>A native type used by the byte-code may no longer be available.</li><li>A native type used by the byte-code has a higher version number than the one registered to the runtime.</li><li>The endianess of the saved byte-code may be wrong.</li><li>The chunk may be corrupt.</li></ul>
+	JIL_ERR_No_Symbol_Table,			//!< 1117: The byte-code has no symbol table, therefore the API function cannot access it. At present, the library does not use the symbol table. However, users of the library may use it to store extra information with the byte-code.
+	JIL_ERR_Symbol_Exists,				//!< 1118: A symbol to be written to the symbol table already exists.
+	JIL_ERR_Symbol_Not_Found,			//!< 1119: A symbol to be retrieved from the symbol table does not exist.
+	JIL_ERR_Incompatible_NTL,			//!< 1120: A native type used by the byte-code has a higher version number than the one registered to the runtime. This error can only occur when loading byte-code from a chunk.
+	JIL_ERR_Detected_Memory_Leaks,		//!< 1121: Memory leaks were detected while terminating the runtime.
+	JIL_ERR_Trace_Not_Supported,		//!< 1122: The user tried to enable trace in release builds, but it is not supported. You may enable trace for release builds by defining JIL_TRACE_RELEASE to 1 in "jilplatform.h". I do not recommend doing this unless you absolutely have to debug / trace the release build of your application.
+	JIL_ERR_Runtime_Blocked,			//!< 1123: The user has set the JILState::vmBlocked flag using JILSetBlocked() and thus calling script code is no longer possible. An exception handler may choose to block further byte-code execution to prevent the application from crashing when a critical error has been detected, or for security reasons.
+	JIL_ERR_Code_Not_Initialized,		//!< 1124: The user has tried to execute a function or method without properly initializing the byte-code. You should call JILRunInitCode() after linking and before calling any other script function, method or delegate.
+	JIL_ERR_Initialize_Failed,			//!< 1125: Initializing the virtual machine failed. This may indicate an out of memory situation. It may also be caused by a native type returning an error upon initialization.
+	JIL_ERR_No_Compiler,				//!< 1126: The compiler object has been freed using JCLFreeCompiler() and therefore the compiler API functions are no longer available.
+	JIL_ERR_File_Open,					//!< 1127: A generic file open error has occurred.
+	JIL_ERR_File_End,					//!< 1128: A generic end-of-file error has occurred.
+	JIL_ERR_File_Generic,				//!< 1129: A generic file read / write error has occurred.
+	JIL_ERR_Mark_Handle_Error,			//!< 1130: A native type returned an error when the garbage collector sent the NTL_MarkHandles message to it. This usually indicates that a native type has been registered to the runtime that doesn't support the garbage collector. If you want to use garbage collection, all native types must properly handle this message.
 
-	JIL_Unknown_Exception				///< 1131: An unknown error or exception has occurred.
+	JIL_Unknown_Exception				//!< 1131: An unknown error or exception has occurred.
 };
 
 //------------------------------------------------------------------------------

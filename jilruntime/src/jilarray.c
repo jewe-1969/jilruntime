@@ -382,7 +382,7 @@ static int ArrayTerminate(NTLInstance* pInst)
 // global constants
 //------------------------------------------------------------------------------
 
-static const JILLong kArrayAllocGrain = 32; ///< When the array resizes, it will add this number of new elements at once; increasing this value will increase performance as well as memory spoilage
+static const JILLong kArrayAllocGrain = 32; //!< When the array resizes, it will add this number of new elements at once; increasing this value will increase performance as well as memory spoilage
 
 //------------------------------------------------------------------------------
 // static functions

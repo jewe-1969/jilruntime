@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{72e7b779-0843-4a37-8b82-ba27960844a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jilruntime">
+      <UniqueIdentifier>{53f966d4-5f0e-4449-a609-1d3ee57b5dae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="native">
+      <UniqueIdentifier>{0b34c6c8-c559-46be-a09e-ed48e936d1a9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="native\ansi">
+      <UniqueIdentifier>{e8b21a85-b59d-4c05-bc3e-667ba36b23b8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\main.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\bind_arraylist.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\bind_runtime.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\bind_runtime_exception.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\bind_stringMatch.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclarray.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclclass.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclclause.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclerrors.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclfile.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclfunc.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclgendoc.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jcllinker.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclnative.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jcloption.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclpair.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclstate.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclstring.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jclvar.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilallocators.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilarray.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilarraylist.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilchunk.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilcodelist.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilcompiler.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilcstrsegment.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jildebug.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilexception.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilexecbytecode.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilfixmem.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilhandle.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiliterator.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jillist.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilmachine.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilnativetype.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiloptables.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilprogramming.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilruntime.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilstdinc.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilstring.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilsymboltable.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiltable.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiltools.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiltypeinfo.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jiltypelist.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+    <ClCompile Include="..\contrib\native\ansi\ntl_file.c">
+      <Filter>native\ansi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\contrib\native\ansi\ntl_math.c">
+      <Filter>native\ansi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\contrib\native\ansi\ntl_stdlib.c">
+      <Filter>native\ansi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\contrib\native\ansi\ntl_time.c">
+      <Filter>native\ansi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jilruntime\src\jilfragmentedarray.c">
+      <Filter>jilruntime</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

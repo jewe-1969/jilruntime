@@ -29,12 +29,12 @@
 
 struct JILListItem
 {
-	JILList*		pList;		///< Pointer to owner list
-	JILListItem*	pPrev;		///< Pointer to previous item in the list or NULL
-	JILListItem*	pNext;		///< Pointer to next item in the list or NULL
-	JILHandle*		pKey;		///< Pointer to 'key' associated with list item
-	JILHandle*		pValue;		///< Pointer to actual data of the list item
-	JILLong			numRef;		///< Number of iterator references to this item
+	JILList*		pList;		//!< Pointer to owner list
+	JILListItem*	pPrev;		//!< Pointer to previous item in the list or NULL
+	JILListItem*	pNext;		//!< Pointer to next item in the list or NULL
+	JILHandle*		pKey;		//!< Pointer to 'key' associated with list item
+	JILHandle*		pValue;		//!< Pointer to actual data of the list item
+	JILLong			numRef;		//!< Number of iterator references to this item
 };
 
 //------------------------------------------------------------------------------
@@ -43,10 +43,10 @@ struct JILListItem
 
 struct JILList
 {
-	JILLong			length;		///< The number of items in the list
-	JILListItem*	pFirst;		///< Pointer to the first item in the list, or NULL
-	JILListItem*	pLast;		///< Pointer to the last item in the list, or NULL
-	JILState*		pState;		///< The virtual machine object this list 'belongs' to
+	JILLong			length;		//!< The number of items in the list
+	JILListItem*	pFirst;		//!< Pointer to the first item in the list, or NULL
+	JILListItem*	pLast;		//!< Pointer to the last item in the list, or NULL
+	JILState*		pState;		//!< The virtual machine object this list 'belongs' to
 };
 
 //------------------------------------------------------------------------------
@@ -55,10 +55,10 @@ struct JILList
 
 struct JILIterator
 {
-	JILListItem*	pItem;		///< Pointer to the current item, or NULL
-	JILHandle*		pList;		///< Handle to the list this iterator references
-	JILState*		pState;		///< The virtual machine object this list 'belongs' to
-	JILLong			deleted;	///< Current item is marked deleted
+	JILListItem*	pItem;		//!< Pointer to the current item, or NULL
+	JILHandle*		pList;		//!< Handle to the list this iterator references
+	JILState*		pState;		//!< The virtual machine object this list 'belongs' to
+	JILLong			deleted;	//!< Current item is marked deleted
 };
 
 //------------------------------------------------------------------------------

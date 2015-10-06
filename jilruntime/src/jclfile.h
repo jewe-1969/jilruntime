@@ -33,11 +33,11 @@ FORWARD_CLASS(JCLFile)
 
 DECL_CLASS( JCLFileToken )
 
-	JILLong				miTokenID;		///< The ID number of the token
-	JILLong				miLocation;		///< The character position in the file of the token
-	JILLong				miLine;			///< The source file line number for this token
-	JILLong				miColumn;		///< The source file column for this token
-	JCLString*			mipToken;		///< The token string or NULL
+	JILLong				miTokenID;		//!< The ID number of the token
+	JILLong				miLocation;		//!< The character position in the file of the token
+	JILLong				miLine;			//!< The source file line number for this token
+	JILLong				miColumn;		//!< The source file column for this token
+	JCLString*			mipToken;		//!< The token string or NULL
 
 END_CLASS( JCLFileToken )
 
@@ -65,17 +65,17 @@ DECL_CLASS( JCLFile )
 	JILError			(*ScanStatement)	(JCLFile*, JCLString*);
 	JILError			(*ScanExpression)	(JCLFile*, JCLString*);
 
-	JCLString*			mipName;		///< Name of file or code-snippet
-	JCLString*			mipText;		///< The source code
-	JCLString*			mipPath;		///< Filename and path of the file
-	JCLString*			mipPackage;		///< Package import string
-	Array_JCLFileToken*	mipTokens;		///< Array of tokens
-	JCLOption*			mipOptions;		///< Compiler options, only valid in Open()
-	JILLong				miLocator;		///< Current parsing position
-	JILLong				miPass;			///< Current compilation pass
-	JILLong				miLine;			///< Line number while tokenizing
-	JILLong				miColumn;		///< Column while tokenizing
-	JILBool				miNative;		///< File is a native type declaration
+	JCLString*			mipName;		//!< Name of file or code-snippet
+	JCLString*			mipText;		//!< The source code
+	JCLString*			mipPath;		//!< Filename and path of the file
+	JCLString*			mipPackage;		//!< Package import string
+	Array_JCLFileToken*	mipTokens;		//!< Array of tokens
+	JCLOption*			mipOptions;		//!< Compiler options, only valid in Open()
+	JILLong				miLocator;		//!< Current parsing position
+	JILLong				miPass;			//!< Current compilation pass
+	JILLong				miLine;			//!< Line number while tokenizing
+	JILLong				miColumn;		//!< Column while tokenizing
+	JILBool				miNative;		//!< File is a native type declaration
 
 END_CLASS( JCLFile )
 

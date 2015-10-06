@@ -55,9 +55,9 @@ JILError			JILArrayList_Mark				(JILArrayList*);
 //------------------------------------------------------------------------------
 // Pass one of these to JILArrayList_New(), or use your own callback.
 
-void JILArrayListNone(JILState*, JILUnknown*);		///< Do not destroy anything. You can pass this to JILArrayList_New() or use your own callback
-void JILArrayListFree(JILState*, JILUnknown*);		///< Use free() to destroy the data. You can pass this to JILArrayList_New()
-void JILArrayListRelease(JILState*, JILUnknown*);	///< Use JILRelease() to destroy the data. You can pass this to JILArrayList_New()
+void JILArrayListNone(JILState*, JILUnknown*);		//!< Do not destroy anything. You can pass this to JILArrayList_New() or use your own callback
+void JILArrayListFree(JILState*, JILUnknown*);		//!< Use free() to destroy the data. You can pass this to JILArrayList_New()
+void JILArrayListRelease(JILState*, JILUnknown*);	//!< Use JILRelease() to destroy the data. You can pass this to JILArrayList_New()
 
 //------------------------------------------------------------------------------
 // JILArrayListProc

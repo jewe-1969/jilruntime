@@ -22,20 +22,20 @@
 typedef struct JCLClauseBlock JCLClauseBlock;
 struct JCLClauseBlock
 {
-	JCLClauseBlock*		mipNext;		///< next block
-	JILLong				miCodePos;		///< code location of the block
-	JCLString*			mipLabel;		///< branch label of the block
+	JCLClauseBlock*		mipNext;		//!< next block
+	JILLong				miCodePos;		//!< code location of the block
+	JCLString*			mipLabel;		//!< branch label of the block
 };
 
 typedef struct JCLClauseGoto JCLClauseGoto;
 struct JCLClauseGoto
 {
-	JCLClauseGoto*		mipNext;		///< next goto
-	JILLong				miPopPos;		///< code location of the popm instruction to patch
-	JILLong				miBranchPos;	///< code location of the branch instruction to patch
-	JILLong				miStackPos;		///< stack counter when goto was encountered
-	JILLong				miFilePos;		///< character position in file of the goto statement
-	JCLString*			mipLabel;		///< branch label of the goto statement
+	JCLClauseGoto*		mipNext;		//!< next goto
+	JILLong				miPopPos;		//!< code location of the popm instruction to patch
+	JILLong				miBranchPos;	//!< code location of the branch instruction to patch
+	JILLong				miStackPos;		//!< stack counter when goto was encountered
+	JILLong				miFilePos;		//!< character position in file of the goto statement
+	JCLString*			mipLabel;		//!< branch label of the goto statement
 };
 
 FORWARD_CLASS( JCLClause )
@@ -47,11 +47,11 @@ FORWARD_CLASS( JCLClause )
 
 DECL_CLASS( JCLClause )
 
-	JILLong				miStackPos;		///< stack position to unroll to in case of a goto
-	JCLVar*				miParameter;	///< clause parameter variable
-	JCLClauseBlock*		mipBlocks;		///< link list of all blocks
-	JCLClauseGoto*		mipGotos;		///< link list of all gotos
-	JCLClause*			mipParent;		///< pointer to parent clause statement
+	JILLong				miStackPos;		//!< stack position to unroll to in case of a goto
+	JCLVar*				miParameter;	//!< clause parameter variable
+	JCLClauseBlock*		mipBlocks;		//!< link list of all blocks
+	JCLClauseGoto*		mipGotos;		//!< link list of all gotos
+	JCLClause*			mipParent;		//!< pointer to parent clause statement
 
 END_CLASS( JCLClause )
 

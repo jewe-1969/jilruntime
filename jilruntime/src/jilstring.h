@@ -40,9 +40,9 @@
 
 typedef struct NStringMatch
 {
-	JILLong	matchStart;		///< The character position where this match starts. For matchString() the position refers to 'this' string. For matchArray() the position refers to the element specified by 'arrayIndex'.
-	JILLong	matchLength;	///< The length of the match in characters.
-	JILLong	arrayIndex;		///< The array index of the matching element. For matchString() it specifies the array element that was found in 'this' string as a substring. For matchArray() it specifies the array element that contains 'this' string as a substring.
+	JILLong	matchStart;		//!< The character position where this match starts. For matchString() the position refers to 'this' string. For matchArray() the position refers to the element specified by 'arrayIndex'.
+	JILLong	matchLength;	//!< The length of the match in characters.
+	JILLong	arrayIndex;		//!< The array index of the matching element. For matchString() it specifies the array element that was found in 'this' string as a substring. For matchArray() it specifies the array element that contains 'this' string as a substring.
 
 } NStringMatch;
 
@@ -53,10 +53,10 @@ typedef struct NStringMatch
 
 struct JILString
 {
-	JILLong		length;		///< The currently used length, in characters, of the string
-	JILLong		maxLength;	///< The currently allocated size, in bytes; if length reaches this value, the string is resized
-	JILChar*	string;		///< Pointer to the string buffer (the string is null-terminated, so it can be directly used as a C-string)
-	JILState*	pState;		///< The virtual machine object this string 'belongs' to
+	JILLong		length;		//!< The currently used length, in characters, of the string
+	JILLong		maxLength;	//!< The currently allocated size, in bytes; if length reaches this value, the string is resized
+	JILChar*	string;		//!< Pointer to the string buffer (the string is null-terminated, so it can be directly used as a C-string)
+	JILState*	pState;		//!< The virtual machine object this string 'belongs' to
 };
 
 //------------------------------------------------------------------------------
