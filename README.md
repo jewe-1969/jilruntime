@@ -3,7 +3,9 @@
 
 ### Important Note
 
-This repository is just a mirror of the latest stable release from SourceForge. To access the latest development branch, please checkout the [SVN repository](https://sourceforge.net/p/jilruntime/code/HEAD/tree/) there. To read more about the reason why I have discontinued updating GitHub, [read this post](http://blog.jewe.org/?p=2548).
+This repository is just a mirror of the latest stable release from SourceForge. To access the latest development branch, please checkout the [SVN repository](https://sourceforge.net/p/jilruntime/code/HEAD/tree/) there.
+
+To read more about the reason why I have discontinued using GitHub, [read this post](http://blog.jewe.org/?p=2548).
 
 ### Introduction
 
