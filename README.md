@@ -1,6 +1,12 @@
 # JILRuntime / JewelScript
 #### An object-oriented script language to embed in any application
 
+### Important Note
+
+This repository is just a mirror of the latest stable release from SourceForge. To access the latest development branch, please checkout the [SVN repository](https://sourceforge.net/p/jilruntime/code/HEAD/tree/) there. To read more about the reason why I have discontinued updating GitHub, [read this post](http://blog.jewe.org/?p=2548).
+
+### Introduction
+
 JewelScript is a general purpose, object-oriented script language that compiles into code for a register based virtual machine. The language is quite similar to object-oriented high-level languages like Java and C#.
 
 The library is entirely self-sufficient and ANSI C compliant. It's main purpose is to be embedded in any application to allow automation of that application through scripting.
